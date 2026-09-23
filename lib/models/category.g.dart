@@ -24,7 +24,7 @@ class CategoryAdapter extends TypeAdapter<Category> {
       type: fields[4] as TxType,
       parentCategoryId: fields[5] as String?,
       isBuiltIn: fields[6] as bool,
-      frequency: (fields[7] as String?) ?? 'monthly',
+      frequency: fields[7] as String,
     );
   }
 

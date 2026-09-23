@@ -66,6 +66,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> _editDailyBudgetDialog(BuildContext context, TrackerViewModel vm) async {
+    final ctrl = TextEditingController(text: vm.settings.dailyBudget?.toStringAsFixed(0) ?? '');
+    final result = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Daily budget'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(labelText: 'Amount per day (${vm.settings.currencySymbol})', hintText: 'e.g. 20000'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(
+            onPressed: () {
+              final v = double.tryParse(ctrl.text.replaceAll(',', ''));
+              Navigator.pop(ctx, v);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (result == null || result <= 0) return;
+    final s = vm.settings;
+    s.dailyBudget = result;
+    await vm.updateSettings(s);
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Daily budget updated')));
+  }
+
   Future<void> _showAddWalletDialog(BuildContext context) async {
     final nameCtrl = TextEditingController();
     final balanceCtrl = TextEditingController();
@@ -173,6 +204,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   const SizedBox(height: 12),
 
                   // Notifications
+                  Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                      onTap: () => _editDailyBudgetDialog(context, vm),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: const BoxDecoration(color: AppColors.muted, shape: BoxShape.circle),
+                              child: const Icon(Icons.today_outlined, color: AppColors.textPrimary, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Daily budget', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                                  Text(
+                                    s.dailyBudget == null ? 'Not set' : '${MoneyFormat.money(s.dailyBudget!, symbol: s.currencySymbol)} per day',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right, size: 18, color: AppColors.mutedForeground),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
                     child: Padding(
@@ -362,7 +429,7 @@ class _SettingsRow extends StatelessWidget {
             Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
             if (subtitle != null) Text(subtitle!, style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
           ])),
-          ?trailing,
+          if (trailing != null) trailing!,
         ],
       ),
     );

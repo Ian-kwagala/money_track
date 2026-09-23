@@ -5,6 +5,9 @@ import 'add_transaction/quick_add_sheet.dart';
 import 'alerts/alerts_screen.dart';
 import 'budgets/budgets_screen.dart';
 import 'dashboard/dashboard_screen.dart';
+import 'dashboard/daily_budget_prompt.dart';
+import 'dashboard/payday_check.dart';
+import 'dashboard/profile_completion_sheet.dart';
 import 'reports/reports_screen.dart';
 import 'settings/settings_screen.dart';
 import 'theme/app_theme.dart';
@@ -26,6 +29,14 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     _index = widget.initialIndex;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await CompletenessCheck.maybeShow(context);
+      if (!mounted) return;
+      await DailyBudgetPrompt.maybeShow(context);
+      if (!mounted) return;
+      await PaydayCheck.maybeShow(context);
+    });
   }
 
   static const _navItems = [
@@ -35,6 +46,16 @@ class _HomeShellState extends State<HomeShell> {
     _NavInfo(label: 'Alerts', icon: Icons.notifications_outlined, activeIcon: Icons.notifications),
     _NavInfo(label: 'Settings', icon: Icons.settings_outlined, activeIcon: Icons.settings),
   ];
+
+  /// Sidebar sections shown on wide (web/desktop) layouts. Each entry is a
+  /// group label followed by the indices (into `_navItems`) it contains.
+  static const _sidebarGroups = [
+    ('Overview', [0, 2]), // Home, Analytics
+    ('Money', [1, 3]), // Budgets, Alerts
+    ('Account', [4]), // Settings
+  ];
+
+  static const _wideBreakpoint = 900.0;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +67,62 @@ class _HomeShellState extends State<HomeShell> {
       const SettingsScreen(),
     ];
 
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= _wideBreakpoint) {
+          return _buildWide(context, pages);
+        }
+        return _buildMobile(context, pages);
+      },
+    );
+  }
+
+  Widget _buildWide(BuildContext context, List<Widget> pages) {
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: Row(
+        children: [
+          _Sidebar(
+            groups: _sidebarGroups,
+            items: _navItems,
+            activeIndex: _index,
+            onSelect: (i) => setState(() => _index = i),
+          ),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, inner) {
+                const maxContentWidth = 480.0;
+                final contentWidth =
+                    inner.maxWidth < maxContentWidth ? inner.maxWidth : maxContentWidth;
+                final sideInset = (inner.maxWidth - contentWidth) / 2;
+                return Container(
+                  color: AppColors.bg,
+                  child: Stack(
+                    children: [
+                      Align(
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          width: contentWidth,
+                          child: pages[_index],
+                        ),
+                      ),
+                      Positioned(
+                        right: sideInset < 24 ? 24 : sideInset + 8,
+                        bottom: 24,
+                        child: _QuickAddFab(onTap: () => _openQuickAdd(context)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobile(BuildContext context, List<Widget> pages) {
     return Scaffold(
       extendBody: true,
       body: Stack(
@@ -113,23 +190,7 @@ class _HomeShellState extends State<HomeShell> {
             right: 0,
             bottom: 88, // 64 nav + 24 gap
             child: Center(
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _openQuickAdd(context),
-                  borderRadius: BorderRadius.circular(28),
-                  child: Ink(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                      boxShadow: AppColors.shadowLift,
-                    ),
-                    child: const Icon(Icons.add, color: Colors.white, size: 28),
-                  ),
-                ),
-              ),
+              child: _QuickAddFab(onTap: () => _openQuickAdd(context)),
             ),
           ),
         ],
@@ -153,6 +214,150 @@ class _NavInfo {
   final IconData activeIcon;
 
   const _NavInfo({required this.label, required this.icon, required this.activeIcon});
+}
+
+/// Round green "quick add" button, shared by the mobile and wide layouts.
+class _QuickAddFab extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _QuickAddFab({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(28),
+        child: Ink(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: AppColors.primary,
+            shape: BoxShape.circle,
+            boxShadow: AppColors.shadowLift,
+          ),
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
+        ),
+      ),
+    );
+  }
+}
+
+/// Left navigation sidebar shown on wide (web/desktop) layouts. Groups
+/// items under section labels, e.g. "Overview", "Money", "Account".
+class _Sidebar extends StatelessWidget {
+  final List<(String, List<int>)> groups;
+  final List<_NavInfo> items;
+  final int activeIndex;
+  final ValueChanged<int> onSelect;
+
+  const _Sidebar({
+    required this.groups,
+    required this.items,
+    required this.activeIndex,
+    required this.onSelect,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 240,
+      color: AppColors.elevated,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Brand
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Icon(Icons.savings_outlined, color: Colors.white, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'MoneyTrack',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                children: [
+                  for (final group in groups) ...[
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
+                      child: Text(
+                        group.$1,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.mutedForeground,
+                        ),
+                      ),
+                    ),
+                    for (final i in group.$2) _SidebarItem(
+                      info: items[i],
+                      active: activeIndex == i,
+                      onTap: () => onSelect(i),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarItem extends StatelessWidget {
+  final _NavInfo info;
+  final bool active;
+  final VoidCallback onTap;
+
+  const _SidebarItem({required this.info, required this.active, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final color = active ? AppColors.primary : AppColors.textPrimary;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        child: Row(
+          children: [
+            Icon(active ? info.activeIcon : info.icon, size: 20, color: color),
+            const SizedBox(width: 12),
+            Text(
+              info.label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Shared PageHeader used by all screens

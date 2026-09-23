@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/category.dart';
+import '../../models/frequency.dart';
 import '../../models/transaction.dart';
 import '../../models/wallet.dart';
 import '../../viewmodels/tracker_view_model.dart';
@@ -29,8 +30,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String? _toWalletId;
   DateTime _dateTime = DateTime.now();
   String? _receiptPath;
-  bool _isRecurring = false;
+  Frequency _frequency = Frequency.once;
   bool _saving = false;
+
+  static const _frequencyOptions = [
+    Frequency.once,
+    Frequency.daily,
+    Frequency.weekly,
+    Frequency.biweekly,
+    Frequency.monthly,
+    Frequency.quarterly,
+    Frequency.yearly,
+    Frequency.random,
+  ];
 
   @override
   void initState() {
@@ -46,7 +58,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       _dateTime = edit.dateTime;
       _noteCtrl.text = edit.note;
       _receiptPath = edit.receiptPath;
-      _isRecurring = edit.isRecurring;
+      _frequency = edit.frequency;
     }
   }
 
@@ -291,13 +303,21 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
               if (!isTransfer) ...[
                 const SizedBox(height: 14),
-                SwitchListTile(
-                  value: _isRecurring,
-                  onChanged: (v) => setState(() => _isRecurring = v),
-                  title: const Text('Recurring transaction'),
-                  subtitle: const Text('Auto-log every period'),
-                  contentPadding: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                const _Label('HOW OFTEN'),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<Frequency>(
+                  initialValue: _frequency,
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.repeat),
+                    hintText: 'How often does this happen?',
+                  ),
+                  items: [
+                    for (final f in _frequencyOptions)
+                      DropdownMenuItem(value: f, child: Text(f.label)),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setState(() => _frequency = v);
+                  },
                 ),
               ],
 
@@ -388,7 +408,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         note: _noteCtrl.text.trim(),
         dateTime: _dateTime,
         receiptPath: _receiptPath,
-        isRecurring: !isTransferLike && _isRecurring,
+        frequency: isTransferLike ? Frequency.once : _frequency,
       );
       if (existing != null) {
         await vm.updateTransaction(tx);

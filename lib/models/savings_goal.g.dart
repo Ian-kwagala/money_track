@@ -28,13 +28,14 @@ class SavingsGoalAdapter extends TypeAdapter<SavingsGoal> {
       autoContributionRate: fields[8] as double,
       roundUpEnabled: fields[9] as bool,
       createdAt: fields[10] as DateTime?,
+      isPaused: fields[11] == null ? false : fields[11] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, SavingsGoal obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +57,9 @@ class SavingsGoalAdapter extends TypeAdapter<SavingsGoal> {
       ..writeByte(9)
       ..write(obj.roundUpEnabled)
       ..writeByte(10)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(11)
+      ..write(obj.isPaused);
   }
 
   @override

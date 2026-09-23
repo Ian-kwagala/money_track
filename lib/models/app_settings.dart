@@ -46,6 +46,12 @@ class AppSettings extends HiveObject {
   @HiveField(13)
   bool weeklySummaryEnabled;
 
+  /// User-set target for how much to spend per day. Null means the user
+  /// hasn't set one yet (screens fall back to an adaptive estimate), which
+  /// is also how the one-time setup prompt knows to show itself.
+  @HiveField(14)
+  double? dailyBudget;
+
   AppSettings({
     this.profileName = 'Ian',
     this.currencySymbol = 'UGX',
@@ -61,5 +67,6 @@ class AppSettings extends HiveObject {
     this.billRemindersEnabled = true,
     this.unusualSpendingEnabled = true,
     this.weeklySummaryEnabled = false,
+    this.dailyBudget,
   });
 }

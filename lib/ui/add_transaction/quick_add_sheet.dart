@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/category.dart';
+import '../../models/frequency.dart';
 import '../../models/transaction.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
@@ -19,7 +20,19 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   String _walletId = '';
   final _noteCtrl = TextEditingController();
   String _amountDisplay = '0';
+  Frequency _frequency = Frequency.once;
   bool _saving = false;
+
+  static const _frequencyOptions = [
+    Frequency.once,
+    Frequency.daily,
+    Frequency.weekly,
+    Frequency.biweekly,
+    Frequency.monthly,
+    Frequency.quarterly,
+    Frequency.yearly,
+    Frequency.random,
+  ];
 
   @override
   void dispose() {
@@ -195,6 +208,41 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                       ),
                     ),
                     SizedBox(height: isSmall ? 8 : 12),
+                    SizedBox(
+                      height: 32,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
+                        itemCount: _frequencyOptions.length,
+                        itemBuilder: (_, i) {
+                          final f = _frequencyOptions[i];
+                          final selected = f == _frequency;
+                          return GestureDetector(
+                            onTap: () => setState(() => _frequency = f),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: selected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.bg,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: selected ? AppColors.primary : Colors.transparent, width: 1.2),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  f.label,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                                    color: selected ? AppColors.primary : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    SizedBox(height: isSmall ? 8 : 12),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: GestureDetector(
@@ -308,7 +356,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
       return;
     }
     setState(() => _saving = true);
-    final tx = TxRecord(id: DateTime.now().microsecondsSinceEpoch.toString(), type: _type, amount: amount, walletId: _walletId, categoryId: _categoryId ?? '', note: _noteCtrl.text.trim(), dateTime: DateTime.now());
+    final tx = TxRecord(id: DateTime.now().microsecondsSinceEpoch.toString(), type: _type, amount: amount, walletId: _walletId, categoryId: _categoryId ?? '', note: _noteCtrl.text.trim(), dateTime: DateTime.now(), frequency: _frequency);
     await vm.addTransaction(tx);
     if (mounted) Navigator.pop(context);
   }

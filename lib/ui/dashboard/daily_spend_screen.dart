@@ -19,7 +19,7 @@ class DailySpendScreen extends StatelessWidget {
     final todayStart = DateTime(now.year, now.month, now.day);
 
     final totalBudget = vm.budgets.fold<double>(0, (sum, b) => sum + b.amount);
-    final dailyTarget = totalBudget > 0 ? (totalBudget / 30) : 20000.0;
+    final dailyTarget = vm.settings.dailyBudget ?? (totalBudget > 0 ? (totalBudget / 30) : 20000.0);
     final spentToday = vm.spentTotal(todayStart, now);
     final todayPct = (spentToday / dailyTarget).clamp(0.0, 1.0);
     final color = todayPct >= 1 ? AppColors.danger : todayPct >= 0.8 ? AppColors.warning : AppColors.primary;

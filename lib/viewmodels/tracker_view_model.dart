@@ -7,6 +7,7 @@ import '../models/bill.dart';
 import '../models/budget.dart';
 import '../models/category.dart';
 import '../models/debt.dart';
+import '../models/income_profile.dart';
 import '../models/recurrence_rule.dart';
 import '../models/savings_goal.dart';
 import '../models/transaction.dart';
@@ -88,6 +89,11 @@ class TrackerViewModel extends ChangeNotifier {
     String? currencySymbol,
     bool? darkMode,
     bool? notificationsEnabled,
+    DateTime? dateOfBirth,
+    IncomeFrequency? incomeFrequency,
+    double? expectedMonthlyIncome,
+    IncomeType? incomeType,
+    bool? isVariable,
   }) async {
     // Update user
     final user = currentUser;
@@ -97,6 +103,11 @@ class TrackerViewModel extends ChangeNotifier {
     user.incomeSource = incomeSource;
     user.occupation = occupation;
     user.createdAt = DateTime.now();
+    if (dateOfBirth != null) user.dateOfBirth = dateOfBirth;
+    if (incomeFrequency != null) user.incomeFrequency = incomeFrequency;
+    if (expectedMonthlyIncome != null) user.expectedMonthlyIncome = expectedMonthlyIncome;
+    if (incomeType != null) user.incomeType = incomeType;
+    if (isVariable != null) user.isVariable = isVariable;
     if (currencyCode != null) {
       user.currencyCode = currencyCode;
       user.currencySymbol = currencySymbol ?? currencyCode;
@@ -134,6 +145,10 @@ class TrackerViewModel extends ChangeNotifier {
     required String email,
     required String incomeSource,
     String? occupation,
+    IncomeFrequency? incomeFrequency,
+    double? expectedMonthlyIncome,
+    bool? isVariable,
+    DateTime? lastPayDate,
   }) async {
     final user = currentUser;
     user.name = name;
@@ -141,6 +156,13 @@ class TrackerViewModel extends ChangeNotifier {
     user.email = email;
     user.incomeSource = incomeSource;
     user.occupation = occupation;
+    if (incomeFrequency != null) user.incomeFrequency = incomeFrequency;
+    if (expectedMonthlyIncome != null) user.expectedMonthlyIncome = expectedMonthlyIncome;
+    if (isVariable != null) {
+      user.isVariable = isVariable;
+      user.incomeType = isVariable ? IncomeType.variable : (incomeSource == 'salary' ? IncomeType.formal : IncomeType.informal);
+    }
+    if (lastPayDate != null) user.lastPayDate = lastPayDate;
     await saveUser(user);
     final s = settings;
     s.profileName = name;

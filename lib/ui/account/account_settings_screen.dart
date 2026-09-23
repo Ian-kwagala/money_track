@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/income_profile.dart';
 import '../../models/wallet.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
@@ -17,7 +19,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   late TextEditingController _phoneCtrl;
   late TextEditingController _emailCtrl;
   late TextEditingController _occupationCtrl;
+  late TextEditingController _monthlyIncomeCtrl;
   late String _incomeSource;
+  late IncomeFrequency _incomeFrequency;
+  late bool _isVariable;
+  DateTime? _lastPayDate;
   bool _saving = false;
 
   @override
@@ -29,7 +35,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     _phoneCtrl = TextEditingController(text: user.phone);
     _emailCtrl = TextEditingController(text: user.email);
     _occupationCtrl = TextEditingController(text: user.occupation ?? '');
+    _monthlyIncomeCtrl = TextEditingController(text: user.expectedMonthlyIncome > 0 ? user.expectedMonthlyIncome.toStringAsFixed(0) : '');
     _incomeSource = user.incomeSource.isEmpty ? 'salary' : user.incomeSource;
+    _incomeFrequency = user.incomeFrequency;
+    _isVariable = user.isVariable;
+    _lastPayDate = user.lastPayDate;
   }
 
   @override
@@ -38,6 +48,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _occupationCtrl.dispose();
+    _monthlyIncomeCtrl.dispose();
     super.dispose();
   }
 
@@ -54,6 +65,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       email: _emailCtrl.text.trim(),
       incomeSource: _incomeSource,
       occupation: _occupationCtrl.text.trim(),
+      incomeFrequency: _incomeFrequency,
+      expectedMonthlyIncome: double.tryParse(_monthlyIncomeCtrl.text.replaceAll(',', '')),
+      isVariable: _isVariable,
+      lastPayDate: _lastPayDate,
     );
     if (mounted) {
       setState(() => _saving = false);
@@ -355,6 +370,74 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         filled: true,
                         fillColor: AppColors.bg,
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Average monthly income', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _monthlyIncomeCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. 2,500,000',
+                        filled: true,
+                        fillColor: AppColors.bg,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('How often are you paid?', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<IncomeFrequency>(
+                      initialValue: _incomeFrequency,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: AppColors.bg,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      ),
+                      items: [for (final f in IncomeFrequency.values) DropdownMenuItem(value: f, child: Text(f.label))],
+                      onChanged: (v) {
+                        if (v != null) setState(() => _incomeFrequency = v);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Expanded(child: Text('My income varies month to month', style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                        Switch(value: _isVariable, onChanged: (v) => setState(() => _isVariable = v), activeThumbColor: AppColors.primary),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Last payday', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    const SizedBox(height: 4),
+                    const Text('Used to know when to ask if you’ve been paid again.', style: TextStyle(fontSize: 10, color: AppColors.mutedForeground)),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: _lastPayDate ?? DateTime.now(),
+                          firstDate: DateTime.now().subtract(const Duration(days: 365)),
+                          lastDate: DateTime.now(),
+                        );
+                        if (picked != null) setState(() => _lastPayDate = picked);
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.event_outlined, size: 16, color: AppColors.textSecondary),
+                            const SizedBox(width: 8),
+                            Text(
+                              _lastPayDate == null ? 'Not set' : DateFormat('d MMM yyyy').format(_lastPayDate!),
+                              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 16),

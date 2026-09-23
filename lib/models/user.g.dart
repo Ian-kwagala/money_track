@@ -29,13 +29,22 @@ class UserAdapter extends TypeAdapter<User> {
       incomeSource: fields[9] as String,
       occupation: fields[10] as String?,
       createdAt: fields[11] as DateTime?,
+      dateOfBirth: fields[12] as DateTime?,
+      incomeFrequency: fields[13] == null
+          ? IncomeFrequency.monthly
+          : fields[13] as IncomeFrequency,
+      expectedMonthlyIncome: fields[14] == null ? 0.0 : fields[14] as double,
+      incomeType:
+          fields[15] == null ? IncomeType.formal : fields[15] as IncomeType,
+      isVariable: fields[16] == null ? false : fields[16] as bool,
+      lastPayDate: fields[17] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, User obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +68,19 @@ class UserAdapter extends TypeAdapter<User> {
       ..writeByte(10)
       ..write(obj.occupation)
       ..writeByte(11)
-      ..write(obj.createdAt);
+      ..write(obj.createdAt)
+      ..writeByte(12)
+      ..write(obj.dateOfBirth)
+      ..writeByte(13)
+      ..write(obj.incomeFrequency)
+      ..writeByte(14)
+      ..write(obj.expectedMonthlyIncome)
+      ..writeByte(15)
+      ..write(obj.incomeType)
+      ..writeByte(16)
+      ..write(obj.isVariable)
+      ..writeByte(17)
+      ..write(obj.lastPayDate);
   }
 
   @override

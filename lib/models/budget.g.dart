@@ -23,13 +23,14 @@ class BudgetAdapter extends TypeAdapter<Budget> {
       periodStart: fields[3] as DateTime,
       repeatsMonthly: fields[4] as bool,
       rollover: fields[5] as bool,
+      frequency: fields[6] == null ? Frequency.monthly : fields[6] as Frequency,
     );
   }
 
   @override
   void write(BinaryWriter writer, Budget obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,7 +42,9 @@ class BudgetAdapter extends TypeAdapter<Budget> {
       ..writeByte(4)
       ..write(obj.repeatsMonthly)
       ..writeByte(5)
-      ..write(obj.rollover);
+      ..write(obj.rollover)
+      ..writeByte(6)
+      ..write(obj.frequency);
   }
 
   @override

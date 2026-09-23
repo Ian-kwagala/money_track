@@ -7,6 +7,7 @@ import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../widgets/empty_state.dart';
+import '../../models/bill.dart';
 import '../../models/transaction.dart';
 import '../../models/wallet.dart';
 import '../widgets/transaction_tile.dart';
@@ -52,10 +53,12 @@ class DashboardScreen extends StatelessWidget {
     final recent = vm.transactions.take(4).toList();
 
     final totalBudget = vm.budgets.fold<double>(0, (sum, b) => sum + b.amount);
-    // Adaptive daily target: prefer budget/month, then income/month, then current pace
-    final dailyTarget = totalBudget > 0
-        ? totalBudget / 30
-        : (incomeThisMonth > 0 ? incomeThisMonth / 30 : (spentThisMonth / now.day));
+    // Daily target: prefer the user's own daily budget setting, then an
+    // adaptive estimate (budget/month, then income/month, then current pace).
+    final dailyTarget = vm.settings.dailyBudget ??
+        (totalBudget > 0
+            ? totalBudget / 30
+            : (incomeThisMonth > 0 ? incomeThisMonth / 30 : (spentThisMonth / now.day)));
 
     // Spending score — based on savings rate + budget compliance
     int score;
@@ -92,6 +95,10 @@ class DashboardScreen extends StatelessWidget {
       ..sort((a, b) => b.value.compareTo(a.value));
     final topCats = sortedCats.take(3).toList();
     final topTotal = topCats.fold<double>(0, (sum, e) => sum + e.value);
+
+    // Bills due within a week (or already overdue), soonest first.
+    final upcomingBills = vm.bills.where((b) => !b.isPaused && b.daysUntilDue <= 7).toList()
+      ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -146,6 +153,12 @@ class DashboardScreen extends StatelessWidget {
                   // Shortcuts
                   _Shortcuts(),
                   const SizedBox(height: 16),
+
+                  // Upcoming bills
+                  if (upcomingBills.isNotEmpty) ...[
+                    _UpcomingBills(bills: upcomingBills, symbol: symbol),
+                    const SizedBox(height: 16),
+                  ],
 
                   // Top Spending
                   _TopSpending(
@@ -404,6 +417,86 @@ class _Shortcuts extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Compact list of bills due within the next week (or already overdue).
+class _UpcomingBills extends StatelessWidget {
+  final List<Bill> bills;
+  final String symbol;
+
+  const _UpcomingBills({required this.bills, required this.symbol});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppColors.radiusXl),
+        onTap: () => Navigator.pushNamed(context, '/recurring'),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('Upcoming bills', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  const Spacer(),
+                  const Icon(Icons.chevron_right, size: 18, color: AppColors.mutedForeground),
+                ],
+              ),
+              const SizedBox(height: 12),
+              for (var i = 0; i < bills.length; i++) ...[
+                _UpcomingBillRow(bill: bills[i], symbol: symbol),
+                if (i != bills.length - 1) const Divider(height: 16, color: AppColors.divider),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UpcomingBillRow extends StatelessWidget {
+  final Bill bill;
+  final String symbol;
+
+  const _UpcomingBillRow({required this.bill, required this.symbol});
+
+  @override
+  Widget build(BuildContext context) {
+    final overdue = bill.isOverdue;
+    final days = bill.daysUntilDue;
+    final color = overdue ? AppColors.danger : (days <= 3 ? AppColors.warning : AppColors.primary);
+    final label = overdue
+        ? 'Overdue by ${-days} day${-days == 1 ? '' : 's'}'
+        : days == 0
+            ? 'Due today'
+            : 'Due in $days day${days == 1 ? '' : 's'}';
+
+    return Row(
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
+          child: Icon(overdue ? Icons.error_outline : Icons.event_outlined, color: color, size: 16),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(bill.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+            ],
+          ),
+        ),
+        Text(MoneyFormat.money(bill.amount, symbol: symbol), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+      ],
     );
   }
 }

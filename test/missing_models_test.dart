@@ -10,8 +10,8 @@ void main() {
   group('missing blueprint models', () {
     test('can construct user model with defaults', () {
       final user = User();
-      expect(user.name, 'Mufasa');
-      expect(user.currencyCode, 'KES');
+      expect(user.name, 'Ian');
+      expect(user.currencyCode, 'UGX');
     });
 
     test('savings goal has calculated progress', () {

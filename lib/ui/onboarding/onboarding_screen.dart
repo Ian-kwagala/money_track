@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/income_profile.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
 
@@ -40,21 +42,29 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     'Bank': TextEditingController(),
   };
 
-  // Step 3: Income
+  // Income
   String _incomeSource = 'salary';
   final _occupationCtrl = TextEditingController();
   final _monthlyIncomeCtrl = TextEditingController();
+  DateTime? _dateOfBirth;
+  IncomeFrequency _incomeFrequency = IncomeFrequency.monthly;
+  bool _isVariable = false;
 
-  // Step 4: Security
+  // Security
   final _pinCtrl = TextEditingController();
   final _pinConfirmCtrl = TextEditingController();
   bool _enableLock = true;
   bool _obscurePin = true;
 
-  // Step 5: Preferences
+  // Preferences
   String _currency = 'UGX';
   bool _darkMode = false;
   bool _notifications = true;
+
+  static const _totalSteps = 6;
+  static const _securityStep = 1;
+  static const _personalStep = 2;
+  static const _lastStep = _totalSteps - 1;
 
   @override
   void dispose() {
@@ -76,17 +86,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _next() {
-    if (_currentStep == 1) {
-      if (_nameCtrl.text.trim().isEmpty) {
-        _showSnack('Please enter your username');
-        return;
-      }
-      if (_phoneCtrl.text.trim().isEmpty) {
-        _showSnack('Please enter your phone number');
-        return;
-      }
-    }
-    if (_currentStep == 4) {
+    if (_currentStep == _securityStep) {
       if (_enableLock) {
         if (_pinCtrl.text.length < 4) {
           _showSnack('PIN must be at least 4 digits');
@@ -98,7 +98,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         }
       }
     }
-    if (_currentStep < 4) {
+    if (_currentStep == _personalStep) {
+      if (_nameCtrl.text.trim().isEmpty) {
+        _showSnack('Please enter your username');
+        return;
+      }
+      if (_phoneCtrl.text.trim().isEmpty) {
+        _showSnack('Please enter your phone number');
+        return;
+      }
+    }
+    if (_currentStep < _lastStep) {
       setState(() => _currentStep++);
       _pageController.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
     } else {
@@ -137,6 +147,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
     }
 
+    final monthlyIncome = double.tryParse(_monthlyIncomeCtrl.text.replaceAll(',', ''));
+    final incomeType = _isVariable
+        ? IncomeType.variable
+        : (_incomeSource == 'salary' ? IncomeType.formal : IncomeType.informal);
+
     await vm.completeOnboarding(
       name: _nameCtrl.text.trim().isEmpty ? 'Ian' : _nameCtrl.text.trim(),
       phone: _phoneCtrl.text.trim(),
@@ -149,6 +164,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       currencySymbol: _currency,
       darkMode: _darkMode,
       notificationsEnabled: _notifications,
+      dateOfBirth: _dateOfBirth,
+      incomeFrequency: _incomeFrequency,
+      expectedMonthlyIncome: monthlyIncome,
+      incomeType: incomeType,
+      isVariable: _isVariable,
     );
 
     if (mounted) {
@@ -181,7 +201,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     const SizedBox(width: 48),
                   Expanded(
                     child: Row(
-                      children: List.generate(5, (i) {
+                      children: List.generate(_totalSteps, (i) {
                         final isActive = i == _currentStep;
                         final isDone = i < _currentStep;
                         return Expanded(
@@ -204,7 +224,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               child: Text(
-                'Step ${_currentStep + 1} of 5',
+                'Step ${_currentStep + 1} of $_totalSteps',
                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
               ),
             ),
@@ -214,10 +234,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
                   _WelcomeStep(onNext: _next),
+                  _SecurityStep(
+                    pinCtrl: _pinCtrl,
+                    pinConfirmCtrl: _pinConfirmCtrl,
+                    enableLock: _enableLock,
+                    obscurePin: _obscurePin,
+                    onEnableLock: (v) => setState(() => _enableLock = v),
+                    onObscure: () => setState(() => _obscurePin = !_obscurePin),
+                  ),
                   _PersonalStep(
                     nameCtrl: _nameCtrl,
                     phoneCtrl: _phoneCtrl,
                     emailCtrl: _emailCtrl,
+                  ),
+                  _IncomeStep(
+                    incomeSource: _incomeSource,
+                    occupationCtrl: _occupationCtrl,
+                    monthlyIncomeCtrl: _monthlyIncomeCtrl,
+                    onChanged: (v) => setState(() => _incomeSource = v),
+                    dateOfBirth: _dateOfBirth,
+                    onDateOfBirth: (v) => setState(() => _dateOfBirth = v),
+                    incomeFrequency: _incomeFrequency,
+                    onIncomeFrequency: (v) => setState(() => _incomeFrequency = v),
+                    isVariable: _isVariable,
+                    onIsVariable: (v) => setState(() => _isVariable = v),
                   ),
                   _WalletStep(
                     walletSelected: _walletSelected,
@@ -225,19 +265,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     walletDetailCtrls: _walletDetailCtrls,
                     onChanged: () => setState(() {}),
                   ),
-                  _IncomeStep(
-                    incomeSource: _incomeSource,
-                    occupationCtrl: _occupationCtrl,
-                    monthlyIncomeCtrl: _monthlyIncomeCtrl,
-                    onChanged: (v) => setState(() => _incomeSource = v),
-                  ),
-                  _SecurityAndPreferenceStep(
-                    pinCtrl: _pinCtrl,
-                    pinConfirmCtrl: _pinConfirmCtrl,
-                    enableLock: _enableLock,
-                    obscurePin: _obscurePin,
-                    onEnableLock: (v) => setState(() => _enableLock = v),
-                    onObscure: () => setState(() => _obscurePin = !_obscurePin),
+                  _PreferencesStep(
                     currency: _currency,
                     onCurrency: (v) => setState(() => _currency = v),
                     darkMode: _darkMode,
@@ -274,7 +302,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       ),
-                      child: Text(_currentStep == 4 ? 'Create account' : 'Continue',
+                      child: Text(_currentStep == _lastStep ? 'Create account' : 'Continue',
                           style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
                     ),
                   ),
@@ -563,8 +591,25 @@ class _IncomeStep extends StatelessWidget {
   final TextEditingController occupationCtrl;
   final TextEditingController monthlyIncomeCtrl;
   final ValueChanged<String> onChanged;
+  final DateTime? dateOfBirth;
+  final ValueChanged<DateTime?> onDateOfBirth;
+  final IncomeFrequency incomeFrequency;
+  final ValueChanged<IncomeFrequency> onIncomeFrequency;
+  final bool isVariable;
+  final ValueChanged<bool> onIsVariable;
 
-  const _IncomeStep({required this.incomeSource, required this.occupationCtrl, required this.monthlyIncomeCtrl, required this.onChanged});
+  const _IncomeStep({
+    required this.incomeSource,
+    required this.occupationCtrl,
+    required this.monthlyIncomeCtrl,
+    required this.onChanged,
+    required this.dateOfBirth,
+    required this.onDateOfBirth,
+    required this.incomeFrequency,
+    required this.onIncomeFrequency,
+    required this.isVariable,
+    required this.onIsVariable,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -630,6 +675,67 @@ class _IncomeStep extends StatelessWidget {
                     ),
                     style: const TextStyle(fontSize: 13),
                   ),
+                  const SizedBox(height: 12),
+                  const Text('How often are you paid?', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<IncomeFrequency>(
+                    initialValue: incomeFrequency,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: AppColors.bg,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    ),
+                    items: [
+                      for (final f in IncomeFrequency.values) DropdownMenuItem(value: f, child: Text(f.label)),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) onIncomeFrequency(v);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'My income varies month to month',
+                          style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        ),
+                      ),
+                      Switch(value: isVariable, onChanged: onIsVariable, activeThumbColor: AppColors.primary),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Date of birth (optional)', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  const SizedBox(height: 6),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () async {
+                      final now = DateTime.now();
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: dateOfBirth ?? DateTime(now.year - 25, now.month, now.day),
+                        firstDate: DateTime(now.year - 100),
+                        lastDate: DateTime(now.year - 10, now.month, now.day),
+                      );
+                      if (picked != null) onDateOfBirth(picked);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(10)),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.cake_outlined, size: 16, color: AppColors.textSecondary),
+                          const SizedBox(width: 8),
+                          Text(
+                            dateOfBirth == null ? 'Not set' : DateFormat('d MMM yyyy').format(dateOfBirth!),
+                            style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -677,33 +783,21 @@ class _IncomeCard extends StatelessWidget {
   }
 }
 
-class _SecurityAndPreferenceStep extends StatelessWidget {
+class _SecurityStep extends StatelessWidget {
   final TextEditingController pinCtrl;
   final TextEditingController pinConfirmCtrl;
   final bool enableLock;
   final bool obscurePin;
   final ValueChanged<bool> onEnableLock;
   final VoidCallback onObscure;
-  final String currency;
-  final ValueChanged<String> onCurrency;
-  final bool darkMode;
-  final ValueChanged<bool> onDarkMode;
-  final bool notifications;
-  final ValueChanged<bool> onNotifications;
 
-  const _SecurityAndPreferenceStep({
+  const _SecurityStep({
     required this.pinCtrl,
     required this.pinConfirmCtrl,
     required this.enableLock,
     required this.obscurePin,
     required this.onEnableLock,
     required this.onObscure,
-    required this.currency,
-    required this.onCurrency,
-    required this.darkMode,
-    required this.onDarkMode,
-    required this.notifications,
-    required this.onNotifications,
   });
 
   @override
@@ -772,9 +866,40 @@ class _SecurityAndPreferenceStep extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PreferencesStep extends StatelessWidget {
+  final String currency;
+  final ValueChanged<String> onCurrency;
+  final bool darkMode;
+  final ValueChanged<bool> onDarkMode;
+  final bool notifications;
+  final ValueChanged<bool> onNotifications;
+
+  const _PreferencesStep({
+    required this.currency,
+    required this.onCurrency,
+    required this.darkMode,
+    required this.onDarkMode,
+    required this.notifications,
+    required this.onNotifications,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Almost done', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+          const SizedBox(height: 6),
+          const Text('Set a few preferences. You can always change these later in Settings.', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
           const SizedBox(height: 16),
-          const Text('Preferences', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-          const SizedBox(height: 8),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             child: Padding(

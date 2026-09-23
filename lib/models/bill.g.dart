@@ -26,13 +26,17 @@ class BillAdapter extends TypeAdapter<Bill> {
       reminderDaysBefore: fields[6] as int,
       recurrenceRuleId: fields[7] as String?,
       isPaid: fields[8] as bool,
+      frequency: fields[9] == null ? Frequency.monthly : fields[9] as Frequency,
+      customDays: fields[10] as int?,
+      isPaused: fields[11] == null ? false : fields[11] as bool,
+      lastPaidDate: fields[12] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Bill obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -50,7 +54,15 @@ class BillAdapter extends TypeAdapter<Bill> {
       ..writeByte(7)
       ..write(obj.recurrenceRuleId)
       ..writeByte(8)
-      ..write(obj.isPaid);
+      ..write(obj.isPaid)
+      ..writeByte(9)
+      ..write(obj.frequency)
+      ..writeByte(10)
+      ..write(obj.customDays)
+      ..writeByte(11)
+      ..write(obj.isPaused)
+      ..writeByte(12)
+      ..write(obj.lastPaidDate);
   }
 
   @override

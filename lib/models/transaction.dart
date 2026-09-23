@@ -1,5 +1,7 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
+import 'frequency.dart';
+
 part 'transaction.g.dart';
 
 @HiveType(typeId: 2)
@@ -44,6 +46,12 @@ class TxRecord extends HiveObject {
   @HiveField(9)
   bool isRecurring;
 
+  /// How often this kind of expense/income happens. Defaults to [Frequency.once]
+  /// for a plain one-off entry; [isRecurring] is kept in sync for backward
+  /// compatibility with existing reads of that field.
+  @HiveField(10, defaultValue: Frequency.once)
+  Frequency frequency;
+
   TxRecord({
     required this.id,
     required this.type,
@@ -54,8 +62,9 @@ class TxRecord extends HiveObject {
     this.note = '',
     required this.dateTime,
     this.receiptPath,
-    this.isRecurring = false,
-  });
+    bool? isRecurring,
+    this.frequency = Frequency.once,
+  }) : isRecurring = isRecurring ?? (frequency != Frequency.once && frequency != Frequency.random);
 
   double get signedAmount {
     switch (type) {

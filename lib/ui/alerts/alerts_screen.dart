@@ -24,6 +24,36 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
     final alerts = <_AlertItem>[];
 
+    final dailyBudget = vm.settings.dailyBudget;
+    if (dailyBudget != null && dailyBudget > 0) {
+      final todayStart = DateTime(now.year, now.month, now.day);
+      final spentToday = vm.spentTotal(todayStart, now);
+      final pct = spentToday / dailyBudget;
+      if (pct >= 1) {
+        alerts.add(_AlertItem(
+          id: 'daily_budget_over_${todayStart.toIso8601String()}',
+          icon: Icons.warning_amber_rounded,
+          iconColor: AppColors.danger,
+          iconBg: AppColors.danger.withValues(alpha: 0.15),
+          title: 'Daily budget exceeded',
+          description:
+              "You've spent ${MoneyFormat.money(spentToday, symbol: symbol)} today, over your ${MoneyFormat.money(dailyBudget, symbol: symbol)} daily budget.",
+          when: now,
+        ));
+      } else if (pct >= 0.8) {
+        alerts.add(_AlertItem(
+          id: 'daily_budget_80_${todayStart.toIso8601String()}',
+          icon: Icons.timer_outlined,
+          iconColor: AppColors.warning,
+          iconBg: AppColors.warning.withValues(alpha: 0.15),
+          title: 'Daily budget crossed 80%',
+          description:
+              "You've spent ${MoneyFormat.money(spentToday, symbol: symbol)} of your ${MoneyFormat.money(dailyBudget, symbol: symbol)} daily budget.",
+          when: now,
+        ));
+      }
+    }
+
     for (final budget in vm.budgets) {
       final cat = vm.categoryById(budget.categoryId);
       final spent = vm.spentByCategory(monthStart, monthEnd, budget.categoryId);

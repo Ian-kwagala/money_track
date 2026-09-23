@@ -3,13 +3,29 @@ import 'package:provider/provider.dart';
 
 import '../../models/category.dart';
 import '../../models/budget.dart';
+import '../../models/frequency.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../home_shell.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 
-class BudgetsScreen extends StatelessWidget {
+class BudgetsScreen extends StatefulWidget {
   const BudgetsScreen({super.key});
+
+  @override
+  State<BudgetsScreen> createState() => _BudgetsScreenState();
+}
+
+class _BudgetsScreenState extends State<BudgetsScreen> {
+  // null = "All" tab.
+  Frequency? _filter;
+
+  static const _tabs = <(String, Frequency?)>[
+    ('All', null),
+    ('Daily', Frequency.daily),
+    ('Weekly', Frequency.weekly),
+    ('Monthly', Frequency.monthly),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -17,12 +33,12 @@ class BudgetsScreen extends StatelessWidget {
     final symbol = vm.settings.currencySymbol;
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
-    final monthEnd = DateTime(now.year, now.month + 1, 1);
 
     final spentMonth = vm.spentTotal(monthStart, now);
     final totalBudget = vm.budgets.fold<double>(0, (sum, b) => sum + b.amount);
     final overallPct = totalBudget > 0 ? spentMonth / totalBudget : 0.0;
     final remaining = (totalBudget - spentMonth).clamp(0.0, totalBudget);
+    final visibleBudgets = _filter == null ? vm.budgets : vm.budgets.where((b) => b.frequency == _filter).toList();
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -118,11 +134,33 @@ class BudgetsScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    ...vm.budgets.map((b) {
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        for (final tab in _tabs) ...[
+                          _FrequencyTab(
+                            label: tab.$1,
+                            selected: _filter == tab.$2,
+                            onTap: () => setState(() => _filter = tab.$2),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (visibleBudgets.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text('No ${_tabs.firstWhere((t) => t.$2 == _filter).$1.toLowerCase()} budgets yet',
+                              style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground)),
+                        ),
+                      ),
+                    ...visibleBudgets.map((b) {
                       final cat = vm.categoryById(b.categoryId);
                       if (cat == null) return const SizedBox.shrink();
-                      final spent = vm.spentByCategory(monthStart, monthEnd, b.categoryId);
+                      final (periodStart, periodEnd) = b.periodFor(now);
+                      final spent = vm.spentByCategory(periodStart, periodEnd, b.categoryId);
                       return _BudgetTile(
                         category: cat,
                         budget: b,
@@ -159,6 +197,7 @@ class BudgetsScreen extends StatelessWidget {
     }
 
     Category selectedCat = availableCategories.first;
+    Frequency frequency = Frequency.monthly;
     final controller = TextEditingController();
 
     final saved = await showDialog<bool>(
@@ -190,12 +229,25 @@ class BudgetsScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(height: 12),
+              DropdownButtonFormField<Frequency>(
+                initialValue: frequency,
+                decoration: const InputDecoration(labelText: 'Resets'),
+                items: const [
+                  DropdownMenuItem(value: Frequency.daily, child: Text('Daily')),
+                  DropdownMenuItem(value: Frequency.weekly, child: Text('Weekly')),
+                  DropdownMenuItem(value: Frequency.monthly, child: Text('Monthly')),
+                ],
+                onChanged: (val) {
+                  if (val != null) setDialogState(() => frequency = val);
+                },
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: controller,
                 autofocus: true,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
-                  labelText: 'Monthly Limit (${vm.settings.currencySymbol})',
+                  labelText: '${frequency.label} limit (${vm.settings.currencySymbol})',
                   hintText: 'e.g. 200000',
                 ),
               ),
@@ -229,6 +281,7 @@ class BudgetsScreen extends StatelessWidget {
           categoryId: selectedCat.id,
           amount: v,
           periodStart: start,
+          frequency: frequency,
         );
         await vm.upsertBudget(budget);
         if (context.mounted) {
@@ -266,21 +319,42 @@ class BudgetsScreen extends StatelessWidget {
 
   Future<void> _editBudgetDialog(BuildContext context, TrackerViewModel vm, {required Category category, Budget? existing}) async {
     final controller = TextEditingController(text: existing?.amount.toString() ?? '');
+    Frequency frequency = existing?.frequency ?? Frequency.monthly;
     final result = await showDialog<double>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Budget for ${category.name}'),
-        content: TextField(controller: controller, autofocus: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Monthly limit')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () { final v = double.tryParse(controller.text.replaceAll(',', '')); Navigator.pop(ctx, v); }, child: const Text('Save')),
-        ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text('Budget for ${category.name}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<Frequency>(
+                initialValue: frequency,
+                decoration: const InputDecoration(labelText: 'Resets'),
+                items: const [
+                  DropdownMenuItem(value: Frequency.daily, child: Text('Daily')),
+                  DropdownMenuItem(value: Frequency.weekly, child: Text('Weekly')),
+                  DropdownMenuItem(value: Frequency.monthly, child: Text('Monthly')),
+                ],
+                onChanged: (val) {
+                  if (val != null) setDialogState(() => frequency = val);
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(controller: controller, autofocus: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: '${frequency.label} limit')),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(onPressed: () { final v = double.tryParse(controller.text.replaceAll(',', '')); Navigator.pop(ctx, v); }, child: const Text('Save')),
+          ],
+        ),
       ),
     );
     if (result == null || result <= 0) return;
     final now = DateTime.now();
     final start = DateTime(now.year, now.month, 1);
-    final budget = Budget(id: existing?.id ?? 'budget_${category.id}_${start.millisecondsSinceEpoch}', categoryId: category.id, amount: result, periodStart: start);
+    final budget = Budget(id: existing?.id ?? 'budget_${category.id}_${start.millisecondsSinceEpoch}', categoryId: category.id, amount: result, periodStart: start, frequency: frequency);
     await vm.upsertBudget(budget);
     if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Budget saved')));
   }
@@ -339,7 +413,7 @@ class _BudgetTile extends StatelessWidget {
                       children: [
                         Text(category.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                         const SizedBox(height: 2),
-                        Text('${MoneyFormat.money(spent, symbol: symbol)} of ${MoneyFormat.money(budget.amount, symbol: symbol)}',
+                        Text('${MoneyFormat.money(spent, symbol: symbol)} of ${MoneyFormat.money(budget.amount, symbol: symbol)} · ${budget.frequency.label.toLowerCase()}',
                             style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
                       ],
                     ),
@@ -380,6 +454,36 @@ class _BudgetTile extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+class _FrequencyTab extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FrequencyTab({required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.card,
+          borderRadius: BorderRadius.circular(AppColors.radius2xl),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: 1),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+            color: selected ? AppColors.primary : AppColors.textSecondary,
           ),
         ),
       ),

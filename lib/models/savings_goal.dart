@@ -39,6 +39,11 @@ class SavingsGoal extends HiveObject {
   @HiveField(10)
   DateTime createdAt;
 
+  /// Paused goals are excluded from "on track" nudges but keep their saved
+  /// progress.
+  @HiveField(11, defaultValue: false)
+  bool isPaused;
+
   SavingsGoal({
     required this.id,
     required this.name,
@@ -51,6 +56,7 @@ class SavingsGoal extends HiveObject {
     this.autoContributionRate = 0,
     this.roundUpEnabled = false,
     DateTime? createdAt,
+    this.isPaused = false,
   }) : createdAt = createdAt ?? DateTime.now();
 
   double get progressPercent {
@@ -59,6 +65,10 @@ class SavingsGoal extends HiveObject {
   }
 
   double get remainingAmount => math.max(0.0, targetAmount - currentAmount);
+
+  bool get isCompleted => targetAmount > 0 && currentAmount >= targetAmount;
+
+  bool get isPastDeadline => !isCompleted && DateTime.now().isAfter(deadline);
 
   bool get isOnTrack {
     if (targetAmount <= 0) return true;
