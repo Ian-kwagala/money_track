@@ -78,14 +78,13 @@ firebase login          # opens your browser
 
 ## Step 2: Link this repo to the project
 
-From the repo root:
+Already done: `.firebaserc` points this repo at **`moneytracker-cb825`**.
+Just make sure you're on the latest code:
 
 ```sh
-git pull                 # make sure you're on the latest main
-firebase use --add       # pick your project, alias: default
+git pull
+firebase use            # should print: moneytracker-cb825
 ```
-
-This creates `.firebaserc`. Commit it (it only names the project).
 
 ## Step 3: Connect the mobile app
 
