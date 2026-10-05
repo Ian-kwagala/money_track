@@ -8,6 +8,7 @@ import '../../viewmodels/tracker_view_model.dart';
 import '../home_shell.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
+import '../format/money_input.dart';
 
 class BudgetsScreen extends StatefulWidget {
   const BudgetsScreen({super.key});
@@ -35,7 +36,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     final monthStart = DateTime(now.year, now.month, 1);
 
     final spentMonth = vm.spentTotal(monthStart, now);
-    final totalBudget = vm.budgets.fold<double>(0, (sum, b) => sum + b.amount);
+    final totalBudget = vm.monthlyBudgetTotal;
     final overallPct = totalBudget > 0 ? spentMonth / totalBudget : 0.0;
     final remaining = (totalBudget - spentMonth).clamp(0.0, totalBudget);
     final visibleBudgets = _filter == null ? vm.budgets : vm.budgets.where((b) => b.frequency == _filter).toList();
@@ -245,7 +246,8 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
               TextField(
                 controller: controller,
                 autofocus: true,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: MoneyInput.keyboardType,
+                inputFormatters: MoneyInput.formatters,
                 decoration: InputDecoration(
                   labelText: '${frequency.label} limit (${vm.settings.currencySymbol})',
                   hintText: 'e.g. 200000',
@@ -318,7 +320,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
   }
 
   Future<void> _editBudgetDialog(BuildContext context, TrackerViewModel vm, {required Category category, Budget? existing}) async {
-    final controller = TextEditingController(text: existing?.amount.toString() ?? '');
+    final controller = TextEditingController(text: existing == null ? '' : MoneyInput.text(existing.amount));
     Frequency frequency = existing?.frequency ?? Frequency.monthly;
     final result = await showDialog<double>(
       context: context,
@@ -341,7 +343,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                 },
               ),
               const SizedBox(height: 12),
-              TextField(controller: controller, autofocus: true, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: '${frequency.label} limit')),
+              TextField(controller: controller, autofocus: true, keyboardType: MoneyInput.keyboardType, inputFormatters: MoneyInput.formatters, decoration: InputDecoration(labelText: '${frequency.label} limit')),
             ],
           ),
           actions: [

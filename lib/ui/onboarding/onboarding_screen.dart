@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/income_profile.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
+import '../format/money_input.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -134,15 +135,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         final w = existing.first;
         // If wallet is deselected, we could keep it but onboarding keeps all; for now update balance if selected
         if (entry.value) {
-          w.openingBalance = bal;
-          w.currentBalance = bal;
           // If detail provided for bank/mobile, append to name for personalization (e.g., "Bank – Stanbic")
           if (detail.isNotEmpty && entry.key == 'Bank' && !w.name.contains(detail)) {
             w.name = 'Bank – $detail';
           }
           // For mobile money, detail is phone number - stored as wallet name suffix for display
           // Keep icon as 'mobile' to preserve icon, not overwriting with phone number
-          await vm.saveWallet(w);
+          await vm.setWalletBalance(w, bal);
         }
       }
     }
@@ -542,11 +541,12 @@ class _WalletStep extends StatelessWidget {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                            const Text('Initial balance (UGX)', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            const Text('Initial balance', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                             const SizedBox(height: 4),
                             TextField(
                               controller: walletBalanceCtrls[name],
-                              keyboardType: TextInputType.number,
+                              keyboardType: MoneyInput.keyboardType,
+                              inputFormatters: MoneyInput.formatters,
                               decoration: InputDecoration(
                                 hintText: '0',
                                 filled: true,
@@ -661,11 +661,12 @@ class _IncomeStep extends StatelessWidget {
                     style: const TextStyle(fontSize: 13),
                   ),
                   const SizedBox(height: 12),
-                  const Text('Average monthly income (UGX)', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  const Text('Average monthly income', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                   const SizedBox(height: 6),
                   TextField(
                     controller: monthlyIncomeCtrl,
-                    keyboardType: TextInputType.number,
+                    keyboardType: MoneyInput.keyboardType,
+                    inputFormatters: MoneyInput.formatters,
                     decoration: InputDecoration(
                       hintText: 'e.g. 2,500,000',
                       filled: true,

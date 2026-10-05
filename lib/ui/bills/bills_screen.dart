@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 
 import '../../models/bill.dart';
 import '../../models/frequency.dart';
+import '../../models/transaction.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../home_shell.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 import '../widgets/empty_state.dart';
+import '../format/money_input.dart';
 
 class BillsScreen extends StatelessWidget {
   const BillsScreen({super.key});
@@ -17,7 +19,7 @@ class BillsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<TrackerViewModel>();
     final symbol = vm.settings.currencySymbol;
-    final totalMonthly = vm.bills.fold<double>(0, (sum, b) => sum + b.amount);
+    final totalMonthly = vm.bills.fold<double>(0, (sum, b) => sum + b.monthlyEquivalent);
 
     // Soonest due first; paused bills sink to the bottom.
     final sortedBills = [...vm.bills]..sort((a, b) {
@@ -116,8 +118,10 @@ class BillsScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         title: Text('Mark ${bill.name} as paid?'),
         content: Text(
-          'This records ${MoneyFormat.money(bill.amount, symbol: symbol)} as paid today and moves the next due date to '
-          '${DateFormat('d MMM yyyy').format(bill.frequency.addCycle(DateTime.now(), customDays: bill.customDays))}.',
+          bill.frequency == Frequency.once
+              ? 'This records ${MoneyFormat.money(bill.amount, symbol: symbol)} as paid today.'
+              : 'This records ${MoneyFormat.money(bill.amount, symbol: symbol)} as paid today and moves the next due date to '
+                  '${DateFormat('d MMM yyyy').format(bill.frequency.addCycle(DateTime.now(), customDays: bill.customDays))}.',
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
@@ -126,8 +130,22 @@ class BillsScreen extends StatelessWidget {
       ),
     );
     if (confirmed != true) return;
+    final now = DateTime.now();
+    // Record the payment so the wallet balance actually drops (same as the
+    // payday bills checklist).
+    if (bill.walletId.isNotEmpty) {
+      await vm.addTransaction(TxRecord(
+        id: 'bill_pay_${bill.id}_${now.millisecondsSinceEpoch}',
+        type: TxType.expense,
+        amount: bill.amount,
+        walletId: bill.walletId,
+        categoryId: bill.categoryId ?? '',
+        note: bill.name,
+        dateTime: now,
+      ));
+    }
     bill.isPaid = true;
-    bill.lastPaidDate = DateTime.now();
+    bill.lastPaidDate = now;
     await vm.updateBill(bill);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${bill.name} marked as paid')));
@@ -170,7 +188,7 @@ class BillsScreen extends StatelessWidget {
 
   Future<void> _editBillDialog(BuildContext context, TrackerViewModel vm, {Bill? existing}) async {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
-    final amountCtrl = TextEditingController(text: existing == null ? '' : existing.amount.toStringAsFixed(existing.amount % 1 == 0 ? 0 : 2));
+    final amountCtrl = TextEditingController(text: existing == null ? '' : MoneyInput.text(existing.amount));
     final customDaysCtrl = TextEditingController(text: existing?.customDays?.toString() ?? '30');
     DateTime dueDate = existing?.dueDate ?? DateTime.now().add(const Duration(days: 7));
     Frequency frequency = existing?.frequency ?? Frequency.monthly;
@@ -196,7 +214,8 @@ class BillsScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 TextField(
                   controller: amountCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: MoneyInput.keyboardType,
+                  inputFormatters: MoneyInput.formatters,
                   decoration: InputDecoration(labelText: 'Amount (${vm.settings.currencySymbol})'),
                 ),
                 const SizedBox(height: 12),
@@ -340,7 +359,9 @@ class _BillCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isOverdue = bill.isOverdue;
     final daysUntil = bill.daysUntilDue;
-    final statusColor = bill.isPaused
+    final statusColor = bill.isSettled
+        ? AppColors.success
+        : bill.isPaused
         ? AppColors.mutedForeground
         : isOverdue
             ? AppColors.danger
@@ -349,7 +370,9 @@ class _BillCard extends StatelessWidget {
                 : AppColors.primary;
 
     String statusLabel;
-    if (bill.isPaused) {
+    if (bill.isSettled) {
+      statusLabel = 'Paid ${DateFormat('d MMM').format(bill.lastPaidDate!)}';
+    } else if (bill.isPaused) {
       statusLabel = 'Paused';
     } else if (isOverdue) {
       statusLabel = 'Overdue by ${-daysUntil} day${-daysUntil == 1 ? '' : 's'}';
@@ -403,7 +426,9 @@ class _BillCard extends StatelessWidget {
                     Row(
                       children: [
                         Icon(
-                          bill.isPaused ? Icons.pause_circle_outline : (isOverdue ? Icons.error_outline : Icons.event_outlined),
+                          bill.isSettled
+                              ? Icons.check_circle_outline
+                              : bill.isPaused ? Icons.pause_circle_outline : (isOverdue ? Icons.error_outline : Icons.event_outlined),
                           size: 12,
                           color: statusColor,
                         ),
@@ -414,12 +439,14 @@ class _BillCard extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        TextButton(
-                          onPressed: onTogglePaid,
-                          style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                          child: const Text('Mark paid', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
-                        ),
-                        const SizedBox(width: 12),
+                        if (!bill.isSettled) ...[
+                          TextButton(
+                            onPressed: onTogglePaid,
+                            style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                            child: const Text('Mark paid', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                          ),
+                          const SizedBox(width: 12),
+                        ],
                         TextButton(
                           onPressed: onTogglePaused,
                           style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap, foregroundColor: AppColors.mutedForeground),

@@ -180,12 +180,78 @@ class TrackerViewModel extends ChangeNotifier {
 
   Future<void> saveWallet(Wallet wallet) async {
     await repo.updateWallet(wallet);
+    await repo.updateWalletBalances();
     _markDirty();
   }
 
+  /// Sets what the wallet holds *right now*. The opening balance is
+  /// back-calculated so existing transactions aren't counted twice.
+  Future<void> setWalletBalance(Wallet wallet, double balance) async {
+    final isStored = wallets.any((w) => w.id == wallet.id);
+    // Compute before mutating: walletBalance reads the stored opening balance.
+    final net = isStored ? repo.walletBalance(wallet.id) - wallet.openingBalance : 0.0;
+    wallet.openingBalance = balance - net;
+    await saveWallet(wallet);
+  }
+
+  /// Number of transactions that touch wallet [id] (either side).
+  int transactionCountForWallet(String id) =>
+      repo.transactions.where((t) => t.walletId == id || t.toWalletId == id).length;
+
+  /// Deletes a wallet without leaving orphaned records behind:
+  /// - its own income/expenses are deleted;
+  /// - transfers with another wallet are kept as one-sided records, so the
+  ///   *other* wallet's balance doesn't change;
+  /// - bills paid from it move to the first remaining wallet.
   Future<void> removeWallet(String id) async {
+    final name = walletById(id).name;
+    for (final t in repo.transactions) {
+      if (t.walletId != id && t.toWalletId != id) continue;
+      final otherSide = t.walletId == id ? t.toWalletId : t.walletId;
+      if (t.type == TxType.transfer && otherSide != null && otherSide.isNotEmpty) {
+        if (t.walletId == id) {
+          t.walletId = '';
+          if (t.note.isEmpty) t.note = 'Transfer from $name (deleted wallet)';
+        } else {
+          t.toWalletId = null;
+          if (t.note.isEmpty) t.note = 'Transfer to $name (deleted wallet)';
+        }
+        await repo.updateTransaction(t);
+      } else {
+        await repo.deleteTransaction(t.id);
+      }
+    }
+    final remaining = wallets.where((w) => w.id != id).toList();
+    for (final b in bills.where((b) => b.walletId == id)) {
+      b.walletId = remaining.isEmpty ? '' : remaining.first.id;
+      await repo.updateBill(b);
+    }
     await repo.deleteWallet(id);
+    await repo.updateWalletBalances();
     _markDirty();
+  }
+
+  /// Records money moving between one wallet and something outside the
+  /// wallets (a savings goal or a debt). [intoWallet] = money arrives in the
+  /// wallet; otherwise it leaves. Stored as a one-sided transfer so it never
+  /// counts as income or spending. See [TxRecord.linkId].
+  Future<void> recordLinkedMovement({
+    required String linkId,
+    required String walletId,
+    required double amount,
+    required bool intoWallet,
+    required String note,
+  }) {
+    return addTransaction(TxRecord(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      type: TxType.transfer,
+      amount: amount,
+      walletId: intoWallet ? '' : walletId,
+      toWalletId: intoWallet ? walletId : null,
+      note: note,
+      dateTime: DateTime.now(),
+      linkId: linkId,
+    ));
   }
 
   // ---------------------------------------------------------------------------
@@ -254,6 +320,26 @@ class TrackerViewModel extends ChangeNotifier {
   double spentTotal(DateTime s, DateTime e) => repo.spentTotal(s, e);
 
   double incomeTotal(DateTime s, DateTime e) => repo.incomeTotal(s, e);
+
+  /// Sum of all budget limits scaled to a month (daily/weekly budgets are
+  /// converted), so it can be compared against a month's spending.
+  double get monthlyBudgetTotal =>
+      budgets.fold<double>(0, (sum, b) => sum + b.monthlyEquivalent);
+
+  /// How much the user aims to spend per day: their own daily budget if set,
+  /// otherwise an estimate from budgets, then this month's income, then the
+  /// current pace. Shared by every screen that shows a daily target.
+  double get dailyTarget {
+    final own = settings.dailyBudget;
+    if (own != null && own > 0) return own;
+    final budgetTotal = monthlyBudgetTotal;
+    if (budgetTotal > 0) return budgetTotal / 30;
+    final now = DateTime.now();
+    final monthStart = DateTime(now.year, now.month, 1);
+    final income = incomeTotal(monthStart, now);
+    if (income > 0) return income / 30;
+    return spentTotal(monthStart, now) / now.day;
+  }
 
   Future<void> upsertBudget(Budget budget) async {
     await repo.upsertBudget(budget);

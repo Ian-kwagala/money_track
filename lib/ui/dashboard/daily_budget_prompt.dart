@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
+import '../format/money_input.dart';
 
 /// One-time prompt (shown once, right after the profile-completion sheet if
 /// that also fires) asking the user to set a daily spending target. Runs
@@ -36,12 +37,12 @@ class _DailyBudgetSheetState extends State<_DailyBudgetSheet> {
   void initState() {
     super.initState();
     final vm = context.read<TrackerViewModel>();
-    final totalBudget = vm.budgets.fold<double>(0, (sum, b) => sum + b.amount);
+    final totalBudget = vm.monthlyBudgetTotal;
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
     final income = vm.incomeTotal(monthStart, now);
     final suggested = totalBudget > 0 ? totalBudget / 30 : (income > 0 ? income / 30 : 20000.0);
-    _ctrl = TextEditingController(text: suggested.round().toString());
+    _ctrl = TextEditingController(text: MoneyInput.text(suggested.roundToDouble()));
   }
 
   @override
@@ -84,7 +85,8 @@ class _DailyBudgetSheetState extends State<_DailyBudgetSheet> {
               TextField(
                 controller: _ctrl,
                 autofocus: true,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: MoneyInput.keyboardType,
+                inputFormatters: MoneyInput.formatters,
                 decoration: InputDecoration(
                   labelText: 'Daily budget ($symbol)',
                   filled: true,

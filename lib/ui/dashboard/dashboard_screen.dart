@@ -47,18 +47,17 @@ class DashboardScreen extends StatelessWidget {
     );
     // Net from all transactions ever (income received - expenses paid)
     final netFromTransactions = vm.transactions.fold<double>(0, (sum, tx) => sum + tx.signedAmount);
-    // Show wallet total if wallets have any balance, otherwise show net from transactions
-    final displayBalance = totalBalance != 0 ? totalBalance : netFromTransactions;
+    // Wallet balances already include every transaction on top of the opening
+    // balance, so they're the source of truth. Only fall back to the raw
+    // income - expense net when there are no wallets at all (a zero total is
+    // a real balance, not a reason to switch to a number that ignores
+    // opening balances).
+    final displayBalance = vm.wallets.isNotEmpty ? totalBalance : netFromTransactions;
 
     final recent = vm.transactions.take(4).toList();
 
-    final totalBudget = vm.budgets.fold<double>(0, (sum, b) => sum + b.amount);
-    // Daily target: prefer the user's own daily budget setting, then an
-    // adaptive estimate (budget/month, then income/month, then current pace).
-    final dailyTarget = vm.settings.dailyBudget ??
-        (totalBudget > 0
-            ? totalBudget / 30
-            : (incomeThisMonth > 0 ? incomeThisMonth / 30 : (spentThisMonth / now.day)));
+    final totalBudget = vm.monthlyBudgetTotal;
+    final dailyTarget = vm.dailyTarget;
 
     // Spending score — based on savings rate + budget compliance
     int score;
@@ -97,7 +96,7 @@ class DashboardScreen extends StatelessWidget {
     final topTotal = topCats.fold<double>(0, (sum, e) => sum + e.value);
 
     // Bills due within a week (or already overdue), soonest first.
-    final upcomingBills = vm.bills.where((b) => !b.isPaused && b.daysUntilDue <= 7).toList()
+    final upcomingBills = vm.bills.where((b) => b.isDueWithin(7)).toList()
       ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
 
     return Scaffold(
@@ -227,7 +226,6 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasWallets = wallets.isNotEmpty;
-    final hasBalance = totalBalance != 0;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
       child: Padding(
@@ -238,13 +236,13 @@ class _BalanceCard extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  hasWallets && hasBalance ? Icons.visibility_outlined : Icons.account_balance_wallet_outlined,
+                  hasWallets ? Icons.visibility_outlined : Icons.account_balance_wallet_outlined,
                   size: 14,
                   color: AppColors.mutedForeground,
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  hasWallets && hasBalance
+                  hasWallets
                       ? 'Total balance \u00b7 ${wallets.length} wallet${wallets.length == 1 ? '' : 's'}'
                       : 'Net balance \u00b7 income - expenses',
                   style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
@@ -253,7 +251,7 @@ class _BalanceCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              MoneyFormat.money(totalBalance, symbol: symbol),
+              MoneyFormat.signed(totalBalance, symbol: symbol),
               style: const TextStyle(
                 fontSize: 34,
                 fontWeight: FontWeight.w800,
@@ -261,7 +259,7 @@ class _BalanceCard extends StatelessWidget {
                 letterSpacing: -0.5,
               ),
             ),
-            if (hasWallets && hasBalance) ...[
+            if (hasWallets) ...[
               const SizedBox(height: 16),
               GridView.count(
                 crossAxisCount: 2,
@@ -305,7 +303,7 @@ class _WalletPill extends StatelessWidget {
           Text(name, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
           const SizedBox(height: 2),
           Text(
-            MoneyFormat.compact(balance, symbol: symbol),
+            MoneyFormat.compactSigned(balance, symbol: symbol),
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
           ),
         ],
@@ -370,9 +368,11 @@ class _IncomeSpentCard extends StatelessWidget {
 /// Horizontal shortcuts row
 class _Shortcuts extends StatelessWidget {
   static const _items = [
+    ('Transactions', Icons.receipt_outlined, '/transactions'),
     ('Daily spend', Icons.today_outlined, '/daily'),
     ('Bills', Icons.receipt_long_outlined, '/recurring'),
     ('Goals', Icons.flag_outlined, '/goals'),
+    ('Debts', Icons.handshake_outlined, '/debts'),
     ('Categories', Icons.category_outlined, '/categories'),
     ('Auto-capture', Icons.sms_outlined, '/capture'),
   ];
@@ -757,10 +757,10 @@ class _RecentSection extends StatelessWidget {
             const Text('Recent', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const Spacer(),
             InkWell(
-              onTap: () => Navigator.pushNamed(context, '/capture'),
-              child: Text(
-                recent.isEmpty ? 'See all' : '${recent.length} to review',
-                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 11),
+              onTap: () => Navigator.pushNamed(context, '/transactions'),
+              child: const Text(
+                'See all',
+                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 11),
               ),
             ),
           ],

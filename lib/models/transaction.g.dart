@@ -28,13 +28,14 @@ class TxRecordAdapter extends TypeAdapter<TxRecord> {
       receiptPath: fields[8] as String?,
       isRecurring: fields[9] as bool?,
       frequency: fields[10] == null ? Frequency.once : fields[10] as Frequency,
+      linkId: fields[11] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TxRecord obj) {
     writer
-      ..writeByte(11)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -56,7 +57,9 @@ class TxRecordAdapter extends TypeAdapter<TxRecord> {
       ..writeByte(9)
       ..write(obj.isRecurring)
       ..writeByte(10)
-      ..write(obj.frequency);
+      ..write(obj.frequency)
+      ..writeByte(11)
+      ..write(obj.linkId);
   }
 
   @override

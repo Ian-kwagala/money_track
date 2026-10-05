@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
+import '../format/money_input.dart';
 
 /// Runs once (tracked via [SharedPreferences]) after onboarding to nudge the
 /// user into finishing their profile — full name, date of birth, occupation
@@ -54,7 +55,7 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
     _dateOfBirth = user.dateOfBirth;
     for (final w in vm.wallets) {
       _balanceCtrls[w.id] = TextEditingController(
-        text: w.currentBalance == 0 ? '' : w.currentBalance.toStringAsFixed(w.currentBalance % 1 == 0 ? 0 : 2),
+        text: MoneyInput.text(w.currentBalance),
       );
     }
   }
@@ -197,7 +198,8 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
                                 width: 130,
                                 child: TextField(
                                   controller: _balanceCtrls[w.id],
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  keyboardType: MoneyInput.keyboardType,
+                                  inputFormatters: MoneyInput.formatters,
                                   textAlign: TextAlign.right,
                                   decoration: InputDecoration(
                                     hintText: '0',
@@ -265,9 +267,7 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
       final text = _balanceCtrls[w.id]?.text ?? '';
       final bal = double.tryParse(text.replaceAll(',', ''));
       if (bal != null) {
-        w.openingBalance = bal;
-        w.currentBalance = bal;
-        await vm.saveWallet(w);
+        await vm.setWalletBalance(w, bal);
       }
     }
 

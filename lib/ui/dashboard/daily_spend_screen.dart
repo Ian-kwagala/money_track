@@ -18,10 +18,9 @@ class DailySpendScreen extends StatelessWidget {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
 
-    final totalBudget = vm.budgets.fold<double>(0, (sum, b) => sum + b.amount);
-    final dailyTarget = vm.settings.dailyBudget ?? (totalBudget > 0 ? (totalBudget / 30) : 20000.0);
+    final dailyTarget = vm.dailyTarget;
     final spentToday = vm.spentTotal(todayStart, now);
-    final todayPct = (spentToday / dailyTarget).clamp(0.0, 1.0);
+    final todayPct = dailyTarget > 0 ? (spentToday / dailyTarget).clamp(0.0, 1.0) : 0.0;
     final color = todayPct >= 1 ? AppColors.danger : todayPct >= 0.8 ? AppColors.warning : AppColors.primary;
     final remaining = (dailyTarget - spentToday).clamp(0.0, dailyTarget);
 
@@ -36,7 +35,7 @@ class DailySpendScreen extends StatelessWidget {
     }
     final weekTotal = dailyAmounts.fold<double>(0, (a, b) => a + b);
     final maxDaily = dailyAmounts.fold<double>(0, (a, b) => a > b ? a : b);
-    final chartMax = (maxDaily > dailyTarget ? maxDaily : dailyTarget) * 1.25;
+    final chartMax = ((maxDaily > dailyTarget ? maxDaily : dailyTarget) * 1.25).clamp(1.0, double.infinity);
 
     return Scaffold(
       backgroundColor: AppColors.bg,

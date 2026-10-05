@@ -52,6 +52,14 @@ class TxRecord extends HiveObject {
   @HiveField(10, defaultValue: Frequency.once)
   Frequency frequency;
 
+  /// Set when this record was created by a savings goal or debt, as
+  /// `goal:<id>` or `debt:<id>`. Such records are transfers with only one
+  /// wallet side: money out ([walletId] set, [toWalletId] null) or money in
+  /// ([walletId] empty, [toWalletId] set). They're managed from the goal/debt
+  /// and don't count as income or spending.
+  @HiveField(11)
+  String? linkId;
+
   TxRecord({
     required this.id,
     required this.type,
@@ -64,7 +72,19 @@ class TxRecord extends HiveObject {
     this.receiptPath,
     bool? isRecurring,
     this.frequency = Frequency.once,
+    this.linkId,
   }) : isRecurring = isRecurring ?? (frequency != Frequency.once && frequency != Frequency.random);
+
+  /// A transfer with only one wallet side: money moved to/from a savings
+  /// goal, a debt, or a wallet that has since been deleted.
+  bool get isOneSided =>
+      type == TxType.transfer && (walletId.isEmpty || toWalletId == null || toWalletId!.isEmpty);
+
+  /// For one-sided transfers: true when money came *into* the wallet.
+  bool get isOneSidedIn => isOneSided && walletId.isEmpty;
+
+  /// The wallet a one-sided transfer actually touched.
+  String get oneSidedWalletId => isOneSidedIn ? (toWalletId ?? '') : walletId;
 
   double get signedAmount {
     switch (type) {

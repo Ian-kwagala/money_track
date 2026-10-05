@@ -109,6 +109,9 @@ class MoneyRepository {
     _registerAdapterSafe(AlertRuleAdapter());
     await _openBoxes();
     await _seedIfNeeded();
+    // Stored balances can be stale (e.g. edited before this fix); always
+    // re-derive them from opening balance + transactions on launch.
+    await updateWalletBalances();
   }
 
   void _registerAdapterSafe<T>(TypeAdapter<T> adapter) {
@@ -167,59 +170,6 @@ class MoneyRepository {
     }
     if (_users.isEmpty) {
       await _users.put('default', User());
-    }
-    // Remove all demo data as per user request: clear seeded transactions/bills/goals/budgets
-    await _clearDemoDataIfNeeded();
-  }
-
-  Future<void> _clearDemoDataIfNeeded() async {
-    // Demo transactions seeded earlier have ids tx_1..tx_7
-    final demoTxIds = _transactions.values.where((t) => t.id.startsWith('tx_')).map((t) => t.id).toList();
-    if (demoTxIds.isNotEmpty) {
-      for (final id in demoTxIds) {
-        await _transactions.delete(id);
-      }
-      await updateWalletBalances();
-    }
-    // Demo bills
-    final demoBillIds = _bills.values.where((b) => b.id.startsWith('bill_')).map((b) => b.id).toList();
-    for (final id in demoBillIds) {
-      await _bills.delete(id);
-    }
-    // Demo goals
-    final demoGoalIds = _savingsGoals.values.where((g) => g.id.startsWith('goal_')).map((g) => g.id).toList();
-    for (final id in demoGoalIds) {
-      await _savingsGoals.delete(id);
-    }
-    // Demo budgets: clear budgets that were seeded with spec amounts (they have categoryIds from spec)
-    // For fresh app after demo removal, we want no budgets, so clear all existing seeded budgets
-    // But keep user-created budgets that may have been created after onboarding? For demo removal, clear those with spec categoryIds
-    const demoBudgetCats = {
-      'cat_expense_food',
-      'cat_expense_transport',
-      'cat_expense_rent',
-      'cat_expense_electricity',
-      'cat_expense_sanitary',
-      'cat_expense_health',
-      'cat_expense_entertainment',
-      'cat_expense_meals_out',
-      'cat_expense_airtime_and_data',
-      'cat_expense_school_fees',
-    };
-    final demoBudgetIds = _budgets.values.where((b) => demoBudgetCats.contains(b.categoryId)).map((b) => b.id).toList();
-    for (final id in demoBudgetIds) {
-      await _budgets.delete(id);
-    }
-    // Reset wallet balances to 0 opening (demo wallets had large balances)
-    for (final w in _wallets.values) {
-      if (w.openingBalance != 0 || w.currentBalance != 0) {
-        // Only reset if wallet still has demo balance and no real transactions
-        if (_transactions.isEmpty) {
-          w.openingBalance = 0;
-          w.currentBalance = 0;
-          await _wallets.put(w.id, w);
-        }
-      }
     }
   }
 

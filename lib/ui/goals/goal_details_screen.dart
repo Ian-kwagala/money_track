@@ -6,6 +6,7 @@ import '../../models/savings_goal.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
+import 'goal_funds_dialog.dart';
 
 class GoalDetailsScreen extends StatelessWidget {
   final SavingsGoal goal;
@@ -170,7 +171,7 @@ class GoalDetailsScreen extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: () => _showAddFundsDialog(context, vm),
+                  onPressed: () => showGoalFundsDialog(context, goal, adding: true),
                   icon: const Icon(Icons.add),
                   label: const Text('Add funds to goal'),
                   style: FilledButton.styleFrom(
@@ -180,6 +181,21 @@ class GoalDetailsScreen extends StatelessWidget {
                   ),
                 ),
               ),
+              if (goal.currentAmount > 0) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () => showGoalFundsDialog(context, goal, adding: false),
+                    icon: const Icon(Icons.remove),
+                    label: const Text('Withdraw from goal'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -187,50 +203,12 @@ class GoalDetailsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _showAddFundsDialog(BuildContext context, TrackerViewModel vm) async {
-    final ctrl = TextEditingController();
-    final amount = await showDialog<double>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Add funds to ${goal.name}'),
-        content: TextField(
-          controller: ctrl,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: 'Amount (${vm.settings.currencySymbol})',
-            hintText: 'e.g. 50000',
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () {
-              final v = double.tryParse(ctrl.text.replaceAll(',', ''));
-              Navigator.pop(ctx, v);
-            },
-            child: const Text('Add'),
-          ),
-        ],
-      ),
-    );
-
-    if (amount == null || amount <= 0) return;
-    goal.currentAmount += amount;
-    await vm.updateSavingsGoal(goal);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Added ${MoneyFormat.money(amount, symbol: vm.settings.currencySymbol)} to ${goal.name}')),
-      );
-    }
-  }
-
   Future<void> _confirmDelete(BuildContext context, TrackerViewModel vm) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Delete "${goal.name}"?'),
-        content: const Text('This will remove the savings goal. Existing wallet balances will not be altered.'),
+        content: const Text('This removes the goal. Money you moved into it stays out of your wallets — withdraw it first if you want it back in a wallet.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(

@@ -8,6 +8,8 @@ import '../format/money_format.dart';
 import '../home_shell.dart';
 import '../theme/app_theme.dart';
 import '../widgets/empty_state.dart';
+import '../format/money_input.dart';
+import '../widgets/wallet_editor.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -17,20 +19,12 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late bool _budgetWarnings;
-  late bool _billReminders;
-  late bool _unusualSpending;
-  late bool _weeklySummary;
   late bool _notifAccess;
 
   @override
   void initState() {
     super.initState();
-    // These are local UI preferences (not yet persisted to settings in this version)
-    _budgetWarnings = true;
-    _billReminders = true;
-    _unusualSpending = true;
-    _weeklySummary = false;
+    // Notification preferences live in AppSettings; only OS access is local.
     _notifAccess = true;
   }
 
@@ -67,7 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _editDailyBudgetDialog(BuildContext context, TrackerViewModel vm) async {
-    final ctrl = TextEditingController(text: vm.settings.dailyBudget?.toStringAsFixed(0) ?? '');
+    final ctrl = TextEditingController(text: vm.settings.dailyBudget == null ? '' : MoneyInput.text(vm.settings.dailyBudget!));
     final result = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -75,7 +69,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         content: TextField(
           controller: ctrl,
           autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          keyboardType: MoneyInput.keyboardType,
+          inputFormatters: MoneyInput.formatters,
           decoration: InputDecoration(labelText: 'Amount per day (${vm.settings.currencySymbol})', hintText: 'e.g. 20000'),
         ),
         actions: [
@@ -95,52 +90,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     s.dailyBudget = result;
     await vm.updateSettings(s);
     if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Daily budget updated')));
-  }
-
-  Future<void> _showAddWalletDialog(BuildContext context) async {
-    final nameCtrl = TextEditingController();
-    final balanceCtrl = TextEditingController();
-    WalletType selectedType = WalletType.cash;
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          title: const Text('Add wallet'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: nameCtrl, decoration: InputDecoration(labelText: 'Wallet name', hintText: 'e.g. Equity Bank', filled: true, fillColor: AppColors.muted, border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: BorderSide.none))),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<WalletType>(
-                initialValue: selectedType,
-                decoration: InputDecoration(labelText: 'Type', filled: true, fillColor: AppColors.muted, border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: BorderSide.none)),
-                items: WalletType.values.map((t) => DropdownMenuItem(value: t, child: Text(t.label))).toList(),
-                onChanged: (v) => setState(() => selectedType = v ?? WalletType.cash),
-              ),
-              const SizedBox(height: 12),
-              TextField(controller: balanceCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: 'Initial balance (UGX)', hintText: '0', filled: true, fillColor: AppColors.muted, border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: BorderSide.none))),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Add')),
-          ],
-        ),
-      ),
-    );
-    if (result == true && nameCtrl.text.trim().isNotEmpty) {
-      final wallet = Wallet(
-        id: 'wallet_${DateTime.now().millisecondsSinceEpoch}',
-        name: nameCtrl.text.trim(),
-        type: selectedType,
-        color: AppColors.primary.toARGB32(),
-        openingBalance: double.tryParse(balanceCtrl.text.replaceAll(',', '')) ?? 0,
-        currentBalance: double.tryParse(balanceCtrl.text.replaceAll(',', '')) ?? 0,
-      );
-      if (!context.mounted) return;
-      await context.read<TrackerViewModel>().saveWallet(wallet);
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Wallet "${wallet.name}" added')));
-    }
   }
 
   @override
@@ -183,12 +132,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               icon: w.type.icon,
                               iconColor: w.color != 0 ? Color(w.color) : AppColors.mutedForeground,
                               title: w.name,
-                              subtitle: MoneyFormat.money(w.currentBalance, symbol: symbol),
+                              subtitle: MoneyFormat.signed(w.currentBalance, symbol: symbol),
                               trailing: const Icon(Icons.chevron_right, color: AppColors.mutedForeground, size: 18),
+                              onTap: () => showWalletEditor(context, wallet: w),
                             )),
                           const SizedBox(height: 8),
                           InkWell(
-                            onTap: () => _showAddWalletDialog(context),
+                            onTap: () => showWalletEditor(context),
                             borderRadius: BorderRadius.circular(AppColors.radiusMd),
                             child: Container(
                               width: double.infinity,
@@ -249,10 +199,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           const Text('Notifications', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                           const SizedBox(height: 12),
-                          _ToggleRow(label: 'Budget warnings at 80%', value: _budgetWarnings, onChanged: (v) => setState(() => _budgetWarnings = v)),
-                          _ToggleRow(label: 'Bill due reminders', value: _billReminders, onChanged: (v) => setState(() => _billReminders = v)),
-                          _ToggleRow(label: 'Unusual spending alerts', value: _unusualSpending, onChanged: (v) => setState(() => _unusualSpending = v)),
-                          _ToggleRow(label: 'Weekly money summary', value: _weeklySummary, onChanged: (v) => setState(() => _weeklySummary = v)),
+                          _ToggleRow(label: 'Budget warnings at 80%', value: vm.settings.budgetWarningsEnabled, onChanged: (v) => vm.updateSettings(vm.settings..budgetWarningsEnabled = v)),
+                          _ToggleRow(label: 'Bill due reminders', value: vm.settings.billRemindersEnabled, onChanged: (v) => vm.updateSettings(vm.settings..billRemindersEnabled = v)),
+                          _ToggleRow(label: 'Unusual spending alerts', value: vm.settings.unusualSpendingEnabled, onChanged: (v) => vm.updateSettings(vm.settings..unusualSpendingEnabled = v)),
+                          _ToggleRow(label: 'Weekly money summary', value: vm.settings.weeklySummaryEnabled, onChanged: (v) => vm.updateSettings(vm.settings..weeklySummaryEnabled = v)),
                         ],
                       ),
                     ),
@@ -414,23 +364,28 @@ class _SettingsRow extends StatelessWidget {
   final String title;
   final String? subtitle;
   final Widget? trailing;
+  final VoidCallback? onTap;
 
-  const _SettingsRow({required this.icon, this.iconColor, required this.title, this.subtitle, this.trailing});
+  const _SettingsRow({required this.icon, this.iconColor, required this.title, this.subtitle, this.trailing, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Container(width: 36, height: 36, decoration: BoxDecoration(color: AppColors.muted, shape: BoxShape.circle), child: Icon(icon, size: 16, color: iconColor ?? AppColors.mutedForeground)),
-          const SizedBox(width: 12),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            if (subtitle != null) Text(subtitle!, style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
-          ])),
-          if (trailing != null) trailing!,
-        ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Container(width: 36, height: 36, decoration: BoxDecoration(color: AppColors.muted, shape: BoxShape.circle), child: Icon(icon, size: 16, color: iconColor ?? AppColors.mutedForeground)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+              if (subtitle != null) Text(subtitle!, style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
+            ])),
+            if (trailing != null) trailing!,
+          ],
+        ),
       ),
     );
   }

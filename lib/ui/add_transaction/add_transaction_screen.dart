@@ -11,6 +11,7 @@ import '../../models/transaction.dart';
 import '../../models/wallet.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
+import '../format/money_input.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   final TxRecord? edit;
@@ -69,7 +70,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     super.dispose();
   }
 
-  String _fmtAmount(double a) => a.toStringAsFixed(a % 1 == 0 ? 0 : 2);
+  String _fmtAmount(double a) => MoneyInput.text(a, emptyIfZero: false);
 
   @override
   Widget build(BuildContext context) {
@@ -97,15 +98,20 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(isTransfer
-            ? 'Transfer'
-            : _type == TxType.income
-                ? 'Add income'
-                : 'Add ${widget.edit != null ? 'edit ' : ''}expense'),
+        title: Text(
+            '${widget.edit != null ? 'Edit' : 'Add'} ${isTransfer ? 'transfer' : _type == TxType.income ? 'income' : 'expense'}'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          if (widget.edit != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              tooltip: 'Delete transaction',
+              onPressed: _saving ? null : _delete,
+            ),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -141,7 +147,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   Expanded(
                     child: TextField(
                       controller: _amountCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: MoneyInput.keyboardType,
+                      inputFormatters: MoneyInput.formatters,
                       autofocus: widget.edit == null,
                       style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
                       decoration: const InputDecoration(
@@ -421,6 +428,29 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Future<void> _delete() async {
+    final existing = widget.edit;
+    if (existing == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete transaction?'),
+        content: const Text('It will be removed and your wallet balance updated. This can’t be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await context.read<TrackerViewModel>().deleteTransaction(existing.id);
+    if (mounted) Navigator.pop(context, true);
   }
 
   bool get isTransferLike => _type == TxType.transfer;

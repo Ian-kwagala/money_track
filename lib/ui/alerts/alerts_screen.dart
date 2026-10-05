@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../home_shell.dart';
+import '../../models/bill.dart';
+import '../../models/budget.dart';
+import '../../models/transaction.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
@@ -19,13 +22,12 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   List<_AlertItem> _buildAlerts(TrackerViewModel vm, String symbol) {
     final now = DateTime.now();
-    final monthStart = DateTime(now.year, now.month, 1);
-    final monthEnd = DateTime(now.year, now.month + 1, 0);
 
     final alerts = <_AlertItem>[];
+    final settings = vm.settings;
 
-    final dailyBudget = vm.settings.dailyBudget;
-    if (dailyBudget != null && dailyBudget > 0) {
+    final dailyBudget = settings.dailyBudget;
+    if (settings.budgetWarningsEnabled && dailyBudget != null && dailyBudget > 0) {
       final todayStart = DateTime(now.year, now.month, now.day);
       final spentToday = vm.spentTotal(todayStart, now);
       final pct = spentToday / dailyBudget;
@@ -54,9 +56,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
       }
     }
 
-    for (final budget in vm.budgets) {
+    for (final budget in settings.budgetWarningsEnabled ? vm.budgets : const <Budget>[]) {
       final cat = vm.categoryById(budget.categoryId);
-      final spent = vm.spentByCategory(monthStart, monthEnd, budget.categoryId);
+      final (periodStart, periodEnd) = budget.periodFor(now);
+      final spent = vm.spentByCategory(periodStart, periodEnd, budget.categoryId);
       final pct = budget.amount > 0 ? spent / budget.amount : 0.0;
       if (pct < 0.8) continue;
       final catName = cat?.name ?? 'category';
@@ -69,7 +72,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
           iconBg: AppColors.danger.withValues(alpha: 0.15),
           title: 'Budget exceeded \u2014 $catName',
           description:
-              '$catName is ${MoneyFormat.money(spent - budget.amount, symbol: symbol)} over its ${MoneyFormat.money(budget.amount, symbol: symbol)} budget this month.',
+              '$catName is ${MoneyFormat.money(spent - budget.amount, symbol: symbol)} over its ${MoneyFormat.money(budget.amount, symbol: symbol)} budget ${budget.periodLabel}.',
           when: now.subtract(const Duration(hours: 2)),
         ));
       } else {
@@ -86,12 +89,11 @@ class _AlertsScreenState extends State<AlertsScreen> {
       }
     }
 
-    for (final bill in vm.bills) {
-      if (bill.isPaid) continue;
-      final days = bill.dueDate.difference(now).inDays;
-      final over = days < 0;
+    for (final bill in settings.billRemindersEnabled ? vm.bills : const <Bill>[]) {
       final threshold = bill.reminderDaysBefore > 0 ? bill.reminderDaysBefore : 3;
-      if (!over && !bill.dueDate.isBefore(now.add(Duration(days: threshold)))) continue;
+      if (!bill.isDueWithin(threshold)) continue;
+      final days = bill.daysUntilDue;
+      final over = bill.isOverdue;
       alerts.add(_AlertItem(
         id: 'bill_${bill.id}',
         icon: Icons.water_drop_outlined,
@@ -104,8 +106,60 @@ class _AlertsScreenState extends State<AlertsScreen> {
       ));
     }
 
+    if (settings.unusualSpendingEnabled) alerts.addAll(_unusualSpending(vm, symbol, now));
+
+    if (settings.weeklySummaryEnabled) {
+      final weekStart = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+      final spent = vm.spentTotal(weekStart, now);
+      final income = vm.incomeTotal(weekStart, now);
+      alerts.add(_AlertItem(
+        id: 'weekly_summary_${weekStart.toIso8601String()}',
+        icon: Icons.insights_outlined,
+        iconColor: AppColors.primary,
+        iconBg: AppColors.primary.withValues(alpha: 0.15),
+        title: 'Your last 7 days',
+        description:
+            'Spent ${MoneyFormat.money(spent, symbol: symbol)} and received ${MoneyFormat.money(income, symbol: symbol)}.',
+        when: now.subtract(const Duration(hours: 3)),
+      ));
+    }
+
     alerts.sort((a, b) => b.when.compareTo(a.when));
     return alerts;
+  }
+
+  /// Flags expenses from the last 7 days that are at least 3x the usual
+  /// amount for their category (based on the 90 days before, needing at
+  /// least 5 earlier entries so one-off categories don't trigger it).
+  List<_AlertItem> _unusualSpending(TrackerViewModel vm, String symbol, DateTime now) {
+    final recentFrom = now.subtract(const Duration(days: 7));
+    final historyFrom = recentFrom.subtract(const Duration(days: 90));
+    final history = <String, List<double>>{};
+    for (final t in vm.transactions) {
+      if (t.type != TxType.expense || t.categoryId.isEmpty) continue;
+      if (t.dateTime.isBefore(historyFrom) || !t.dateTime.isBefore(recentFrom)) continue;
+      history.putIfAbsent(t.categoryId, () => []).add(t.amount);
+    }
+    final items = <_AlertItem>[];
+    for (final t in vm.transactions) {
+      if (t.type != TxType.expense || t.dateTime.isBefore(recentFrom)) continue;
+      final past = history[t.categoryId];
+      if (past == null || past.length < 5) continue;
+      final avg = past.reduce((a, b) => a + b) / past.length;
+      if (avg <= 0 || t.amount < avg * 3) continue;
+      final catName = vm.categoryById(t.categoryId)?.name ?? 'this category';
+      items.add(_AlertItem(
+        id: 'unusual_${t.id}',
+        icon: Icons.trending_up,
+        iconColor: AppColors.warning,
+        iconBg: AppColors.warning.withValues(alpha: 0.15),
+        title: 'Unusual spending — $catName',
+        description:
+            '${MoneyFormat.money(t.amount, symbol: symbol)} is about ${(t.amount / avg).toStringAsFixed(0)}x your usual ${MoneyFormat.money(avg, symbol: symbol)} for $catName.',
+        when: t.dateTime,
+      ));
+    }
+    return items;
   }
 
   String _dueLabel(int days) {

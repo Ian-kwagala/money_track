@@ -122,76 +122,85 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  /// Approximate height of the mobile nav bar itself (excluding insets).
+  static const _navBarHeight = 66.0;
+
+  /// Gap between the nav bar and the phone's own navigation keys / gesture
+  /// bar, so the two never sit on the same level.
+  static const _navBarGap = 8.0;
+
   Widget _buildMobile(BuildContext context, List<Widget> pages) {
+    // viewPadding (not padding) so the inset is still known even if an
+    // ancestor has already consumed it.
+    final systemNavInset = MediaQuery.viewPaddingOf(context).bottom;
+    final navBottom = systemNavInset + _navBarGap;
     return Scaffold(
-      extendBody: true,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
-          IndexedStack(index: _index, children: pages),
-          // Bottom nav bar
+          // Keep page content clear of the nav bar.
+          Padding(
+            padding: EdgeInsets.only(bottom: navBottom + _navBarHeight),
+            child: IndexedStack(index: _index, children: pages),
+          ),
+          // Bottom nav bar, floating just above the system navigation keys
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SafeArea(
-              top: false,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor.withValues(alpha: 0.95),
-                  border: Border(
-                    top: BorderSide(color: AppColors.border, width: 1),
-                  ),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: List.generate(_navItems.length, (i) {
-                      final item = _navItems[i];
-                      final active = _index == i;
-                      return Expanded(
-                        child: InkWell(
-                          onTap: () => setState(() => _index = i),
-                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  active ? item.activeIcon : item.icon,
+            left: 12,
+            right: 12,
+            bottom: navBottom,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                border: Border.all(color: AppColors.border, width: 1),
+                boxShadow: AppColors.shadowLift,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(_navItems.length, (i) {
+                    final item = _navItems[i];
+                    final active = _index == i;
+                    return Expanded(
+                      child: InkWell(
+                        onTap: () => setState(() => _index = i),
+                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                active ? item.activeIcon : item.icon,
+                                color: active ? AppColors.primary : AppColors.mutedForeground,
+                                size: 22,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                item.label,
+                                maxLines: 1,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                                   color: active ? AppColors.primary : AppColors.mutedForeground,
-                                  size: 22,
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  item.label,
-                                  maxLines: 1,
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                                    color: active ? AppColors.primary : AppColors.mutedForeground,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                      );
-                    }),
-                  ),
+                      ),
+                    );
+                  }),
                 ),
               ),
             ),
           ),
-          // FAB
+          // FAB — kept to the left so it doesn't cover centred content
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: 88, // 64 nav + 24 gap
-            child: Center(
-              child: _QuickAddFab(onTap: () => _openQuickAdd(context)),
-            ),
+            left: 20,
+            bottom: navBottom + _navBarHeight + 16,
+            child: _QuickAddFab(onTap: () => _openQuickAdd(context)),
           ),
         ],
       ),

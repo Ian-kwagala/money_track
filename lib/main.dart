@@ -6,6 +6,8 @@ import 'ui/auth/lock_screen.dart';
 import 'ui/auto_capture/auto_capture_screen.dart';
 import 'ui/bills/bills_screen.dart';
 import 'ui/dashboard/daily_spend_screen.dart';
+import 'ui/debts/debts_screen.dart';
+import 'ui/expenses/expenses_screen.dart';
 import 'ui/goals/goals_screen.dart';
 import 'ui/home_shell.dart';
 import 'ui/onboarding/onboarding_screen.dart';
@@ -44,6 +46,8 @@ class MoneyTrackApp extends StatelessWidget {
             '/categories': (_) => const CategoryManagerScreen(),
             '/capture': (_) => const AutoCaptureScreen(),
             '/analytics': (_) => const ReportsScreen(),
+            '/transactions': (_) => const ExpensesScreen(),
+            '/debts': (_) => const DebtsScreen(),
           },
           home: const _RootRouter(),
         ),

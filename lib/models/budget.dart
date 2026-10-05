@@ -39,6 +39,31 @@ class Budget extends HiveObject {
     this.frequency = Frequency.monthly,
   });
 
+  /// The limit scaled to a month, so daily/weekly/monthly budgets can be
+  /// added together in monthly totals.
+  double get monthlyEquivalent {
+    switch (frequency) {
+      case Frequency.daily:
+        return amount * 30;
+      case Frequency.weekly:
+        return amount * 30 / 7;
+      default:
+        return amount;
+    }
+  }
+
+  /// "today" / "this week" / "this month", matching [periodFor].
+  String get periodLabel {
+    switch (frequency) {
+      case Frequency.daily:
+        return 'today';
+      case Frequency.weekly:
+        return 'this week';
+      default:
+        return 'this month';
+    }
+  }
+
   /// The [start, end) window the current cycle covers, relative to [now].
   (DateTime, DateTime) periodFor(DateTime now) {
     switch (frequency) {

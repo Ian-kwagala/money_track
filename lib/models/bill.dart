@@ -79,5 +79,24 @@ class Bill extends HiveObject {
 
   int get daysUntilDue => nextDueDate.difference(DateTime.now()).inDays;
 
-  bool get isOverdue => !isPaused && nextDueDate.isBefore(DateTime.now());
+  /// A one-off bill that has been paid never comes due again. (Recurring
+  /// bills are never "settled"; paying them just moves [nextDueDate].)
+  bool get isSettled => frequency == Frequency.once && lastPaidDate != null;
+
+  /// Whether this bill needs paying within [days] days — overdue bills always
+  /// count; paused and settled bills never do. This is the single rule every
+  /// screen (dashboard, alerts, payday checklist) uses, rather than the
+  /// legacy [isPaid] flag, which never resets for recurring bills.
+  bool isDueWithin(int days) => !isPaused && !isSettled && daysUntilDue <= days;
+
+  /// Approximate cost per month, for "monthly recurring" totals. One-off and
+  /// paused bills contribute nothing.
+  double get monthlyEquivalent {
+    if (isPaused || frequency == Frequency.once) return 0;
+    final days = frequency == Frequency.custom ? customDays : frequency.approxDays;
+    if (days == null || days <= 0) return amount;
+    return amount * 30 / days;
+  }
+
+  bool get isOverdue =>!isPaused && !isSettled && nextDueDate.isBefore(DateTime.now());
 }

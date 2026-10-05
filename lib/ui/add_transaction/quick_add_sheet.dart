@@ -6,6 +6,7 @@ import '../../models/frequency.dart';
 import '../../models/transaction.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
+import '../format/money_input.dart';
 
 class QuickAddSheet extends StatefulWidget {
   const QuickAddSheet({super.key});
@@ -148,10 +149,9 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                           if (_type == TxType.income)
                             const Text('+ ', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.primary)),
                           Text(
-                            '$symbol $_amountDisplay',
+                            '$symbol ${MoneyInput.group(_amountDisplay)}',
                             style: TextStyle(fontSize: isSmall ? 28 : 32, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -1),
                           ),
-                          Text(' UGX', style: TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                         ],
                       ),
                     ),

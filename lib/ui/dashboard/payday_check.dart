@@ -7,6 +7,7 @@ import '../../models/frequency.dart';
 import '../../models/income_profile.dart';
 import '../../models/transaction.dart';
 import '../../viewmodels/tracker_view_model.dart';
+import '../format/money_input.dart';
 
 /// Nudges the user, once per expected pay cycle, to confirm they were paid
 /// and to check off the bills they've settled since. Runs from an anchor of
@@ -54,7 +55,7 @@ class PaydayCheck {
     if (vm.wallets.isEmpty) return;
     final user = vm.currentUser;
     final amountCtrl = TextEditingController(
-      text: user.expectedMonthlyIncome > 0 ? user.expectedMonthlyIncome.toStringAsFixed(0) : '',
+      text: MoneyInput.text(user.expectedMonthlyIncome),
     );
     String walletId = vm.wallets.first.id;
 
@@ -69,7 +70,8 @@ class PaydayCheck {
               TextField(
                 controller: amountCtrl,
                 autofocus: true,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: MoneyInput.keyboardType,
+                inputFormatters: MoneyInput.formatters,
                 decoration: InputDecoration(labelText: 'Amount (${vm.settings.currencySymbol})'),
               ),
               const SizedBox(height: 12),
@@ -125,11 +127,15 @@ class PaydayCheck {
   }
 
   static Future<void> _showBillsChecklist(BuildContext context, TrackerViewModel vm) async {
-    final unpaidBills = vm.bills.where((b) => !b.isPaused && !b.isPaid).toList();
+    // Bills that fall due before the next expected payday (or are overdue).
+    final now = DateTime.now();
+    final nextPay = vm.currentUser.incomeFrequency.nextDate(now);
+    final window = nextPay == null ? 30 : nextPay.difference(now).inDays;
+    final unpaidBills = vm.bills.where((b) => b.isDueWithin(window)).toList();
     if (unpaidBills.isEmpty) return;
 
     final checked = {for (final b in unpaidBills) b.id: false};
-    final amountCtrls = {for (final b in unpaidBills) b.id: TextEditingController(text: b.amount.toStringAsFixed(b.amount % 1 == 0 ? 0 : 2))};
+    final amountCtrls = {for (final b in unpaidBills) b.id: TextEditingController(text: MoneyInput.text(b.amount, emptyIfZero: false))};
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -154,7 +160,8 @@ class PaydayCheck {
                               padding: const EdgeInsets.only(top: 6),
                               child: TextField(
                                 controller: amountCtrls[b.id],
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                keyboardType: MoneyInput.keyboardType,
+                                inputFormatters: MoneyInput.formatters,
                                 decoration: const InputDecoration(labelText: 'Amount paid', isDense: true),
                               ),
                             )
@@ -173,7 +180,6 @@ class PaydayCheck {
     );
 
     if (confirmed != true) return;
-    final now = DateTime.now();
     for (final b in unpaidBills) {
       if (checked[b.id] != true) continue;
       final amount = double.tryParse(amountCtrls[b.id]!.text.replaceAll(',', '')) ?? b.amount;

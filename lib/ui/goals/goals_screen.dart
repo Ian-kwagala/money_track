@@ -9,6 +9,8 @@ import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 import '../widgets/empty_state.dart';
 import 'goal_details_screen.dart';
+import 'goal_funds_dialog.dart';
+import '../format/money_input.dart';
 
 class GoalsScreen extends StatelessWidget {
   const GoalsScreen({super.key});
@@ -86,8 +88,8 @@ class GoalsScreen extends StatelessWidget {
                     ...sortedGoals.map((g) => _GoalCard(
                           goal: g,
                           symbol: symbol,
-                          onAddFunds: () => _showAddFundsDialog(context, vm, g),
-                          onReduceFunds: () => _showReduceFundsDialog(context, vm, g),
+                          onAddFunds: () => showGoalFundsDialog(context, g, adding: true),
+                          onReduceFunds: () => showGoalFundsDialog(context, g, adding: false),
                           onEdit: () => _editGoalDialog(context, vm, g),
                           onTogglePaused: () {
                             g.isPaused = !g.isPaused;
@@ -131,9 +133,9 @@ class GoalsScreen extends StatelessWidget {
             children: [
               TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Goal name')),
               const SizedBox(height: 12),
-              TextField(controller: targetController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Target amount')),
+              TextField(controller: targetController, keyboardType: MoneyInput.keyboardType, inputFormatters: MoneyInput.formatters, decoration: const InputDecoration(labelText: 'Target amount')),
               const SizedBox(height: 12),
-              TextField(controller: currentController, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Current amount')),
+              TextField(controller: currentController, keyboardType: MoneyInput.keyboardType, inputFormatters: MoneyInput.formatters, decoration: const InputDecoration(labelText: 'Current amount')),
             ],
           ),
         ),
@@ -141,8 +143,8 @@ class GoalsScreen extends StatelessWidget {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           FilledButton(onPressed: () => Navigator.pop(ctx, {
             'name': nameController.text.trim(),
-            'target': double.tryParse(targetController.text) ?? 0,
-            'current': double.tryParse(currentController.text) ?? 0,
+            'target': MoneyInput.parse(targetController.text) ?? 0,
+            'current': MoneyInput.parse(currentController.text) ?? 0,
             'deadline': date,
           }), child: const Text('Save')),
         ],
@@ -169,7 +171,7 @@ class GoalsScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Delete "${goal.name}"?'),
-        content: const Text('This will remove the savings goal. Wallet balances will not be altered.'),
+        content: const Text('This removes the goal. Money you moved into it stays out of your wallets — withdraw it first if you want it back in a wallet.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
           FilledButton(
@@ -186,47 +188,9 @@ class GoalsScreen extends StatelessWidget {
     }
   }
 
-  Future<void> _showAddFundsDialog(BuildContext context, TrackerViewModel vm, SavingsGoal goal) async {
-    final ctrl = TextEditingController();
-    final amount = await showDialog<double>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Add funds to ${goal.name}'),
-        content: TextField(controller: ctrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), autofocus: true, decoration: const InputDecoration(labelText: 'Amount', hintText: 'e.g. 50000')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () { final v = double.tryParse(ctrl.text.replaceAll(',', '')); Navigator.pop(ctx, v); }, child: const Text('Add')),
-        ],
-      ),
-    );
-    if (amount == null || amount <= 0) return;
-    goal.currentAmount += amount;
-    await vm.updateSavingsGoal(goal);
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added ${amount.toStringAsFixed(0)} to ${goal.name}')));
-  }
-
-  Future<void> _showReduceFundsDialog(BuildContext context, TrackerViewModel vm, SavingsGoal goal) async {
-    final ctrl = TextEditingController();
-    final amount = await showDialog<double>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text('Reduce funds in ${goal.name}'),
-        content: TextField(controller: ctrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), autofocus: true, decoration: InputDecoration(labelText: 'Amount', hintText: 'Up to ${goal.currentAmount.toStringAsFixed(0)}')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () { final v = double.tryParse(ctrl.text.replaceAll(',', '')); Navigator.pop(ctx, v); }, child: const Text('Reduce')),
-        ],
-      ),
-    );
-    if (amount == null || amount <= 0) return;
-    goal.currentAmount = (goal.currentAmount - amount).clamp(0.0, goal.targetAmount == 0 ? goal.currentAmount : double.infinity);
-    await vm.updateSavingsGoal(goal);
-    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Reduced ${goal.name} by ${amount.toStringAsFixed(0)}')));
-  }
-
   Future<void> _editGoalDialog(BuildContext context, TrackerViewModel vm, SavingsGoal goal) async {
     final nameCtrl = TextEditingController(text: goal.name);
-    final targetCtrl = TextEditingController(text: goal.targetAmount.toStringAsFixed(goal.targetAmount % 1 == 0 ? 0 : 2));
+    final targetCtrl = TextEditingController(text: MoneyInput.text(goal.targetAmount));
     DateTime deadline = goal.deadline;
     Color color = Color(goal.color);
     const palette = [0xFF26A69A, 0xFF0B8457, 0xFF3B82F6, 0xFF8B5CF6, 0xFFEC4899, 0xFFF59E0B, 0xFFDC2626];
@@ -243,7 +207,7 @@ class GoalsScreen extends StatelessWidget {
               children: [
                 TextField(controller: nameCtrl, autofocus: true, decoration: const InputDecoration(labelText: 'Goal name')),
                 const SizedBox(height: 12),
-                TextField(controller: targetCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Target amount')),
+                TextField(controller: targetCtrl, keyboardType: MoneyInput.keyboardType, inputFormatters: MoneyInput.formatters, decoration: const InputDecoration(labelText: 'Target amount')),
                 const SizedBox(height: 12),
                 InkWell(
                   onTap: () async {

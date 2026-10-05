@@ -5,7 +5,10 @@ import 'package:provider/provider.dart';
 import '../../models/income_profile.dart';
 import '../../models/wallet.dart';
 import '../../viewmodels/tracker_view_model.dart';
+import '../format/money_format.dart';
 import '../theme/app_theme.dart';
+import '../format/money_input.dart';
+import '../widgets/wallet_editor.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -35,7 +38,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     _phoneCtrl = TextEditingController(text: user.phone);
     _emailCtrl = TextEditingController(text: user.email);
     _occupationCtrl = TextEditingController(text: user.occupation ?? '');
-    _monthlyIncomeCtrl = TextEditingController(text: user.expectedMonthlyIncome > 0 ? user.expectedMonthlyIncome.toStringAsFixed(0) : '');
+    _monthlyIncomeCtrl = TextEditingController(text: MoneyInput.text(user.expectedMonthlyIncome));
     _incomeSource = user.incomeSource.isEmpty ? 'salary' : user.incomeSource;
     _incomeFrequency = user.incomeFrequency;
     _isVariable = user.isVariable;
@@ -164,52 +167,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN updated. Required on every sign in.')));
       setState(() {});
     }
-  }
-
-  Future<void> _showAddWalletDialog(BuildContext context) async {
-    final nameCtrl = TextEditingController();
-    final balanceCtrl = TextEditingController();
-    WalletType selectedType = WalletType.cash;
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setState) => AlertDialog(
-          title: const Text('Add wallet'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: nameCtrl, decoration: InputDecoration(labelText: 'Wallet name', hintText: 'e.g. Equity Bank', filled: true, fillColor: AppColors.bg, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<WalletType>(
-                initialValue: selectedType,
-                decoration: InputDecoration(labelText: 'Type', filled: true, fillColor: AppColors.bg, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
-                items: WalletType.values.map((t) => DropdownMenuItem(value: t, child: Text(t.label))).toList(),
-                onChanged: (v) => setState(() => selectedType = v ?? WalletType.cash),
-              ),
-              const SizedBox(height: 12),
-              TextField(controller: balanceCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: InputDecoration(labelText: 'Initial balance (UGX)', hintText: '0', filled: true, fillColor: AppColors.bg, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none))),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Add')),
-          ],
-        ),
-      ),
-    );
-    if (result != true || nameCtrl.text.trim().isEmpty) return;
-    if (!context.mounted) return;
-    final wallet = Wallet(
-      id: 'wallet_${DateTime.now().millisecondsSinceEpoch}',
-      name: nameCtrl.text.trim(),
-      type: selectedType,
-      color: const Color(0xFF0B8457).toARGB32(),
-      openingBalance: double.tryParse(balanceCtrl.text.replaceAll(',', '')) ?? 0,
-      currentBalance: double.tryParse(balanceCtrl.text.replaceAll(',', '')) ?? 0,
-    );
-    await context.read<TrackerViewModel>().saveWallet(wallet);
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Wallet "${wallet.name}" added')));
   }
 
   @override
@@ -377,7 +334,8 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     const SizedBox(height: 6),
                     TextField(
                       controller: _monthlyIncomeCtrl,
-                      keyboardType: TextInputType.number,
+                      keyboardType: MoneyInput.keyboardType,
+                      inputFormatters: MoneyInput.formatters,
                       decoration: InputDecoration(
                         hintText: 'e.g. 2,500,000',
                         filled: true,
@@ -517,20 +475,24 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     const Text('Wallets', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                     const SizedBox(height: 8),
                     for (final w in vm.wallets)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Row(children: [
-                          Container(width: 32, height: 32, decoration: BoxDecoration(color: Color(w.color).withValues(alpha: 0.15), shape: BoxShape.circle), child: Icon(w.type.icon, color: Color(w.color), size: 16)),
-                          const SizedBox(width: 12),
-                          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(w.name, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)), Text('UGX ${w.currentBalance.toStringAsFixed(0)}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))])),
-                          const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 16),
-                        ]),
+                      InkWell(
+                        onTap: () => showWalletEditor(context, wallet: w),
+                        borderRadius: BorderRadius.circular(12),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(children: [
+                            Container(width: 32, height: 32, decoration: BoxDecoration(color: Color(w.color).withValues(alpha: 0.15), shape: BoxShape.circle), child: Icon(w.type.icon, color: Color(w.color), size: 16)),
+                            const SizedBox(width: 12),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(w.name, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)), Text(MoneyFormat.signed(w.currentBalance, symbol: vm.settings.currencySymbol), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))])),
+                            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 16),
+                          ]),
+                        ),
                       ),
                     const SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
-                        onPressed: () => _showAddWalletDialog(context),
+                        onPressed: () => showWalletEditor(context),
                         style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), side: const BorderSide(color: AppColors.divider)),
                         child: const Text('+ Add wallet', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
                       ),
