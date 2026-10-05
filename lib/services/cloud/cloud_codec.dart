@@ -76,6 +76,7 @@ class CloudCodec {
           'receiptPath': t.receiptPath,
           'isRecurring': t.isRecurring,
           'frequency': t.frequency.name,
+          'linkId': t.linkId,
         };
       case HiveBoxes.budgets:
         final b = value as Budget;
@@ -236,6 +237,7 @@ class CloudCodec {
           receiptPath: m['receiptPath'] as String?,
           isRecurring: m['isRecurring'] as bool?,
           frequency: _enum(Frequency.values, m['frequency'], Frequency.once),
+          linkId: m['linkId'] as String?,
         );
       case HiveBoxes.budgets:
         return Budget(

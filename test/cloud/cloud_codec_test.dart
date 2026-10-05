@@ -32,7 +32,7 @@ Map<String, Object> _samples() => {
       HiveBoxes.transactions: TxRecord(
         id: 't1', type: TxType.transfer, amount: 12500, walletId: 'w1', toWalletId: 'w2',
         categoryId: 'c1', note: 'rent', dateTime: _t1, receiptPath: '/r.jpg',
-        isRecurring: true, frequency: Frequency.quarterly,
+        isRecurring: true, frequency: Frequency.quarterly, linkId: 'goal:g1',
       ),
       HiveBoxes.budgets: Budget(
         id: 'b1', categoryId: 'c1', amount: 300000, periodStart: _t1,
