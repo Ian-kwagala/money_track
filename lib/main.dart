@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/money_repository.dart';
+import 'services/shorebird_update_service.dart';
 import 'ui/auth/lock_screen.dart';
 import 'ui/auto_capture/auto_capture_screen.dart';
 import 'ui/bills/bills_screen.dart';
@@ -18,18 +19,28 @@ import 'viewmodels/tracker_view_model.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   final repo = MoneyRepository();
-  runApp(MoneyTrackApp(repo: repo));
+  final updateService = ShorebirdUpdateService();
+  // Fire-and-forget: reads the installed patch number and, if a newer one
+  // exists, downloads it in the background. Never blocks app startup and
+  // never applies mid-session — see ShorebirdUpdateService for details.
+  updateService.loadCurrentPatch();
+  updateService.checkForUpdate();
+  runApp(MoneyTrackApp(repo: repo, updateService: updateService));
 }
 
 class MoneyTrackApp extends StatelessWidget {
   final MoneyRepository repo;
+  final ShorebirdUpdateService updateService;
 
-  const MoneyTrackApp({super.key, required this.repo});
+  const MoneyTrackApp({super.key, required this.repo, required this.updateService});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => TrackerViewModel(repo),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => TrackerViewModel(repo)),
+        ChangeNotifierProvider.value(value: updateService),
+      ],
       child: Consumer<TrackerViewModel>(
         builder: (context, vm, _) => MaterialApp(
           title: 'MoneyTrack',
