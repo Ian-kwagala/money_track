@@ -86,8 +86,13 @@ class MoneyRepository {
     }
   }
 
-  Future<void> init() async {
-    await Hive.initFlutter();
+  /// [hivePath] is only for tests; the app uses the platform default.
+  Future<void> init({String? hivePath}) async {
+    if (hivePath != null) {
+      Hive.init(hivePath);
+    } else {
+      await Hive.initFlutter();
+    }
     _registerAdapterSafe(WalletTypeAdapter());
     _registerAdapterSafe(WalletAdapter());
     _registerAdapterSafe(TxTypeAdapter());
@@ -374,4 +379,48 @@ class MoneyRepository {
   Future<void> addAlertRule(AlertRule rule) => _alertRules.put(rule.id, rule);
 
   Future<void> deleteAlertRule(String id) => _alertRules.delete(id);
+
+  /// Puts back the default categories and wallets if a box is empty, e.g.
+  /// after switching to a brand-new account that has no backup yet.
+  Future<void> restoreDefaultsIfEmpty() async {
+    if (_categories.isEmpty) {
+      for (final c in [...SeedData.expenseCategories(), ...SeedData.incomeCategories()]) {
+        await _categories.put(c.id, c);
+      }
+    }
+    if (_wallets.isEmpty) {
+      for (final w in SeedData.wallets()) {
+        await _wallets.put(w.id, w);
+      }
+    }
+  }
+
+  /// Raw box access for the cloud sync layer, keyed by [HiveBoxes] name.
+  Box boxFor(String name) {
+    switch (name) {
+      case HiveBoxes.wallets:
+        return _wallets;
+      case HiveBoxes.categories:
+        return _categories;
+      case HiveBoxes.transactions:
+        return _transactions;
+      case HiveBoxes.budgets:
+        return _budgets;
+      case HiveBoxes.settings:
+        return _settings;
+      case HiveBoxes.users:
+        return _users;
+      case HiveBoxes.savingsGoals:
+        return _savingsGoals;
+      case HiveBoxes.bills:
+        return _bills;
+      case HiveBoxes.debts:
+        return _debts;
+      case HiveBoxes.recurrenceRules:
+        return _recurrenceRules;
+      case HiveBoxes.alertRules:
+        return _alertRules;
+    }
+    throw ArgumentError('Unknown box "$name"');
+  }
 }

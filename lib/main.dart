@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/money_repository.dart';
+import 'services/cloud/announcement_service.dart';
+import 'services/cloud/auth_service.dart';
+import 'services/cloud/connectivity_service.dart';
+import 'services/cloud/firebase_bootstrap.dart';
+import 'services/cloud/sync_service.dart';
 import 'services/shorebird_update_service.dart';
 import 'ui/auth/lock_screen.dart';
 import 'ui/auto_capture/auto_capture_screen.dart';
@@ -16,48 +21,60 @@ import 'ui/splash/splash_screen.dart';
 import 'ui/theme/app_theme.dart';
 import 'viewmodels/tracker_view_model.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Local-only and fast (no network). If Firebase isn't configured or fails,
+  // the app runs exactly as before: offline on Hive, cloud UI hidden.
+  await FirebaseBootstrap.init();
+
   final repo = MoneyRepository();
+  final connectivity = ConnectivityService();
+  final auth = AuthService();
+  final sync = SyncService(repo: repo, auth: auth, connectivity: connectivity);
+  final viewModel = TrackerViewModel(repo, onReady: sync.start);
+  sync.onRemoteChangesApplied = viewModel.refreshFromStorage;
+
   final updateService = ShorebirdUpdateService();
   // Fire-and-forget: reads the installed patch number and, if a newer one
   // exists, downloads it in the background. Never blocks app startup and
   // never applies mid-session — see ShorebirdUpdateService for details.
   updateService.loadCurrentPatch();
   updateService.checkForUpdate();
-  runApp(MoneyTrackApp(repo: repo, updateService: updateService));
+
+  runApp(MultiProvider(
+    providers: [
+      ChangeNotifierProvider.value(value: viewModel),
+      ChangeNotifierProvider.value(value: updateService),
+      ChangeNotifierProvider.value(value: connectivity),
+      ChangeNotifierProvider.value(value: auth),
+      ChangeNotifierProvider.value(value: sync),
+      ChangeNotifierProvider(create: (_) => AnnouncementService()),
+    ],
+    child: const MoneyTrackApp(),
+  ));
 }
 
 class MoneyTrackApp extends StatelessWidget {
-  final MoneyRepository repo;
-  final ShorebirdUpdateService updateService;
-
-  const MoneyTrackApp({super.key, required this.repo, required this.updateService});
+  const MoneyTrackApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => TrackerViewModel(repo)),
-        ChangeNotifierProvider.value(value: updateService),
-      ],
-      child: Consumer<TrackerViewModel>(
-        builder: (context, vm, _) => MaterialApp(
-          title: 'MoneyTrack',
-          debugShowCheckedModeBanner: false,
-          theme: vm.initialized
-              ? (vm.settings.darkMode ? AppTheme.dark() : AppTheme.light())
-              : AppTheme.light(),
-          routes: {
-            '/daily': (_) => const DailySpendScreen(),
-            '/recurring': (_) => const BillsScreen(),
-            '/goals': (_) => const GoalsScreen(),
-            '/categories': (_) => const CategoryManagerScreen(),
-            '/capture': (_) => const AutoCaptureScreen(),
-            '/analytics': (_) => const ReportsScreen(),
-          },
-          home: const _RootRouter(),
-        ),
+    return Consumer<TrackerViewModel>(
+      builder: (context, vm, _) => MaterialApp(
+        title: 'MoneyTrack',
+        debugShowCheckedModeBanner: false,
+        theme: vm.initialized
+            ? (vm.settings.darkMode ? AppTheme.dark() : AppTheme.light())
+            : AppTheme.light(),
+        routes: {
+          '/daily': (_) => const DailySpendScreen(),
+          '/recurring': (_) => const BillsScreen(),
+          '/goals': (_) => const GoalsScreen(),
+          '/categories': (_) => const CategoryManagerScreen(),
+          '/capture': (_) => const AutoCaptureScreen(),
+          '/analytics': (_) => const ReportsScreen(),
+        },
+        home: const _RootRouter(),
       ),
     );
   }

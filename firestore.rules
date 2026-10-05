@@ -1,0 +1,93 @@
+rules_version = '2';
+
+// Security rules for MoneyTrack. Deploy with: firebase deploy --only firestore
+// Tested by tools/firestore-rules-test (see FIREBASE_SETUP.md).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    // Granted with tools/admin/set-admin.js. A custom claim lives in the
+    // signed ID token, so users cannot grant it to themselves.
+    function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+
+    function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
+
+    function syncedCollection(name) {
+      return name in ['wallets', 'categories', 'transactions', 'budgets', 'settings', 'users',
+                      'savings_goals', 'bills', 'debts', 'recurrence_rules', 'alert_rules'];
+    }
+
+    // ---- Per-user data --------------------------------------------------
+
+    // Profile summary written by the app (shown in the admin dashboard).
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create, update: if isOwner(uid) && validProfile(uid);
+      allow delete: if false;
+
+      function validProfile(uid) {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['uid', 'email', 'displayName', 'phone', 'occupation', 'incomeType',
+                                 'currencyCode', 'platform', 'createdAt', 'lastSeenAt', 'counts'])
+          && d.uid == uid
+          // The email admins see must be the account's real, verified-by-auth email.
+          && (!('email' in d) || d.email == request.auth.token.get('email', null));
+      }
+
+      // Records synced from the phone's local database. Admins can READ them
+      // to help a user, but nobody except the owner can write them.
+      match /{collection}/{docId} {
+        allow read: if (isOwner(uid) || isAdmin()) && syncedCollection(collection);
+        allow create: if isOwner(uid) && syncedCollection(collection) && validRecord();
+        // Last-write-wins on the time of the edit: an older edit that was
+        // queued offline can't overwrite a newer one already on the server.
+        allow update: if isOwner(uid) && syncedCollection(collection) && validRecord()
+          && request.resource.data.updatedAtMs >= resource.data.updatedAtMs;
+        // Deletes are written as tombstones ({deleted: true}) so they reach
+        // the user's other devices; real deletes only via the Admin SDK.
+        allow delete: if false;
+      }
+    }
+
+    function validRecord() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['data', 'deleted', 'updatedAtMs', 'updatedAt'])
+        && d.updatedAtMs is int
+        && d.deleted is bool
+        && (d.deleted == true || d.data is map);
+    }
+
+    // ---- Announcements --------------------------------------------------
+
+    // Anyone can read live announcements (the app shows them even to users
+    // without an account); only admins see drafts or change anything.
+    match /announcements/{id} {
+      allow read: if resource.data.active == true || isAdmin();
+      allow create, update: if isAdmin() && validAnnouncement();
+      allow delete: if isAdmin();
+
+      function validAnnouncement() {
+        let d = request.resource.data;
+        return d.keys().hasOnly(['title', 'body', 'level', 'active', 'createdAt', 'createdBy', 'expiresAt'])
+          && d.title is string && d.title.size() <= 200
+          && d.body is string && d.body.size() <= 2000
+          && d.level in ['info', 'warning', 'update']
+          && d.active is bool;
+      }
+    }
+
+    // ---- Admin audit log ------------------------------------------------
+
+    // Every time an admin opens a user's data, the dashboard records it here.
+    // Append-only: entries can't be edited or removed, and must be stamped
+    // with the server's own time by the admin who is actually signed in.
+    match /admin_audit/{id} {
+      allow create: if isAdmin()
+        && request.resource.data.adminUid == request.auth.uid
+        && request.resource.data.at == request.time;
+      allow read: if isAdmin();
+      allow update, delete: if false;
+    }
+  }
+}

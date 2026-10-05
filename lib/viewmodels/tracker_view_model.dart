@@ -19,16 +19,24 @@ class TrackerViewModel extends ChangeNotifier {
   bool initialized = false;
   bool _isUnlocked = false;
 
-  TrackerViewModel(this.repo);
+  /// Runs once local storage is open (used to start cloud sync). Not awaited,
+  /// so it can never delay the app becoming usable.
+  final Future<void> Function()? onReady;
+
+  TrackerViewModel(this.repo, {this.onReady});
 
   String? initError;
   bool get hasInitError => initError != null;
+
+  /// Re-reads everything from local storage (e.g. after a cloud sync wrote to it).
+  void refreshFromStorage() => notifyListeners();
 
   Future<void> init() async {
     try {
       initError = null;
       await repo.init();
       initialized = true;
+      onReady?.call().catchError((Object e) => debugPrint('onReady failed: $e'));
     } catch (e, st) {
       debugPrint('Error initializing MoneyRepository: $e\n$st');
       initError = 'Failed to load local database: ${e.toString()}';

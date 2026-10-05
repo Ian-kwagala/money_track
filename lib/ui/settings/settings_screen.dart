@@ -3,7 +3,11 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/wallet.dart';
+import '../../services/cloud/auth_service.dart';
+import '../../services/cloud/connectivity_service.dart';
+import '../../services/cloud/sync_service.dart';
 import '../../services/shorebird_update_service.dart';
+import '../account/cloud_account_screen.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../format/money_format.dart';
 import '../home_shell.dart';
@@ -148,6 +152,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final vm = context.watch<TrackerViewModel>();
     final update = context.watch<ShorebirdUpdateService>();
+    final auth = context.watch<AuthService>();
+    final sync = context.watch<SyncService>();
+    final online = context.watch<ConnectivityService>().isOnline;
     final s = vm.settings;
     final symbol = s.currencySymbol;
 
@@ -164,6 +171,59 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Cloud backup & sync (optional account)
+                  Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CloudAccountScreen())),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: const BoxDecoration(color: AppColors.muted, shape: BoxShape.circle),
+                              child: Icon(
+                                !auth.isAvailable
+                                    ? Icons.cloud_off_outlined
+                                    : auth.isSignedIn
+                                        ? (online ? Icons.cloud_done_outlined : Icons.cloud_queue_outlined)
+                                        : Icons.cloud_upload_outlined,
+                                color: AppColors.primary,
+                                size: 18,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Backup & sync', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                                  Text(
+                                    !auth.isAvailable
+                                        ? 'Not set up in this build \u2014 data stays on this phone'
+                                        : sync.status == SyncStatus.needsAccountChoice
+                                            ? 'Action needed: account mismatch'
+                                            : !auth.isSignedIn
+                                                ? 'Optional \u2014 sign in to back up your data'
+                                                : !online
+                                                    ? 'Offline \u2014 ${sync.pendingCount} change(s) waiting'
+                                                    : 'Signed in as ${auth.email ?? ''}',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right, color: AppColors.mutedForeground, size: 18),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
                   // Wallets
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),

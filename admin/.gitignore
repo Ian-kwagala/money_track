@@ -44,14 +44,5 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Kotlin compiler daemon session files
-.kotlin/
-**/.kotlin/
-
-# Firebase / admin tooling secrets (never commit service account keys)
-service-account*.json
-**/serviceAccount*.json
-**/node_modules/
-.firebase/
-firebase-debug.log
-firestore-debug.log
+# Widget Preview related
+.widget_preview/
