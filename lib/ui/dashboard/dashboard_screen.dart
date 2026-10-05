@@ -6,6 +6,7 @@ import '../home_shell.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 import '../../viewmodels/tracker_view_model.dart';
+import '../widgets/announcement_banner.dart';
 import '../widgets/empty_state.dart';
 import '../../models/bill.dart';
 import '../../models/transaction.dart';
@@ -111,6 +112,7 @@ class DashboardScreen extends StatelessWidget {
               back: false,
             ),
           ),
+          const SliverToBoxAdapter(child: AnnouncementBanner()),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
