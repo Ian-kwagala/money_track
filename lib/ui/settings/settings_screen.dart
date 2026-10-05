@@ -3,6 +3,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/wallet.dart';
+import '../../services/shorebird_update_service.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../format/money_format.dart';
 import '../home_shell.dart';
@@ -146,6 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<TrackerViewModel>();
+    final update = context.watch<ShorebirdUpdateService>();
     final s = vm.settings;
     final symbol = s.currencySymbol;
 
@@ -351,6 +353,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           InkWell(
                             onTap: () => Navigator.pushNamed(context, '/categories'),
                             child: const Text('Manage categories \u2192', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 11)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Software updates (Shorebird code push)
+                  Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.system_update_alt_outlined, color: AppColors.primary, size: 18),
+                              const SizedBox(width: 8),
+                              const Text('Software updates', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            !update.isAvailable
+                                ? 'Not available in this build.'
+                                : update.currentPatch != null
+                                    ? 'Patch ${update.currentPatch!.number} installed'
+                                    : 'Base release — no patches installed yet',
+                            style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                          ),
+                          if (update.state == ShorebirdUpdateState.restartRequired) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+                              child: const Text('An update has been downloaded. Close and reopen MoneyTrack to apply it.', style: TextStyle(fontSize: 11, color: AppColors.textPrimary)),
+                            ),
+                          ],
+                          if (update.state == ShorebirdUpdateState.error && update.errorMessage != null) ...[
+                            const SizedBox(height: 10),
+                            Text("Couldn't check for updates: ${update.errorMessage}", style: const TextStyle(fontSize: 11, color: AppColors.danger)),
+                          ],
+                          const SizedBox(height: 12),
+                          InkWell(
+                            onTap: (!update.isAvailable || update.isBusy) ? null : () => update.checkForUpdate(),
+                            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              decoration: BoxDecoration(color: AppColors.muted, borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+                              child: Center(
+                                child: update.isBusy
+                                    ? const SizedBox(height: 14, width: 14, child: CircularProgressIndicator(strokeWidth: 2))
+                                    : Text(
+                                        'Check for updates',
+                                        style: TextStyle(
+                                          color: update.isAvailable ? AppColors.primary : AppColors.mutedForeground,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                              ),
+                            ),
                           ),
                         ],
                       ),
