@@ -81,6 +81,7 @@ flutter:
     - assets/app_icon.png
     - assets/app_icon_foreground.png
     - assets/splash/loading_bg.png
+    - shorebird.yaml
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 
