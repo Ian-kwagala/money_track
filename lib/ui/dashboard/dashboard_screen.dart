@@ -7,6 +7,7 @@ import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../widgets/announcement_banner.dart';
+import '../widgets/capture_review_banner.dart';
 import '../widgets/empty_state.dart';
 import '../../models/bill.dart';
 import '../../models/transaction.dart';
@@ -113,6 +114,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
           const SliverToBoxAdapter(child: AnnouncementBanner()),
+          const SliverToBoxAdapter(child: CaptureReviewBanner()),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),

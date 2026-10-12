@@ -10,4 +10,8 @@ class HiveBoxes {
   static const debts = 'debts';
   static const recurrenceRules = 'recurrence_rules';
   static const alertRules = 'alert_rules';
+
+  // Auto-capture. Local to this phone: never synced (see CaptureService).
+  static const capturedSms = 'captured_sms';
+  static const captureMeta = 'capture_meta';
 }

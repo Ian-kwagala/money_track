@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/money_repository.dart';
+import 'services/capture/capture_service.dart';
+import 'services/capture/sms_bridge.dart';
 import 'services/cloud/announcement_service.dart';
 import 'services/cloud/auth_service.dart';
 import 'services/cloud/connectivity_service.dart';
@@ -33,7 +35,9 @@ Future<void> main() async {
   final connectivity = ConnectivityService();
   final auth = AuthService();
   final sync = SyncService(repo: repo, auth: auth, connectivity: connectivity);
-  final viewModel = TrackerViewModel(repo, onReady: sync.start);
+  late final CaptureService capture;
+  final viewModel = TrackerViewModel(repo, onReady: () => Future.wait([sync.start(), capture.start()]));
+  capture = CaptureService(vm: viewModel, bridge: SmsBridge.platform());
   sync.onRemoteChangesApplied = viewModel.refreshFromStorage;
 
   final updateService = ShorebirdUpdateService();
@@ -50,6 +54,7 @@ Future<void> main() async {
       ChangeNotifierProvider.value(value: connectivity),
       ChangeNotifierProvider.value(value: auth),
       ChangeNotifierProvider.value(value: sync),
+      ChangeNotifierProvider.value(value: capture),
       ChangeNotifierProvider(create: (_) => AnnouncementService()),
     ],
     child: const MoneyTrackApp(),

@@ -6,17 +6,20 @@ import '../../services/capture/money_message_parser.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 
-/// Paste an SMS and see what auto-capture reads from it. Nothing is saved:
-/// it's for checking the parser against real messages before automatic
-/// reading is switched on.
+/// Paste an SMS and see what auto-capture reads from it. Nothing is saved
+/// unless the user taps "Add to review list" ([onAdd]) — useful on iPhone,
+/// for older messages, and for checking the parser against a real message.
 class CheckMessageSheet extends StatefulWidget {
-  const CheckMessageSheet({super.key});
+  /// Adds the message to the review list; false if it's already there.
+  final Future<bool> Function(String body)? onAdd;
 
-  static Future<void> show(BuildContext context) => showModalBottomSheet(
+  const CheckMessageSheet({super.key, this.onAdd});
+
+  static Future<void> show(BuildContext context, {Future<bool> Function(String body)? onAdd}) => showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
-        builder: (_) => const CheckMessageSheet(),
+        builder: (_) => CheckMessageSheet(onAdd: onAdd),
       );
 
   @override
@@ -30,6 +33,14 @@ class _CheckMessageSheetState extends State<CheckMessageSheet> {
   void dispose() {
     _ctrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _add() async {
+    final added = await widget.onAdd!(_ctrl.text);
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
+    messenger.showSnackBar(SnackBar(content: Text(added ? 'Added to your review list' : 'Already in your list')));
   }
 
   Future<void> _paste() async {
@@ -60,9 +71,11 @@ class _CheckMessageSheetState extends State<CheckMessageSheet> {
               const Text('Check a message',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
               const SizedBox(height: 6),
-              const Text(
-                'Paste an MTN, Airtel or bank SMS to see what MoneyTrack reads from it. Nothing is saved.',
-                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              Text(
+                widget.onAdd == null
+                    ? 'Paste an MTN, Airtel or bank SMS to see what MoneyTrack reads from it. Nothing is saved.'
+                    : 'Paste an MTN, Airtel or bank SMS to see what MoneyTrack reads from it, then add it to your review list.',
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -93,6 +106,13 @@ class _CheckMessageSheetState extends State<CheckMessageSheet> {
               if (text.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 parsed == null ? const _NotRecognised() : _ParsedCard(parsed),
+                if (parsed != null && widget.onAdd != null) ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(onPressed: _add, child: const Text('Add to review list')),
+                  ),
+                ],
               ],
             ],
           ),

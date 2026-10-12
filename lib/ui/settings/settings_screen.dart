@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/wallet.dart';
+import '../../services/capture/capture_service.dart';
 import '../../services/cloud/auth_service.dart';
 import '../../services/cloud/connectivity_service.dart';
 import '../../services/cloud/sync_service.dart';
 import '../../services/shorebird_update_service.dart';
 import '../account/cloud_account_screen.dart';
+import '../auto_capture/turn_on_flow.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../format/money_format.dart';
 import '../home_shell.dart';
@@ -24,47 +25,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  late bool _notifAccess;
-
-  @override
-  void initState() {
-    super.initState();
-    // Notification preferences live in AppSettings; only OS access is local.
-    _notifAccess = true;
-  }
-
-  Future<void> _requestNotificationAccess(bool value) async {
-    if (!value) {
-      setState(() => _notifAccess = false);
-      return;
-    }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Allow notification access?'),
-        content: const Text('MoneyTrack can read money alerts your phone already receives \u2014 MTN, Airtel and bank messages \u2014 so transactions fill themselves in. Nothing is saved until you confirm it.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Deny')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Allow')),
-        ],
-      ),
-    );
-    if (confirmed != true) {
-      setState(() => _notifAccess = false);
-      return;
-    }
-    final statuses = await [Permission.notification].request();
-    final granted = statuses[Permission.notification]?.isGranted == true;
-    if (mounted) {
-      setState(() => _notifAccess = granted);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(granted ? 'Notification access granted' : 'Permission denied \u2014 you can enable it in system settings')));
-      if (!granted && statuses[Permission.notification]?.isPermanentlyDenied == true) {
-        final open = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text('Permission required'), content: const Text('Please enable notification access and SMS in system settings to use Auto-capture.'), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Open settings'))]));
-        if (open == true) await openAppSettings();
-      }
-    }
-  }
-
   Future<void> _editDailyBudgetDialog(BuildContext context, TrackerViewModel vm) async {
     final ctrl = TextEditingController(text: vm.settings.dailyBudget == null ? '' : MoneyInput.text(vm.settings.dailyBudget!));
     final result = await showDialog<double>(
@@ -271,40 +231,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Notification access
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.verified_user_outlined, color: AppColors.primary, size: 18),
-                              const SizedBox(width: 8),
-                              const Text('Notification access', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  // Auto-capture
+                  Builder(builder: (context) {
+                    final capture = context.watch<CaptureService>();
+                    final on = capture.isOn && !capture.needsPermission;
+                    final n = capture.pendingCount;
+                    return Card(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.sms_outlined, color: AppColors.primary, size: 18),
+                                const SizedBox(width: 8),
+                                const Text('Auto-capture from SMS', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              capture.isSupported
+                                  ? 'MoneyTrack reads the money SMS your phone already receives \u2014 MTN, Airtel and bank messages \u2014 so transactions fill themselves in. Messages are read on this phone only, and nothing is recorded until you confirm it.'
+                                  : 'Reading SMS only works on Android. You can still paste a money SMS on the Auto-capture screen.',
+                              style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground, height: 1.5),
+                            ),
+                            if (capture.isSupported) ...[
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      capture.needsPermission ? 'SMS permission is off' : (on ? 'On' : 'Off'),
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                    ),
+                                  ),
+                                  _Toggle(value: on, onChanged: (v) => v ? turnOnAutoCapture(context) : capture.turnOff()),
+                                ],
+                              ),
                             ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text('With permission, MoneyTrack reads the money alerts your phone already receives \u2014 MTN, Airtel and bank messages \u2014 so transactions fill themselves in instead of you typing every one. Alerts are read on your phone only, and nothing is recorded until you confirm it.',
-                              style: TextStyle(fontSize: 11, color: AppColors.mutedForeground, height: 1.5)),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(child: Text(_notifAccess ? 'Allowed' : 'Not allowed', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
-                              _Toggle(value: _notifAccess, onChanged: _requestNotificationAccess),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          InkWell(
-                            onTap: () => Navigator.pushNamed(context, '/capture'),
-                            child: const Text('Review detected transactions \u2192', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 11)),
-                          ),
-                        ],
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () => Navigator.pushNamed(context, '/capture'),
+                              child: Text(n == 0 ? 'Open auto-capture \u2192' : 'Review $n detected transaction${n == 1 ? '' : 's'} \u2192', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 11)),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }),
                   const SizedBox(height: 12),
 
                   // Dark mode
