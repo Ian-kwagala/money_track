@@ -61,29 +61,6 @@ class MoneyTrackApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
-    return ChangeNotifierProvider(
-      create: (_) => TrackerViewModel(repo),
-      child: Consumer<TrackerViewModel>(
-        builder: (context, vm, _) => MaterialApp(
-          title: 'MoneyTrack',
-          debugShowCheckedModeBanner: false,
-          theme: vm.initialized
-              ? (vm.settings.darkMode ? AppTheme.dark() : AppTheme.light())
-              : AppTheme.light(),
-          routes: {
-            '/daily': (_) => const DailySpendScreen(),
-            '/recurring': (_) => const BillsScreen(),
-            '/goals': (_) => const GoalsScreen(),
-            '/categories': (_) => const CategoryManagerScreen(),
-            '/capture': (_) => const AutoCaptureScreen(),
-            '/analytics': (_) => const ReportsScreen(),
-            '/transactions': (_) => const ExpensesScreen(),
-            '/debts': (_) => const DebtsScreen(),
-          },
-          home: const _RootRouter(),
-        ),
-=======
     return Consumer<TrackerViewModel>(
       builder: (context, vm, _) => MaterialApp(
         title: 'MoneyTrack',
@@ -98,9 +75,10 @@ class MoneyTrackApp extends StatelessWidget {
           '/categories': (_) => const CategoryManagerScreen(),
           '/capture': (_) => const AutoCaptureScreen(),
           '/analytics': (_) => const ReportsScreen(),
+          '/transactions': (_) => const ExpensesScreen(),
+          '/debts': (_) => const DebtsScreen(),
         },
         home: const _RootRouter(),
->>>>>>> 2ef2dfaf7334db2cbbf13ff53669e62d330d6f69
       ),
     );
   }
