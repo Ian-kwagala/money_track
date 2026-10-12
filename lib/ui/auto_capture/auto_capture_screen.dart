@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../home_shell.dart';
 import '../theme/app_theme.dart';
 import '../widgets/empty_state.dart';
+import 'check_message_sheet.dart';
 
 class AutoCaptureScreen extends StatelessWidget {
   const AutoCaptureScreen({super.key});
@@ -48,7 +49,7 @@ class AutoCaptureScreen extends StatelessWidget {
                   const EmptyState(
                     icon: Icons.sms_outlined,
                     title: 'No transactions detected',
-                    message: 'Allow notification access in Settings, then money alerts from MTN, Airtel and banks will appear here for you to confirm.',
+                    message: 'Automatic reading of your money SMS arrives in the next app update. Until then, tap Check a message to try one of your MTN, Airtel or bank messages.',
                   ),
                 ],
               ),
@@ -56,12 +57,12 @@ class AutoCaptureScreen extends StatelessWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Quick add coming soon'))),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => CheckMessageSheet.show(context),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.content_paste_search),
+        label: const Text('Check a message'),
       ),
     );
   }
