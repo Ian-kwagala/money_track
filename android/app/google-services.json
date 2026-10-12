@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "118748064883",
+    "project_id": "moneytracker-cb825",
+    "storage_bucket": "moneytracker-cb825.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:118748064883:android:dfd4f062e7f990353d8e06",
+        "android_client_info": {
+          "package_name": "com.moneytrack.money_track"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFReOuPCWt_jTFDIVQbZWzIhjnEG0MstE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
