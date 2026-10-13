@@ -11,6 +11,7 @@ import '../../viewmodels/tracker_view_model.dart';
 import '../format/money_format.dart';
 import '../format/money_input.dart';
 import '../theme/app_theme.dart';
+import '../widgets/action_button.dart';
 
 /// What happened in a [CaptureReviewSheet].
 class CaptureOutcome {
@@ -141,12 +142,20 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
     });
   }
 
-  Future<void> _confirm() async {
+  BalanceMismatch? _mismatch;
+
+  /// Saves; the button then shows its check and [_close] runs.
+  Future<bool> _confirm() async {
+    if (!_d.isComplete) return false;
     setState(() => _busy = true);
     final service = context.read<CaptureService>();
     _d.note = _note.text.trim().isEmpty ? _d.note : _note.text.trim();
-    final mismatch = await service.confirm(widget.capture, _d);
-    if (mounted) Navigator.pop(context, CaptureOutcome.confirmed(mismatch));
+    _mismatch = await service.confirm(widget.capture, _d);
+    return true;
+  }
+
+  void _close() {
+    if (mounted) Navigator.pop(context, CaptureOutcome.confirmed(_mismatch));
   }
 
   Future<void> _ignore() async {
@@ -321,6 +330,19 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
                 child: Text(widget.capture.record.body, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, height: 1.4)),
               ),
               const SizedBox(height: 20),
+              if (_d.missing != null) ...[
+                Row(
+                  children: [
+                    const Icon(Icons.info_outline, size: 16, color: AppColors.warning),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text('${_d.missing} to confirm',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
               // Buttons get explicit sizes: the app theme gives filled buttons
               // an unlimited minimum width, which a Row can't lay out.
               Row(
@@ -335,14 +357,13 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
                   const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
-                    child: FilledButton.icon(
-                      onPressed: _busy || !_d.isComplete ? null : _confirm,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 48),
-                        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
-                      ),
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text('Confirm'),
+                    child: ActionButton(
+                      label: 'Confirm',
+                      doneLabel: 'Saved',
+                      icon: Icons.check,
+                      height: 48,
+                      onPressed: _d.isComplete ? _confirm : null,
+                      onDone: _close,
                     ),
                   ),
                 ],

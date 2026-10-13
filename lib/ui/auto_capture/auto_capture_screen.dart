@@ -4,11 +4,13 @@ import 'package:provider/provider.dart';
 import '../../models/captured_sms.dart';
 import '../../models/transaction.dart';
 import '../../services/capture/capture_service.dart';
+import '../../services/capture/capture_suggestions.dart';
 import '../../services/capture/sms_bridge.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../format/money_format.dart';
 import '../home_shell.dart';
 import '../theme/app_theme.dart';
+import '../widgets/action_button.dart';
 import '../widgets/empty_state.dart';
 import 'capture_review_sheet.dart';
 import 'check_message_sheet.dart';
@@ -78,10 +80,15 @@ class AutoCaptureScreen extends StatelessWidget {
                         ),
                       ),
                     ],
-                    for (final c in pending) ...[
-                      _CaptureCard(capture: c),
-                      const SizedBox(height: 12),
-                    ],
+                    _CaptureList(
+                      pending: pending,
+                      itemBuilder: (c) => _CaptureCard(
+                        capture: c,
+                        onConfirm: () => _confirm(context, c),
+                        onEdit: () => _review(context, c),
+                        onIgnore: () => _ignore(context, c),
+                      ),
+                    ),
                     if (pending.isEmpty && (capture.isOn || !capture.isSupported)) ...[
                       const SizedBox(height: 24),
                       const EmptyState(
@@ -119,12 +126,66 @@ class AutoCaptureScreen extends StatelessWidget {
 // Actions
 // -----------------------------------------------------------------------------
 
-Future<void> _confirm(BuildContext context, Capture c) async {
+/// The card's Confirm. Saves straight away when there's nothing to ask (the
+/// button shows its spinner and check). Otherwise it asks first, and the
+/// button returns to normal rather than spinning behind a question.
+Future<bool> _confirm(BuildContext context, Capture c) async {
   final service = context.read<CaptureService>();
   final draft = service.draftFor(c);
-  if (!draft.isComplete || service.possibleDuplicate(c, draft) != null) return _review(context, c);
-  final mismatch = await service.confirm(c, draft);
-  if (context.mounted) await _afterConfirm(context, c, mismatch);
+  if (draft.isComplete && service.possibleDuplicate(c, draft) == null) {
+    await _save(context, c, draft);
+    return true;
+  }
+  _askThenConfirm(context, c, draft);
+  return false;
+}
+
+/// Asks only for what's missing (a category is one tap in a picker; anything
+/// else opens the full editor) and whether a likely duplicate is one, then saves.
+Future<void> _askThenConfirm(BuildContext context, Capture c, CaptureDraft draft) async {
+  final service = context.read<CaptureService>();
+  final onlyCategoryMissing = draft.missing == 'Pick a category';
+  if (draft.missing != null && !onlyCategoryMissing) return _review(context, c);
+  if (onlyCategoryMissing) {
+    final picked = await _CategoryPicker.show(context, c, draft.type);
+    if (picked == null || !context.mounted) return;
+    if (picked == _CategoryPicker.moreOptions) return _review(context, c);
+    draft.categoryId = picked;
+  }
+  final duplicate = service.possibleDuplicate(c, draft);
+  if (duplicate != null) {
+    final save = await _askIfDuplicate(context, duplicate);
+    if (save == null || !context.mounted) return;
+    if (!save) return _ignore(context, c);
+  }
+  await _save(context, c, draft);
+}
+
+Future<void> _save(BuildContext context, Capture c, CaptureDraft draft) async {
+  final mismatch = await context.read<CaptureService>().confirm(c, draft);
+  // Not awaited: the snackbar and any balance question follow the card's exit.
+  if (context.mounted) _afterConfirm(context, c, mismatch);
+}
+
+/// True to save anyway, false to ignore the SMS, null to decide later.
+Future<bool?> _askIfDuplicate(BuildContext context, TxRecord existing) {
+  final symbol = context.read<TrackerViewModel>().settings.currencySymbol;
+  return showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Already recorded?'),
+      content: Text(
+        'You already have a ${captureMoney(existing.amount, symbol)} ${existing.type.name} on '
+        '${MoneyFormat.shortDay(existing.dateTime)}${existing.note.isEmpty ? '' : ' ("${existing.note}")'}. '
+        'If this SMS is the same transaction, ignore it so it isn\'t counted twice.',
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Not now')),
+        TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save anyway')),
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Ignore SMS')),
+      ],
+    ),
+  );
 }
 
 Future<void> _review(BuildContext context, Capture c) async {
@@ -144,7 +205,10 @@ Future<void> _ignore(BuildContext context, Capture c) async {
 
 Future<void> _afterConfirm(BuildContext context, Capture c, BalanceMismatch? mismatch) async {
   _showUndo(context, c, 'Saved');
-  if (mismatch != null) await _offerBalanceMatch(context, [mismatch]);
+  if (mismatch == null) return;
+  // Let the card's "Saved" check and exit play before asking.
+  await Future<void>.delayed(const Duration(milliseconds: 700));
+  if (context.mounted) await _offerBalanceMatch(context, [mismatch]);
 }
 
 void _showUndo(BuildContext context, Capture c, String what) {
@@ -198,8 +262,11 @@ Future<void> _offerBalanceMatch(BuildContext context, List<BalanceMismatch> mism
 
 class _CaptureCard extends StatelessWidget {
   final Capture capture;
+  final Future<bool> Function() onConfirm;
+  final VoidCallback onEdit;
+  final VoidCallback onIgnore;
 
-  const _CaptureCard({required this.capture});
+  const _CaptureCard({required this.capture, required this.onConfirm, required this.onEdit, required this.onIgnore});
 
   @override
   Widget build(BuildContext context) {
@@ -223,7 +290,7 @@ class _CaptureCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppColors.radiusLg),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppColors.radiusLg),
-        onTap: () => _review(context, capture),
+        onTap: onEdit,
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(
@@ -263,14 +330,14 @@ class _CaptureCard extends StatelessWidget {
                       icon: category.iconData,
                       label: category.name,
                       color: Color(category.color),
-                      onTap: () => _review(context, capture),
+                      onTap: onEdit,
                     )
                   else
                     _Chip(
                       icon: Icons.category_outlined,
                       label: 'Choose category',
                       color: AppColors.warning,
-                      onTap: () => _review(context, capture),
+                      onTap: onEdit,
                     ),
                   if (d.fee > 0)
                     _Chip(icon: Icons.receipt_long, label: '+ fee ${captureMoney(d.fee, symbol)}', color: AppColors.mutedForeground),
@@ -280,26 +347,21 @@ class _CaptureCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              // Explicit sizes: the app theme gives filled buttons an
-              // unlimited minimum width, which a Row can't lay out.
               Row(
                 children: [
                   Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () => _confirm(context, capture),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 40),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
-                      ),
-                      icon: const Icon(Icons.check, size: 18),
-                      label: const Text('Confirm'),
+                    child: ActionButton(
+                      label: 'Confirm',
+                      doneLabel: 'Saved',
+                      icon: Icons.check,
+                      height: 40,
+                      onPressed: onConfirm,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () => _review(context, capture),
+                      onPressed: onEdit,
                       style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 12)),
                       icon: const Icon(Icons.edit_outlined, size: 18),
                       label: const Text('Edit'),
@@ -307,7 +369,7 @@ class _CaptureCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   TextButton(
-                    onPressed: () => _ignore(context, capture),
+                    onPressed: onIgnore,
                     style: TextButton.styleFrom(minimumSize: const Size(0, 40), foregroundColor: AppColors.mutedForeground),
                     child: const Text('Ignore'),
                   ),
@@ -315,6 +377,237 @@ class _CaptureCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The waiting cards. One that leaves the list (confirmed, ignored) stays a
+/// moment to show its result, then folds away instead of vanishing.
+class _CaptureList extends StatefulWidget {
+  final List<Capture> pending;
+  final Widget Function(Capture) itemBuilder;
+
+  const _CaptureList({required this.pending, required this.itemBuilder});
+
+  @override
+  State<_CaptureList> createState() => _CaptureListState();
+}
+
+class _CaptureListState extends State<_CaptureList> {
+  /// Captures on their way out, with the place they had in the list.
+  final _leaving = <String, (int, Capture)>{};
+
+  @override
+  void didUpdateWidget(_CaptureList old) {
+    super.didUpdateWidget(old);
+    final now = {for (final c in widget.pending) c.id};
+    _leaving.removeWhere((id, _) => now.contains(id)); // back after an undo
+    for (var i = 0; i < old.pending.length; i++) {
+      final c = old.pending[i];
+      if (now.contains(c.id) || _leaving.containsKey(c.id)) continue;
+      _leaving[c.id] = (i, c);
+      Future<void>.delayed(_Leaving.total, () {
+        if (mounted) setState(() => _leaving.remove(c.id));
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = <(Capture, bool)>[for (final c in widget.pending) (c, false)];
+    final leaving = _leaving.values.toList()..sort((a, b) => a.$1.compareTo(b.$1));
+    for (final (index, c) in leaving) {
+      items.insert(index.clamp(0, items.length), (c, true));
+    }
+    return Column(
+      children: [
+        for (final (c, isLeaving) in items)
+          _Leaving(
+            key: ValueKey(c.id),
+            leaving: isLeaving,
+            // A saved card holds still for its check mark; an ignored one goes at once.
+            hold: c.record.status == CaptureStatus.confirmed,
+            child: Padding(padding: const EdgeInsets.only(bottom: 12), child: widget.itemBuilder(c)),
+          ),
+      ],
+    );
+  }
+}
+
+class _Leaving extends StatefulWidget {
+  final bool leaving;
+  final bool hold;
+  final Widget child;
+
+  const _Leaving({super.key, required this.leaving, required this.hold, required this.child});
+
+  static const _holdFor = Duration(milliseconds: 450);
+  static const _foldFor = Duration(milliseconds: 320);
+  static const total = Duration(milliseconds: 450 + 320 + 60);
+
+  @override
+  State<_Leaving> createState() => _LeavingState();
+}
+
+class _LeavingState extends State<_Leaving> with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(vsync: this, value: 1, duration: _Leaving._foldFor);
+
+  @override
+  void didUpdateWidget(_Leaving old) {
+    super.didUpdateWidget(old);
+    if (widget.leaving && !old.leaving) {
+      Future<void>.delayed(widget.hold ? _Leaving._holdFor : Duration.zero, () {
+        if (mounted && widget.leaving) _controller.animateTo(0, curve: Curves.easeInCubic);
+      });
+    } else if (!widget.leaving && old.leaving) {
+      _controller.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final card = widget.leaving && widget.hold
+        ? Stack(
+            children: [
+              widget.child,
+              Positioned.fill(
+                bottom: 12, // the gap under the card
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 160),
+                  builder: (_, t, child) => Opacity(opacity: t, child: child),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.94),
+                      borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle_rounded, color: Colors.white, size: 26),
+                        SizedBox(width: 10),
+                        Text('Saved', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        : widget.child;
+    // Folds upwards: ClipRect + Align works on every Flutter version (the
+    // newer SizeTransition alignment API doesn't exist on older ones).
+    return IgnorePointer(
+      ignoring: widget.leaving,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, child) => ClipRect(
+          child: Align(alignment: Alignment.topCenter, heightFactor: _controller.value, child: child),
+        ),
+        child: FadeTransition(
+          opacity: _controller,
+          child: SlideTransition(
+            position: Tween(begin: const Offset(0.12, 0), end: Offset.zero).animate(_controller),
+            child: card,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One tap to pick a category and confirm.
+class _CategoryPicker extends StatelessWidget {
+  final Capture capture;
+  final TxType type;
+
+  const _CategoryPicker({required this.capture, required this.type});
+
+  static const moreOptions = '__more__';
+
+  static Future<String?> show(BuildContext context, Capture c, TxType type) => showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _CategoryPicker(capture: c, type: type),
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    final vm = context.watch<TrackerViewModel>();
+    final m = capture.message;
+    final symbol = vm.settings.currencySymbol;
+    final who = m.counterparty == null ? '' : (m.kind.isMoneyIn ? ' from ${m.counterparty}' : ' to ${m.counterparty}');
+    // Material (not a coloured Container) so the categories' ripples show.
+    return SafeArea(
+      child: Material(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Pick a category to confirm',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            Text('${m.kind.label} ${captureMoney(m.amount, symbol)}$who',
+                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            if (m.counterparty != null)
+              Text('Next time, ${m.counterparty} gets this category automatically.',
+                  style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
+            const SizedBox(height: 16),
+            GridView.count(
+              crossAxisCount: 4,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 8,
+              childAspectRatio: 0.9,
+              children: [
+                for (final cat in vm.categoriesOf(type))
+                  InkWell(
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    onTap: () => Navigator.pop(context, cat.id),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(color: Color(cat.color).withValues(alpha: 0.15), shape: BoxShape.circle),
+                          child: Icon(cat.iconData, color: Color(cat.color), size: 20),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(cat.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: TextButton.icon(
+                onPressed: () => Navigator.pop(context, moreOptions),
+                icon: const Icon(Icons.edit_outlined, size: 16),
+                label: const Text('Edit other details'),
+              ),
+            ),
+          ],
+        ),
         ),
       ),
     );

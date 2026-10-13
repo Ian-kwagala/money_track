@@ -1,8 +1,4 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/category.dart';
@@ -12,6 +8,8 @@ import '../../models/wallet.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
 import '../format/money_input.dart';
+import '../widgets/action_button.dart';
+import '../widgets/receipt_picker.dart';
 
 class AddTransactionScreen extends StatefulWidget {
   final TxRecord? edit;
@@ -32,7 +30,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   DateTime _dateTime = DateTime.now();
   String? _receiptPath;
   Frequency _frequency = Frequency.once;
-  bool _saving = false;
 
   static const _frequencyOptions = [
     Frequency.once,
@@ -109,7 +106,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             IconButton(
               icon: const Icon(Icons.delete_outline),
               tooltip: 'Delete transaction',
-              onPressed: _saving ? null : _delete,
+              onPressed: _delete,
             ),
         ],
       ),
@@ -271,41 +268,27 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ),
               const SizedBox(height: 14),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickDateTime,
-                      icon: const Icon(Icons.calendar_month_outlined),
-                      label: Text(_fmtDateTime(_dateTime)),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _pickDateTime,
+                  icon: const Icon(Icons.calendar_month_outlined),
+                  label: Text(_fmtDateTime(_dateTime)),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _pickReceipt,
-                      icon: Icon(
-                        _receiptPath != null
-                            ? Icons.check_circle_outline
-                            : Icons.camera_alt_outlined,
-                        color: _receiptPath != null ? AppColors.success : null,
-                      ),
-                      label: Text(_receiptPath != null ? 'Receipt added' : 'Attach receipt'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ReceiptPicker(
+                  path: _receiptPath,
+                  onChanged: (p) => setState(() => _receiptPath = p),
+                ),
               ),
 
               if (!isTransfer) ...[
@@ -329,15 +312,17 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               ],
 
               const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        height: 22,
-                        width: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      )
-                    : Text(isTransfer ? 'Transfer' : 'Save'),
+              SizedBox(
+                width: double.infinity,
+                child: ActionButton(
+                  label: isTransfer ? 'Transfer' : 'Save',
+                  doneLabel: 'Saved',
+                  icon: Icons.check,
+                  onPressed: _save,
+                  onDone: () {
+                    if (mounted) Navigator.pop(context, true);
+                  },
+                ),
               ),
             ],
           ),
@@ -366,43 +351,29 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     });
   }
 
-  Future<void> _pickReceipt() async {
-    final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.gallery);
-    if (file == null) return;
-    final dir = await getApplicationDocumentsDirectory();
-    final receipts = Directory('${dir.path}/receipts');
-    if (!await receipts.exists()) {
-      await receipts.create(recursive: true);
-    }
-    final dest = File('${receipts.path}/${DateTime.now().millisecondsSinceEpoch}.jpg');
-    await file.saveTo(dest.path);
-    setState(() => _receiptPath = dest.path);
-  }
-
-  Future<void> _save() async {
+  /// True once saved; the button then shows its check and closes the screen.
+  Future<bool> _save() async {
     final amount = double.tryParse(_amountCtrl.text.replaceAll(',', ''));
     if (amount == null || amount <= 0) {
       _toast('Enter a valid amount');
-      return;
+      return false;
     }
     if (!isTransferLike && (_categoryId == null || _categoryId!.isEmpty)) {
       _toast('Pick a category');
-      return;
+      return false;
     }
     if (isTransferLike) {
       final vm = context.read<TrackerViewModel>();
       if (vm.wallets.length < 2 || _toWalletId == null || _toWalletId!.isEmpty) {
         _toast('Transfer requires at least 2 wallets');
-        return;
+        return false;
       }
       if (_walletId == _toWalletId) {
         _toast('Choose two different wallets');
-        return;
+        return false;
       }
     }
     try {
-      setState(() => _saving = true);
       final vm = context.read<TrackerViewModel>();
       final existing = widget.edit;
       final tx = TxRecord(
@@ -422,11 +393,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       } else {
         await vm.addTransaction(tx);
       }
-      if (mounted) Navigator.pop(context, true);
+      return true;
     } catch (e) {
       if (mounted) _toast('Error saving transaction: $e');
-    } finally {
-      if (mounted) setState(() => _saving = false);
+      return false;
     }
   }
 

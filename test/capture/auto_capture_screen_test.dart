@@ -4,6 +4,7 @@ import 'package:money_track/models/transaction.dart';
 import 'package:money_track/services/capture/capture_service.dart';
 import 'package:money_track/ui/auto_capture/auto_capture_screen.dart';
 import 'package:money_track/ui/auto_capture/capture_review_sheet.dart';
+import 'package:money_track/ui/widgets/action_button.dart';
 import 'package:money_track/ui/widgets/capture_review_banner.dart';
 import 'package:money_track/viewmodels/tracker_view_model.dart';
 import 'package:provider/provider.dart';
@@ -54,6 +55,11 @@ void main() {
       // Marking the message confirmed is the last thing confirming does.
       await until(() => phone.capture.pendingCount == 0);
     });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('Saved'), findsWidgets, reason: 'the button and the card show it was saved');
+    // The balance question waits for the check and the card's exit.
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 800)));
     await tester.pumpAndSettle();
 
     final saved = phone.vm.transactions.single;
@@ -71,11 +77,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(phone.vm.walletBalance('wallet_airtel'), 2675);
+    await tester.pump(const Duration(seconds: 1)); // let the card fold away
+    await tester.pumpAndSettle();
     expect(find.text('0 to review'), findsOneWidget);
     expect(find.text('Recently handled'), findsOneWidget);
+    expect(find.text('UMEME Limited'), findsNothing, reason: 'the card has gone');
+    expect(find.descendant(of: find.byType(ListTile), matching: find.textContaining('UMEME Limited')), findsOneWidget,
+        reason: 'listed under Recently handled');
   });
 
-  testWidgets('Confirm on a card with no category opens the review sheet instead', (tester) async {
+  testWidgets('Confirm with no category asks for one, and picking it saves straight away', (tester) async {
+    tester.view
+      ..physicalSize = const Size(390, 844)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.runAsync(() async {
       phone = await Phone.boot();
       await phone.capture.turnOn();
@@ -84,11 +99,85 @@ void main() {
     await tester.pumpWidget(_app(phone, const AutoCaptureScreen()));
     expect(find.text('Choose category'), findsOneWidget);
 
+    // Tapped in real time: the save that follows the picker writes to storage.
+    await tester.runAsync(() => tester.tap(find.text('Confirm')));
+    await tester.pumpAndSettle();
+    expect(find.text('Pick a category to confirm'), findsOneWidget);
+    expect(find.textContaining('Grace Akello gets this category automatically'), findsOneWidget);
+
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Rent'));
+      await until(() => phone.capture.pendingCount == 0);
+    });
+    await tester.pump();
+    final main = phone.vm.transactions.firstWhere((t) => !t.id.endsWith('_fee'));
+    expect(main.categoryId, 'cat_expense_rent');
+    expect(main.amount, 21000);
+
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 800)));
+    await tester.pumpAndSettle();
+    if (find.text('Not now').evaluate().isNotEmpty) {
+      await tester.tap(find.text('Not now'));
+    }
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.text('0 to review'), findsOneWidget);
+  });
+
+  testWidgets('the category picker can hand over to the full editor', (tester) async {
+    tester.view
+      ..physicalSize = const Size(390, 844)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.runAsync(() async {
+      phone = await Phone.boot();
+      await phone.capture.turnOn();
+      await phone.capture.ingest([sms(airtelSent)]);
+    });
+    await tester.pumpWidget(_app(phone, const AutoCaptureScreen()));
+
     await tester.tap(find.text('Confirm'));
     await tester.pumpAndSettle();
-
-    expect(find.text('Original message'), findsOneWidget);
+    await tester.tap(find.text('Edit other details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit transaction'), findsOneWidget);
+    expect(find.text('Pick a category to confirm'), findsOneWidget, reason: 'the editor says what is missing');
     expect(phone.vm.transactions, isEmpty);
+  });
+
+  testWidgets('Confirm on what looks like a duplicate asks first', (tester) async {
+    tester.view
+      ..physicalSize = const Size(390, 844)
+      ..devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.runAsync(() async {
+      phone = await Phone.boot();
+      await phone.vm.addTransaction(TxRecord(
+        id: 'manual1',
+        type: TxType.income,
+        amount: 51000,
+        walletId: 'wallet_airtel',
+        categoryId: 'cat_income_other',
+        dateTime: DateTime(2026, 10, 5, 19),
+      ));
+      await phone.capture.turnOn();
+      await phone.capture.ingest([sms(airtelReceived)]);
+    });
+    await tester.pumpWidget(_app(phone, const AutoCaptureScreen()));
+
+    await tester.runAsync(() => tester.tap(find.text('Confirm')));
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: find.byType(AlertDialog), matching: find.text('Already recorded?')), findsOneWidget);
+
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Ignore SMS'));
+      await until(() => phone.capture.pendingCount == 0);
+    });
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(phone.vm.transactions.single.id, 'manual1', reason: 'not counted twice');
+    expect(find.text('0 to review'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5)); // the "Ignored" snackbar times out
   });
 
   testWidgets('Home banner counts what is waiting and opens the list', (tester) async {
@@ -124,6 +213,7 @@ void main() {
     await tester.runAsync(() async {
       await tester.tap(find.text('Confirm').first);
       await until(() => phone.capture.pendingCount == 1);
+      await Future<void>.delayed(const Duration(milliseconds: 800));
     });
     await tester.pumpAndSettle();
     if (find.text('Not now').evaluate().isNotEmpty) {
@@ -131,6 +221,8 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
     expect(find.text('1 to review'), findsOneWidget);
     expect(phone.vm.transactions, hasLength(1));
     expect(find.text('Confirm'), findsOneWidget);
@@ -178,7 +270,11 @@ void main() {
     await tester.runAsync(() async {
       await tester.tap(confirm);
       await until(() => phone.capture.pendingCount == 0);
+      await Future<void>.delayed(const Duration(milliseconds: 800)); // check mark, then the sheet closes
     });
+    await tester.pumpAndSettle();
+    expect(find.byType(CaptureReviewSheet), findsNothing);
+    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
     final main = phone.vm.transactions.firstWhere((t) => !t.id.endsWith('_fee'));
@@ -207,12 +303,13 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, 'Amount (UGX)'), '');
     await tester.pump();
     final sheet = find.byType(CaptureReviewSheet);
-    final button = find.ancestor(
-        of: find.descendant(of: sheet, matching: find.text('Confirm')), matching: find.bySubtype<ButtonStyleButton>());
-    expect(tester.widget<ButtonStyleButton>(button).enabled, isFalse);
+    final button = find.descendant(of: sheet, matching: find.byType(ActionButton));
+    expect(tester.widget<ActionButton>(button).onPressed, isNull);
+    expect(find.text('Enter the amount to confirm'), findsOneWidget, reason: 'says why');
 
     await tester.enterText(find.widgetWithText(TextField, 'Amount (UGX)'), '5,000');
     await tester.pump();
-    expect(tester.widget<ButtonStyleButton>(button).enabled, isTrue);
+    expect(tester.widget<ActionButton>(button).onPressed, isNotNull);
+    expect(find.text('Enter the amount to confirm'), findsNothing);
   });
 }

@@ -40,10 +40,20 @@ class CaptureDraft {
   });
 
   /// Everything needed to save it without asking the user.
-  bool get isComplete {
-    if (walletId == null || amount <= 0 || fee < 0) return false;
-    if (type == TxType.transfer) return toWalletId != null && toWalletId != walletId;
-    return categoryId != null;
+  bool get isComplete => missing == null;
+
+  /// What still has to be filled in before it can be saved, as the user
+  /// would be told it, or null when nothing is missing.
+  String? get missing {
+    if (amount <= 0) return 'Enter the amount';
+    if (fee < 0) return 'The fee can\'t be negative';
+    if (walletId == null) return type == TxType.transfer ? 'Choose where the money came from' : 'Choose a wallet';
+    if (type == TxType.transfer) {
+      if (toWalletId == null) return 'Choose where the money went';
+      if (toWalletId == walletId) return 'Pick two different wallets';
+      return null;
+    }
+    return categoryId == null ? 'Pick a category' : null;
   }
 
   CaptureDraft copy() => CaptureDraft(

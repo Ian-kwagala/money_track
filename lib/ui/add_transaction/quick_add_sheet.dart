@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/category.dart';
@@ -6,7 +7,10 @@ import '../../models/frequency.dart';
 import '../../models/transaction.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
+import '../format/money_format.dart';
 import '../format/money_input.dart';
+import '../widgets/action_button.dart';
+import '../widgets/receipt_picker.dart';
 
 class QuickAddSheet extends StatefulWidget {
   const QuickAddSheet({super.key});
@@ -22,7 +26,8 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   final _noteCtrl = TextEditingController();
   String _amountDisplay = '0';
   Frequency _frequency = Frequency.once;
-  bool _saving = false;
+  String? _receiptPath;
+  TxRecord? _saved;
 
   static const _frequencyOptions = [
     Frequency.once,
@@ -243,25 +248,16 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                       ),
                     ),
                     SizedBox(height: isSmall ? 8 : 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: GestureDetector(
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Receipt picker — attach photo from camera/gallery'))),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.camera_alt_outlined, size: 16, color: AppColors.textSecondary),
-                    SizedBox(width: 8),
-                    Text('Attach receipt', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500, fontSize: 13)),
-                  ],
-                ),
-              ),
-            ),
-          ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ReceiptPicker(
+                          path: _receiptPath,
+                          onChanged: (p) => setState(() => _receiptPath = p),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -318,17 +314,14 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                   const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _saving ? null : _save,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF9DBFB1),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: _saving
-                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                          : const Text('Save transaction', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                    child: ActionButton(
+                      label: 'Save transaction',
+                      doneLabel: 'Saved',
+                      icon: Icons.check,
+                      // Muted until it's ready; still tappable, to say what's missing.
+                      dimmed: !_ready,
+                      onPressed: _save,
+                      onDone: _close,
                     ),
                   ),
                 ],
@@ -340,25 +333,60 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     );
   }
 
-  Future<void> _save() async {
-    final amount = double.tryParse(_amountDisplay.replaceAll(',', ''));
-    if (amount == null || amount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid amount')));
-      return;
+  double get _amount => double.tryParse(_amountDisplay.replaceAll(',', '')) ?? 0;
+
+  bool get _ready => _amount > 0 && (_categoryId?.isNotEmpty ?? false);
+
+  /// True once saved; the button then shows its check and [_close] runs.
+  Future<bool> _save() async {
+    final messenger = ScaffoldMessenger.of(context);
+    void tell(String msg) => messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(msg)));
+    if (_amount <= 0) {
+      tell('Enter an amount');
+      return false;
     }
     if (_categoryId == null || _categoryId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick a category')));
-      return;
+      tell('Pick a category');
+      return false;
     }
     final vm = context.read<TrackerViewModel>();
     if (vm.wallets.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add a wallet first')));
-      return;
+      tell('Add a wallet first');
+      return false;
     }
-    setState(() => _saving = true);
-    final tx = TxRecord(id: DateTime.now().microsecondsSinceEpoch.toString(), type: _type, amount: amount, walletId: _walletId, categoryId: _categoryId ?? '', note: _noteCtrl.text.trim(), dateTime: DateTime.now(), frequency: _frequency);
+    final tx = TxRecord(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      type: _type,
+      amount: _amount,
+      walletId: _walletId,
+      categoryId: _categoryId ?? '',
+      note: _noteCtrl.text.trim(),
+      dateTime: DateTime.now(),
+      receiptPath: _receiptPath,
+      frequency: _frequency,
+    );
     await vm.addTransaction(tx);
-    if (mounted) Navigator.pop(context);
+    _saved = tx;
+    return true;
+  }
+
+  /// Closes the sheet and offers Undo.
+  void _close() {
+    final saved = _saved;
+    if (!mounted || saved == null) return;
+    final vm = context.read<TrackerViewModel>();
+    final messenger = ScaffoldMessenger.of(context);
+    final category = vm.categoryById(saved.categoryId)?.name;
+    Navigator.pop(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text('Saved · ${MoneyFormat.money(saved.amount, symbol: vm.settings.currencySymbol)}'
+            '${category == null ? '' : ' · $category'}'),
+        action: SnackBarAction(label: 'Undo', onPressed: () => vm.deleteTransaction(saved.id)),
+      ));
   }
 }
 
@@ -405,18 +433,26 @@ class _Numpad extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget key(String label, {IconData? icon, VoidCallback? tap}) {
+      // A ripple and a light tick on every key, like a phone keypad.
       return Expanded(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
-          child: GestureDetector(
-            onTap: tap ?? () => onKey(label),
-            child: Container(
-              height: isSmall ? 42 : 48,
-              decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
-              child: Center(
-                child: icon != null
-                    ? Icon(icon, color: AppColors.textSecondary, size: 18)
-                    : Text(label, style: TextStyle(fontSize: isSmall ? 16 : 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          child: Material(
+            color: AppColors.bg,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                (tap ?? () => onKey(label))();
+              },
+              child: SizedBox(
+                height: isSmall ? 42 : 48,
+                child: Center(
+                  child: icon != null
+                      ? Icon(icon, color: AppColors.textSecondary, size: 18)
+                      : Text(label, style: TextStyle(fontSize: isSmall ? 16 : 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                ),
               ),
             ),
           ),
