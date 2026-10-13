@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart' hide Category;
 
+import '../data/hive_boxes.dart';
 import '../data/money_repository.dart';
 import '../models/alert_rule.dart';
 import '../models/app_settings.dart';
@@ -13,6 +14,7 @@ import '../models/savings_goal.dart';
 import '../models/transaction.dart';
 import '../models/user.dart';
 import '../models/wallet.dart';
+import '../services/security/pin_hash.dart';
 
 class TrackerViewModel extends ChangeNotifier {
   final MoneyRepository repo;
@@ -35,6 +37,7 @@ class TrackerViewModel extends ChangeNotifier {
     try {
       initError = null;
       await repo.init();
+      await hashLegacyPin();
       initialized = true;
       onReady?.call().catchError((Object e) => debugPrint('onReady failed: $e'));
     } catch (e, st) {
@@ -50,7 +53,12 @@ class TrackerViewModel extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   bool get needsOnboarding => !settings.onboardingCompleted;
 
-  bool get isAppLocked => settings.appLockEnabled && (settings.appLockPin != null && settings.appLockPin!.isNotEmpty);
+  /// A PIN has been set (stored as a hash, or in plain text by a version
+  /// before 1.0.1 that [hashLegacyPin] hasn't upgraded yet).
+  bool get hasPin =>
+      PinHash.isHash(settings.appLockPasswordHash) || (settings.appLockPin?.isNotEmpty ?? false);
+
+  bool get isAppLocked => settings.appLockEnabled && hasPin;
 
   bool get isUnlocked => _isUnlocked || !isAppLocked;
 
@@ -65,24 +73,55 @@ class TrackerViewModel extends ChangeNotifier {
   }
 
   Future<bool> verifyPin(String pin) async {
-    final stored = settings.appLockPin;
-    if (stored == null || stored.isEmpty) return true;
-    return stored == pin;
+    final s = settings;
+    final hash = s.appLockPasswordHash;
+    if (PinHash.isHash(hash)) return PinHash.verify(pin, hash!);
+    final legacy = s.appLockPin;
+    if (legacy == null || legacy.isEmpty) return true;
+    final ok = legacy == pin;
+    if (ok) await _savePinHash(s, pin);
+    return ok;
   }
 
-  Future<void> setAppLock({required String pin, required bool enabled}) async {
+  /// Sets a new PIN and turns the lock on. Only a salted hash is stored.
+  Future<void> setPin(String pin) async {
     final s = settings;
-    s.appLockPin = pin;
-    s.appLockEnabled = enabled;
-    // also keep hash for compatibility
-    s.appLockPasswordHash = pin;
-    await updateSettings(s);
-    if (!enabled) {
-      _isUnlocked = true;
-    } else {
-      _isUnlocked = false;
-    }
+    s.appLockEnabled = true;
+    await _savePinHash(s, pin);
+    _isUnlocked = false;
     notifyListeners();
+  }
+
+  /// Turns the lock on or off, keeping the PIN already set.
+  Future<void> setAppLockEnabled(bool enabled) async {
+    final s = settings;
+    s.appLockEnabled = enabled && hasPin;
+    await updateSettings(s);
+    _isUnlocked = !s.appLockEnabled;
+    notifyListeners();
+  }
+
+  /// Versions before 1.0.1 stored the PIN in plain text. Replaces it with a
+  /// hash; never stops the app from opening if that fails.
+  @visibleForTesting
+  Future<void> hashLegacyPin() async {
+    final s = settings;
+    final legacy = s.appLockPin;
+    if (legacy == null || legacy.isEmpty) return;
+    try {
+      await _savePinHash(s, legacy);
+    } catch (e) {
+      debugPrint('Could not upgrade the app-lock PIN: $e');
+    }
+  }
+
+  Future<void> _savePinHash(AppSettings s, String pin) async {
+    s.appLockPasswordHash = await PinHash.create(pin);
+    s.appLockPin = null;
+    await updateSettings(s);
+    // Hive appends changes to its file; compacting drops the old copies, so
+    // a PIN that used to be stored in plain text isn't left behind on disk.
+    await repo.boxFor(HiveBoxes.settings).compact();
   }
 
   Future<void> completeOnboarding({
@@ -135,14 +174,13 @@ class TrackerViewModel extends ChangeNotifier {
     if (darkMode != null) s.darkMode = darkMode;
     if (notificationsEnabled != null) s.notificationsEnabled = notificationsEnabled;
     if (pin != null && pin.isNotEmpty && enableLock) {
-      s.appLockPin = pin;
-      s.appLockPasswordHash = pin;
       s.appLockEnabled = true;
       _isUnlocked = true; // unlock immediately after onboarding
+      await _savePinHash(s, pin);
     } else {
       s.appLockEnabled = false;
+      await updateSettings(s);
     }
-    await updateSettings(s);
 
     notifyListeners();
   }

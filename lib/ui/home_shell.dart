@@ -11,6 +11,7 @@ import 'dashboard/profile_completion_sheet.dart';
 import 'reports/reports_screen.dart';
 import 'settings/settings_screen.dart';
 import 'theme/app_theme.dart';
+import 'widgets/app_bottom_nav.dart';
 import '../viewmodels/tracker_view_model.dart';
 
 class HomeShell extends StatefulWidget {
@@ -46,6 +47,10 @@ class _HomeShellState extends State<HomeShell> {
     _NavInfo(label: 'Alerts', icon: Icons.notifications_outlined, activeIcon: Icons.notifications),
     _NavInfo(label: 'Settings', icon: Icons.settings_outlined, activeIcon: Icons.settings),
   ];
+
+  /// Tabs in the phone's bottom bar (indices into `_navItems`), two either
+  /// side of the Add button. Alerts has no tab there; Home links to it.
+  static const _mobileTabs = [0, 1, 2, 4]; // Home, Budgets | Analytics, Settings
 
   /// Sidebar sections shown on wide (web/desktop) layouts. Each entry is a
   /// group label followed by the indices (into `_navItems`) it contains.
@@ -122,85 +127,33 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  /// Approximate height of the mobile nav bar itself (excluding insets).
-  static const _navBarHeight = 66.0;
-
-  /// Gap between the nav bar and the phone's own navigation keys / gesture
-  /// bar, so the two never sit on the same level.
-  static const _navBarGap = 8.0;
-
   Widget _buildMobile(BuildContext context, List<Widget> pages) {
-    // viewPadding (not padding) so the inset is still known even if an
-    // ancestor has already consumed it.
-    final systemNavInset = MediaQuery.viewPaddingOf(context).bottom;
-    final navBottom = systemNavInset + _navBarGap;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Stack(
         children: [
           // Keep page content clear of the nav bar.
           Padding(
-            padding: EdgeInsets.only(bottom: navBottom + _navBarHeight),
+            padding: EdgeInsets.only(bottom: AppBottomNav.heightOf(context)),
             child: IndexedStack(index: _index, children: pages),
           ),
-          // Bottom nav bar, floating just above the system navigation keys
           Positioned(
-            left: 12,
-            right: 12,
-            bottom: navBottom,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(AppColors.radiusXl),
-                border: Border.all(color: AppColors.border, width: 1),
-                boxShadow: AppColors.shadowLift,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: List.generate(_navItems.length, (i) {
-                    final item = _navItems[i];
-                    final active = _index == i;
-                    return Expanded(
-                      child: InkWell(
-                        onTap: () => setState(() => _index = i),
-                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                active ? item.activeIcon : item.icon,
-                                color: active ? AppColors.primary : AppColors.mutedForeground,
-                                size: 22,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                item.label,
-                                maxLines: 1,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: active ? FontWeight.w600 : FontWeight.w500,
-                                  color: active ? AppColors.primary : AppColors.mutedForeground,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  }),
-                ),
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: AppBottomNav(
+              items: [
+                for (final i in _mobileTabs) AppNavItem(label: _navItems[i].label, icon: _navItems[i].icon),
+              ],
+              currentIndex: _mobileTabs.indexOf(_index),
+              onTabSelected: (i) => setState(() => _index = _mobileTabs[i]),
+              action: AppNavAction(
+                label: 'Add',
+                icon: Icons.add_rounded,
+                semanticLabel: 'Add transaction',
+                onPressed: () => _openQuickAdd(context),
               ),
             ),
-          ),
-          // FAB — kept to the left so it doesn't cover centred content
-          Positioned(
-            left: 20,
-            bottom: navBottom + _navBarHeight + 16,
-            child: _QuickAddFab(onTap: () => _openQuickAdd(context)),
           ),
         ],
       ),
@@ -225,7 +178,8 @@ class _NavInfo {
   const _NavInfo({required this.label, required this.icon, required this.activeIcon});
 }
 
-/// Round green "quick add" button, shared by the mobile and wide layouts.
+/// Round green "quick add" button for the wide layout (phones use the
+/// Add button in [AppBottomNav]).
 class _QuickAddFab extends StatelessWidget {
   final VoidCallback onTap;
 

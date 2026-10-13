@@ -82,7 +82,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
   Future<void> _changePin() async {
     final vm = context.read<TrackerViewModel>();
-    final currentPin = vm.settings.appLockPin ?? '';
+    // Changing an active PIN needs the current one.
+    final needsCurrent = vm.settings.appLockEnabled && vm.hasPin;
+    final currentCtrl = TextEditingController();
     final pinCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
     bool obscure = true;
@@ -95,8 +97,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (vm.settings.appLockEnabled && currentPin.isNotEmpty) ...[
+              if (needsCurrent) ...[
                 TextField(
+                  controller: currentCtrl,
                   obscureText: obscure,
                   keyboardType: TextInputType.number,
                   maxLength: 6,
@@ -107,7 +110,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     fillColor: AppColors.bg,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
-                  onChanged: (v) {},
                 ),
                 const SizedBox(height: 12),
               ],
@@ -144,16 +146,21 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
             FilledButton(
-              onPressed: () {
-                if (pinCtrl.text.length < 4) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN must be at least 4 digits')));
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                if (needsCurrent && !await vm.verifyPin(currentCtrl.text)) {
+                  messenger.showSnackBar(const SnackBar(content: Text('Current PIN is wrong')));
+                  return;
+                }
+                if (!RegExp(r'^\d{4,6}$').hasMatch(pinCtrl.text)) {
+                  messenger.showSnackBar(const SnackBar(content: Text('PIN must be 4-6 digits')));
                   return;
                 }
                 if (pinCtrl.text != confirmCtrl.text) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PINs do not match')));
+                  messenger.showSnackBar(const SnackBar(content: Text('PINs do not match')));
                   return;
                 }
-                Navigator.pop(ctx, true);
+                if (ctx.mounted) Navigator.pop(ctx, true);
               },
               child: const Text('Save'),
             ),
@@ -163,7 +170,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     );
 
     if (result == true && mounted) {
-      await vm.setAppLock(pin: pinCtrl.text, enabled: true);
+      await vm.setPin(pinCtrl.text);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PIN updated. Required on every sign in.')));
       setState(() {});
     }
@@ -431,10 +438,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         Switch(
                           value: s.appLockEnabled,
                           onChanged: (v) async {
-                            if (v && (s.appLockPin == null || s.appLockPin!.isEmpty)) {
+                            if (v && !vm.hasPin) {
                               await _changePin();
                             } else {
-                              await vm.setAppLock(pin: s.appLockPin ?? '', enabled: v);
+                              await vm.setAppLockEnabled(v);
                               if (mounted) setState(() {});
                             }
                           },
@@ -448,7 +455,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _changePin,
                         icon: const Icon(Icons.key_outlined, size: 16),
-                        label: Text(s.appLockEnabled && s.appLockPin != null && s.appLockPin!.isNotEmpty ? 'Change PIN' : 'Set PIN'),
+                        label: Text(s.appLockEnabled && vm.hasPin ? 'Change PIN' : 'Set PIN'),
                         style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), side: const BorderSide(color: AppColors.divider)),
                       ),
                     ),

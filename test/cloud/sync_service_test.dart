@@ -220,6 +220,22 @@ void main() {
     expect(phone.repo.transactions, isEmpty);
   });
 
+  test('a sync still running when the service is disposed finishes quietly', () async {
+    final other = SyncService(
+      repo: phone.repo,
+      auth: phone.auth,
+      connectivity: ConnectivityService.manual(online: true),
+      firestore: cloud,
+      enabled: true,
+    );
+    phone.auth.signInAs('u1');
+    await other.start();
+    final running = other.syncNow();
+    other.dispose();
+    await running; // used to throw "A SyncService was used after being disposed"
+    await settle();
+  });
+
   test('changes made while signed out upload when the user signs back in', () async {
     await phone.sync.start();
     expect(phone.sync.status, SyncStatus.signedOut);

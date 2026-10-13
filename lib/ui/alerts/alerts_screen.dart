@@ -179,7 +179,12 @@ class _AlertsScreenState extends State<AlertsScreen> {
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
-            child: PageHeader(title: 'Alerts', subtitle: '${alerts.length} unread', back: false),
+            child: PageHeader(
+              title: 'Alerts',
+              subtitle: '${alerts.length} unread',
+              // A tab on wide screens (no back); opened from Home on phones.
+              back: ModalRoute.of(context)?.canPop ?? false,
+            ),
           ),
           SliverToBoxAdapter(
             child: Padding(

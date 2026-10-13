@@ -28,9 +28,12 @@ class AppSettings extends HiveObject {
   @HiveField(7)
   bool appLockEnabled;
 
+  /// Plain-text PIN written by versions before 1.0.1. Replaced by
+  /// [appLockPasswordHash] at startup; always null after that.
   @HiveField(8)
   String? appLockPin;
 
+  /// The app-lock PIN as a salted hash (see PinHash). Never synced.
   @HiveField(9)
   String? appLockPasswordHash;
 

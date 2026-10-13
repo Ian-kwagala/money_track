@@ -419,8 +419,18 @@ class SyncService extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool _disposed = false;
+
+  /// A sync or upload already under way can finish after the service is
+  /// disposed; it must not notify then.
+  @override
+  void notifyListeners() {
+    if (!_disposed) super.notifyListeners();
+  }
+
   @override
   void dispose() {
+    _disposed = true;
     for (final s in _subs) {
       s.cancel();
     }

@@ -373,6 +373,7 @@ class _IncomeSpentCard extends StatelessWidget {
 class _Shortcuts extends StatelessWidget {
   static const _items = [
     ('Transactions', Icons.receipt_outlined, '/transactions'),
+    ('Alerts', Icons.notifications_outlined, '/alerts'),
     ('Daily spend', Icons.today_outlined, '/daily'),
     ('Bills', Icons.receipt_long_outlined, '/recurring'),
     ('Goals', Icons.flag_outlined, '/goals'),

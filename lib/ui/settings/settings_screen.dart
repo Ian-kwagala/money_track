@@ -247,7 +247,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               children: [
                                 Icon(Icons.sms_outlined, color: AppColors.primary, size: 18),
                                 const SizedBox(width: 8),
-                                const Text('Auto-capture from SMS', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                                const Flexible(child: Text('Auto-capture from SMS', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary))),
                               ],
                             ),
                             const SizedBox(height: 8),

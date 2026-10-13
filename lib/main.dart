@@ -10,6 +10,7 @@ import 'services/cloud/connectivity_service.dart';
 import 'services/cloud/firebase_bootstrap.dart';
 import 'services/cloud/sync_service.dart';
 import 'services/shorebird_update_service.dart';
+import 'ui/alerts/alerts_screen.dart';
 import 'ui/auth/lock_screen.dart';
 import 'ui/auto_capture/auto_capture_screen.dart';
 import 'ui/bills/bills_screen.dart';
@@ -82,6 +83,7 @@ class MoneyTrackApp extends StatelessWidget {
           '/analytics': (_) => const ReportsScreen(),
           '/transactions': (_) => const ExpensesScreen(),
           '/debts': (_) => const DebtsScreen(),
+          '/alerts': (_) => const AlertsScreen(),
         },
         home: const _RootRouter(),
       ),
