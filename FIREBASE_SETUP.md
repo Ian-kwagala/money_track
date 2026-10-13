@@ -70,6 +70,8 @@ firebase login          # opens your browser
 2. **Build → Authentication → Get started → Sign-in method →
    Email/Password → Enable → Save.**
 3. **Build → Firestore Database → Create database.**
+   - Edition: **Standard**. The app and the rules are built for it.
+   - Database ID: leave it as **`(default)`**. The app uses the default database.
    - Location: pick the closest to your users (e.g. `africa-south1`
      Johannesburg, or `eur3` Europe). **This can't be changed later.**
    - Start in **production mode** (our rules replace the defaults in Step 4).
@@ -87,6 +89,10 @@ firebase use            # should print: moneytracker-cb825
 ```
 
 ## Step 3: Connect the mobile app
+
+Already done for Android (`lib/firebase_options.dart` and
+`android/app/google-services.json` are in the repo, and release 1.0.1+2
+includes them). Re-run this only to add iOS:
 
 ```sh
 flutterfire configure --platforms=android,ios
@@ -144,6 +150,9 @@ minutes to finish building).
    npm install
    node set-admin.js --project YOUR_PROJECT_ID --key ~/Downloads/key.json you@example.com
    ```
+   On Windows (PowerShell), the key path is e.g.
+   `--key "$env:USERPROFILE\Downloads\key.json"`.
+
    Delete the key file afterwards. It gives full control of the project.
 
 **Check:** `node set-admin.js --project YOUR_PROJECT_ID --list` prints your email.
