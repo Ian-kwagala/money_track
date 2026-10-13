@@ -9,6 +9,7 @@ import '../../services/capture/capture_suggestions.dart';
 import '../../services/capture/money_message.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../format/money_format.dart';
+import '../format/money_input.dart';
 import '../theme/app_theme.dart';
 
 /// What happened in a [CaptureReviewSheet].
@@ -25,8 +26,9 @@ class CaptureOutcome {
 String captureMoney(double v, String symbol) =>
     MoneyFormat.money(v, symbol: symbol, decimals: v == v.roundToDouble() ? 0 : 2);
 
-/// Full review of one captured SMS: type, wallets, category and note can all
-/// be changed before confirming, and the original message is shown.
+/// Review and edit one captured SMS before confirming it: type, amount,
+/// fee, date and time, wallets, category and note can all be corrected, and
+/// the original message is shown for reference.
 class CaptureReviewSheet extends StatefulWidget {
   final Capture capture;
 
@@ -47,6 +49,8 @@ class CaptureReviewSheet extends StatefulWidget {
 class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
   late final CaptureDraft _d;
   late final TextEditingController _note;
+  late final TextEditingController _amount;
+  late final TextEditingController _fee;
   bool _busy = false;
 
   ParsedMoneyMessage get _m => widget.capture.message;
@@ -56,12 +60,35 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
     super.initState();
     _d = context.read<CaptureService>().draftFor(widget.capture);
     _note = TextEditingController(text: _d.note);
+    _amount = TextEditingController(text: MoneyInput.text(_d.amount));
+    _fee = TextEditingController(text: MoneyInput.text(_d.fee));
   }
 
   @override
   void dispose() {
     _note.dispose();
+    _amount.dispose();
+    _fee.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _d.dateTime,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (picked == null) return;
+    final t = _d.dateTime;
+    setState(() => _d.dateTime = DateTime(picked.year, picked.month, picked.day, t.hour, t.minute));
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(_d.dateTime));
+    if (picked == null) return;
+    final d = _d.dateTime;
+    setState(() => _d.dateTime = DateTime(d.year, d.month, d.day, picked.hour, picked.minute));
   }
 
   void _setType(TxType type, List<Wallet> wallets) {
@@ -152,12 +179,61 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('${_m.kind.label} · ${captureMoney(_m.amount, symbol)}',
+              const Text('Edit transaction',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+              const SizedBox(height: 2),
+              Text('${_m.kind.label} · ${captureMoney(_d.amount, symbol)}',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kindColor)),
               const SizedBox(height: 4),
               Text(
-                '${_m.counterparty ?? _m.provider.label} · ${MoneyFormat.shortDay(_d.dateTime)} ${MoneyFormat.timeShort(_d.dateTime)}',
+                '${_m.counterparty ?? _m.provider.label} · ${_m.provider.label} SMS',
                 style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: _amount,
+                      keyboardType: MoneyInput.keyboardType,
+                      inputFormatters: MoneyInput.formatters,
+                      onChanged: (v) => setState(() => _d.amount = MoneyInput.parse(v) ?? 0),
+                      decoration: _field('Amount ($symbol)'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: TextField(
+                      controller: _fee,
+                      keyboardType: MoneyInput.keyboardType,
+                      inputFormatters: MoneyInput.formatters,
+                      onChanged: (v) => setState(() => _d.fee = MoneyInput.parse(v) ?? 0),
+                      decoration: _field('Fee'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _PickerButton(
+                      icon: Icons.calendar_today_outlined,
+                      label: '${MoneyFormat.shortDay(_d.dateTime)} ${_d.dateTime.year}',
+                      onTap: _pickDate,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _PickerButton(
+                      icon: Icons.schedule,
+                      label: MoneyFormat.timeShort(_d.dateTime),
+                      onTap: _pickTime,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               SegmentedButton<TxType>(
@@ -223,13 +299,7 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
                 ),
               ],
               const SizedBox(height: 16),
-              TextField(
-                controller: _note,
-                decoration: InputDecoration(
-                  labelText: 'Note',
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
-                ),
-              ),
+              TextField(controller: _note, decoration: _field('Note')),
               if (duplicate != null) ...[
                 const SizedBox(height: 14),
                 _Notice(
@@ -251,13 +321,29 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
                 child: Text(widget.capture.record.body, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, height: 1.4)),
               ),
               const SizedBox(height: 20),
+              // Buttons get explicit sizes: the app theme gives filled buttons
+              // an unlimited minimum width, which a Row can't lay out.
               Row(
                 children: [
-                  TextButton(onPressed: _busy ? null : _ignore, child: const Text('Ignore')),
-                  const Spacer(),
-                  FilledButton(
-                    onPressed: _busy || !_d.isComplete ? null : _confirm,
-                    child: const Text('Confirm'),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _busy ? null : _ignore,
+                      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
+                      child: const Text('Ignore'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton.icon(
+                      onPressed: _busy || !_d.isComplete ? null : _confirm,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 48),
+                        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 15, fontWeight: FontWeight.w700),
+                      ),
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Confirm'),
+                    ),
                   ),
                 ],
               ),
@@ -265,6 +351,40 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Tinted so fields stand out on the white sheet (the app theme fills
+/// fields with white and hides their border).
+InputDecoration _field(String label) => InputDecoration(
+      labelText: label,
+      filled: true,
+      fillColor: AppColors.bg,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: BorderSide.none),
+      enabledBorder:
+          OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: BorderSide.none),
+    );
+
+class _PickerButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _PickerButton({required this.icon, required this.label, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 48),
+        alignment: Alignment.centerLeft,
+        foregroundColor: AppColors.textPrimary,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+      ),
+      icon: Icon(icon, size: 18),
+      label: Text(label, overflow: TextOverflow.ellipsis),
     );
   }
 }
@@ -286,10 +406,7 @@ class _WalletField extends StatelessWidget {
       initialValue: known ? value : null,
       isExpanded: true,
       hint: const Text('Choose a wallet'),
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
-      ),
+      decoration: _field(label),
       items: [
         for (final w in wallets)
           DropdownMenuItem(

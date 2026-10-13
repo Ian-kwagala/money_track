@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:money_track/services/alerts_service.dart';
 import 'package:money_track/services/capture/capture_service.dart';
 import 'package:money_track/services/cloud/announcement_service.dart';
 import 'package:money_track/services/cloud/auth_service.dart';
@@ -16,6 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../capture/capture_test_helpers.dart';
 import 'real_fonts.dart';
+import 'test_theme.dart';
 
 void main() {
   late Phone phone;
@@ -47,9 +49,11 @@ void main() {
         ChangeNotifierProvider(
             create: (_) => SyncService(repo: phone.vm.repo, auth: auth, connectivity: connectivity, enabled: false)),
         ChangeNotifierProvider(create: (_) => AnnouncementService()),
+        ChangeNotifierProvider(create: (_) => AlertsService()),
         ChangeNotifierProvider(create: (_) => ShorebirdUpdateService()),
       ],
       child: MaterialApp(
+        theme: testAppTheme(),
         home: const HomeShell(),
         routes: {'/alerts': (_) => const AlertsScreen()},
       ),
@@ -90,12 +94,25 @@ void main() {
     expect(find.byType(QuickAddSheet), findsOneWidget);
   });
 
-  testWidgets('Alerts opens from the Home shortcuts, with a way back', (tester) async {
+  testWidgets('Home: no spending score; saved this month and average daily spend instead', (tester) async {
     await pumpShell(tester);
-    final shortcut = find.descendant(of: find.byType(ListView), matching: find.text('Alerts'));
-    await tester.tap(shortcut.first);
-    await tester.pumpAndSettle();
+    expect(find.text('Spending score'), findsNothing);
+    // Every tab is built at once, so "one" also means Analytics no longer has them.
+    expect(find.text('Saved this month'), findsOneWidget);
+    expect(find.text('Avg daily spend'), findsOneWidget);
+    expect(find.text('Today'), findsOneWidget);
+    expect(find.descendant(of: find.byType(ListView), matching: find.text('Alerts')), findsNothing,
+        reason: 'the bell replaced the shortcut');
+  });
 
+  testWidgets('the bell next to the dark-mode button opens Alerts, with a way back', (tester) async {
+    await pumpShell(tester);
+    final bell = find.byIcon(Icons.notifications_outlined);
+    expect(bell, findsOneWidget);
+    expect(tester.getCenter(bell).dx, lessThan(tester.getCenter(find.byIcon(Icons.dark_mode_outlined)).dx));
+
+    await tester.tap(bell);
+    await tester.pumpAndSettle();
     final pushed = find.byType(AlertsScreen).last;
     expect(find.descendant(of: pushed, matching: find.byIcon(Icons.chevron_left)), findsOneWidget);
     await tester.tap(find.descendant(of: pushed, matching: find.byIcon(Icons.chevron_left)));

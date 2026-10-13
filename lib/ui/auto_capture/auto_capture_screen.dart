@@ -259,9 +259,19 @@ class _CaptureCard extends StatelessWidget {
                       color: AppColors.info,
                     )
                   else if (category != null)
-                    _Chip(icon: category.iconData, label: category.name, color: Color(category.color))
+                    _Chip(
+                      icon: category.iconData,
+                      label: category.name,
+                      color: Color(category.color),
+                      onTap: () => _review(context, capture),
+                    )
                   else
-                    const _Chip(icon: Icons.category_outlined, label: 'Choose category', color: AppColors.warning),
+                    _Chip(
+                      icon: Icons.category_outlined,
+                      label: 'Choose category',
+                      color: AppColors.warning,
+                      onTap: () => _review(context, capture),
+                    ),
                   if (d.fee > 0)
                     _Chip(icon: Icons.receipt_long, label: '+ fee ${captureMoney(d.fee, symbol)}', color: AppColors.mutedForeground),
                   if (m.pending) const _Chip(icon: Icons.schedule, label: 'Pending', color: AppColors.mutedForeground),
@@ -270,21 +280,37 @@ class _CaptureCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
+              // Explicit sizes: the app theme gives filled buttons an
+              // unlimited minimum width, which a Row can't lay out.
               Row(
                 children: [
-                  FilledButton(
-                    onPressed: () => _confirm(context, capture),
-                    style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
-                    child: const Text('Confirm'),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => _confirm(context, capture),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(0, 40),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        textStyle: Theme.of(context).textTheme.labelLarge?.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                      icon: const Icon(Icons.check, size: 18),
+                      label: const Text('Confirm'),
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  OutlinedButton(
-                    onPressed: () => _review(context, capture),
-                    style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
-                    child: Text(d.type == TxType.transfer ? 'Edit' : 'Category'),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _review(context, capture),
+                      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 12)),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('Edit'),
+                    ),
                   ),
-                  const Spacer(),
-                  TextButton(onPressed: () => _ignore(context, capture), child: const Text('Ignore')),
+                  const SizedBox(width: 4),
+                  TextButton(
+                    onPressed: () => _ignore(context, capture),
+                    style: TextButton.styleFrom(minimumSize: const Size(0, 40), foregroundColor: AppColors.mutedForeground),
+                    child: const Text('Ignore'),
+                  ),
                 ],
               ),
             ],
@@ -299,12 +325,13 @@ class _Chip extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
 
-  const _Chip({required this.icon, required this.label, required this.color});
+  const _Chip({required this.icon, required this.label, required this.color, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
@@ -323,6 +350,8 @@ class _Chip extends StatelessWidget {
         ],
       ),
     );
+    if (onTap == null) return chip;
+    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(AppColors.radiusSm), child: chip);
   }
 }
 

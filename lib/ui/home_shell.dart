@@ -330,12 +330,16 @@ class PageHeader extends StatelessWidget {
   final bool back;
   final Widget? action;
 
+  /// Extra buttons shown before [action] (or the dark-mode toggle).
+  final List<Widget> extraActions;
+
   const PageHeader({
     super.key,
     required this.title,
     this.subtitle,
     this.back = true,
     this.action,
+    this.extraActions = const [],
   });
 
   @override
@@ -389,6 +393,7 @@ class PageHeader extends StatelessWidget {
                 ],
               ),
             ),
+            for (final extra in extraActions) ...[extra, const SizedBox(width: 8)],
             action ??
                 InkWell(
                   onTap: () => vm.updateSettings(vm.settings..darkMode = !isDark),

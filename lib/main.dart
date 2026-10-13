@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'data/money_repository.dart';
+import 'services/alerts_service.dart';
 import 'services/capture/capture_service.dart';
 import 'services/capture/sms_bridge.dart';
 import 'services/cloud/announcement_service.dart';
@@ -57,6 +58,7 @@ Future<void> main() async {
       ChangeNotifierProvider.value(value: sync),
       ChangeNotifierProvider.value(value: capture),
       ChangeNotifierProvider(create: (_) => AnnouncementService()),
+      ChangeNotifierProvider(create: (_) => AlertsService()),
     ],
     child: const MoneyTrackApp(),
   ));

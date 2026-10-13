@@ -6,6 +6,7 @@ import '../home_shell.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 import '../../viewmodels/tracker_view_model.dart';
+import '../widgets/alerts_bell.dart';
 import '../widgets/announcement_banner.dart';
 import '../widgets/capture_review_banner.dart';
 import '../widgets/empty_state.dart';
@@ -61,26 +62,8 @@ class DashboardScreen extends StatelessWidget {
     final totalBudget = vm.monthlyBudgetTotal;
     final dailyTarget = vm.dailyTarget;
 
-    // Spending score — based on savings rate + budget compliance
-    int score;
-    if (vm.transactions.isEmpty && totalBudget == 0) {
-      score = 50; // neutral start
-    } else {
-      final savingsRate = incomeThisMonth > 0
-          ? ((incomeThisMonth - spentThisMonth) / incomeThisMonth).clamp(0.0, 1.0)
-          : 0.0;
-      final budgetCompliance = totalBudget > 0
-          ? (1.0 - (spentThisMonth / totalBudget)).clamp(0.0, 1.0)
-          : 0.5;
-      score = ((savingsRate * 50 + budgetCompliance * 50) + 0.5).round();
-      score = score.clamp(0, 100);
-    }
-    final scoreLabel = score >= 70 ? 'Good' : score >= 40 ? 'Fair' : 'Review spending';
-    final scoreColor = score >= 70
-        ? AppColors.success
-        : score >= 40
-            ? AppColors.warning
-            : AppColors.danger;
+    final savedThisMonth = incomeThisMonth - spentThisMonth;
+    final avgDailySpend = spentThisMonth / now.day;
 
     // Category totals for Top spending
     final categoryTotals = <String, double>{};
@@ -111,6 +94,7 @@ class DashboardScreen extends StatelessWidget {
               title: 'Home',
               subtitle: _headerDate(now),
               back: false,
+              extraActions: const [AlertsBell()],
             ),
           ),
           const SliverToBoxAdapter(child: AnnouncementBanner()),
@@ -172,25 +156,47 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Health Score + Today
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _HealthScore(score: score, color: scoreColor, label: scoreLabel),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _TodaySpendCard(
-                          spent: spentToday,
-                          budget: dailyTarget,
-                          symbol: symbol,
-                          onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => const DailySpendScreen()),
+                  // Saved this month + average daily spend, beside Today
+                  IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: _StatCard(
+                                  label: 'Saved this month',
+                                  value: MoneyFormat.signed(savedThisMonth, symbol: symbol),
+                                  color: savedThisMonth >= 0 ? AppColors.success : AppColors.danger,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Expanded(
+                                child: _StatCard(
+                                  label: 'Avg daily spend',
+                                  value: MoneyFormat.money(avgDailySpend.roundToDouble(), symbol: symbol),
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _TodaySpendCard(
+                            spent: spentToday,
+                            budget: dailyTarget,
+                            symbol: symbol,
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const DailySpendScreen()),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -373,7 +379,6 @@ class _IncomeSpentCard extends StatelessWidget {
 class _Shortcuts extends StatelessWidget {
   static const _items = [
     ('Transactions', Icons.receipt_outlined, '/transactions'),
-    ('Alerts', Icons.notifications_outlined, '/alerts'),
     ('Daily spend', Icons.today_outlined, '/daily'),
     ('Bills', Icons.receipt_long_outlined, '/recurring'),
     ('Goals', Icons.flag_outlined, '/goals'),
@@ -621,61 +626,30 @@ class _TopSpending extends StatelessWidget {
   }
 }
 
-/// Spending score ring — shows how well user manages expenses
-class _HealthScore extends StatelessWidget {
-  final int score;
-  final Color color;
+/// One figure with a label, e.g. "Saved this month".
+class _StatCard extends StatelessWidget {
   final String label;
-  const _HealthScore({required this.score, required this.color, required this.label});
+  final String value;
+  final Color color;
 
-  String get _explanation {
-    if (score >= 70) return 'You\u2019re saving well and staying within budget.';
-    if (score >= 40) return 'Some spending is above target. Review your categories to cut back.';
-    return 'Spending exceeds your income or budget. Focus on essentials this month.';
-  }
+  const _StatCard({required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('Spending score', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: 78,
-              height: 78,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 78,
-                    height: 78,
-                    child: CircularProgressIndicator(
-                      value: score / 100,
-                      strokeWidth: 8,
-                      backgroundColor: AppColors.border,
-                      valueColor: AlwaysStoppedAnimation<Color>(color),
-                      strokeCap: StrokeCap.round,
-                    ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('$score', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                      Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: color)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _explanation,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 9, height: 1.3, color: AppColors.mutedForeground),
+            Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(value, style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: color)),
             ),
           ],
         ),

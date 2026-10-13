@@ -64,10 +64,11 @@ class AppTheme {
   static const primaryDark = Color(0xFF0F5B3F);
   static const accent = AppColors.accent;
 
-  static ThemeData light() {
+  /// [googleFonts] is false only in tests, which can't download Manrope.
+  static ThemeData light({bool googleFonts = true}) {
     return ThemeData(
       useMaterial3: true,
-      fontFamily: GoogleFonts.manrope().fontFamily,
+      fontFamily: googleFonts ? GoogleFonts.manrope().fontFamily : null,
       scaffoldBackgroundColor: AppColors.bg,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.primary,
@@ -142,14 +143,14 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
         backgroundColor: AppColors.textPrimary,
       ),
-      textTheme: GoogleFonts.manropeTextTheme(),
+      textTheme: googleFonts ? GoogleFonts.manropeTextTheme() : null,
     );
   }
 
-  static ThemeData dark() {
+  static ThemeData dark({bool googleFonts = true}) {
     return ThemeData(
       useMaterial3: true,
-      fontFamily: GoogleFonts.manrope().fontFamily,
+      fontFamily: googleFonts ? GoogleFonts.manrope().fontFamily : null,
       scaffoldBackgroundColor: AppColors.darkBg,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.darkPrimary,
@@ -203,7 +204,7 @@ class AppTheme {
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
       ),
-      textTheme: GoogleFonts.manropeTextTheme(ThemeData.dark().textTheme),
+      textTheme: googleFonts ? GoogleFonts.manropeTextTheme(ThemeData.dark().textTheme) : null,
     );
   }
 }

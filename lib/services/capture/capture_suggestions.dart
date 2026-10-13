@@ -41,7 +41,7 @@ class CaptureDraft {
 
   /// Everything needed to save it without asking the user.
   bool get isComplete {
-    if (walletId == null) return false;
+    if (walletId == null || amount <= 0 || fee < 0) return false;
     if (type == TxType.transfer) return toWalletId != null && toWalletId != walletId;
     return categoryId != null;
   }
