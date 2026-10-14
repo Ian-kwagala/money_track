@@ -9,6 +9,7 @@ import '../format/money_input.dart';
 /// that also fires) asking the user to set a daily spending target. Runs
 /// only while [AppSettings.dailyBudget] is unset.
 class DailyBudgetPrompt {
+  /// Shows the sheet if no daily budget is set yet; otherwise does nothing.
   static Future<void> maybeShow(BuildContext context) async {
     final vm = context.read<TrackerViewModel>();
     if (vm.settings.dailyBudget != null) return;
@@ -23,6 +24,7 @@ class DailyBudgetPrompt {
   }
 }
 
+/// The bottom sheet itself, prefilled with a suggested amount.
 class _DailyBudgetSheet extends StatefulWidget {
   const _DailyBudgetSheet();
 
@@ -41,6 +43,8 @@ class _DailyBudgetSheetState extends State<_DailyBudgetSheet> {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
     final income = vm.incomeTotal(monthStart, now);
+    // Suggest a 30th of the monthly budgets, else of this month's income so
+    // far, else a flat 20,000.
     final suggested = totalBudget > 0 ? totalBudget / 30 : (income > 0 ? income / 30 : 20000.0);
     _ctrl = TextEditingController(text: MoneyInput.text(suggested.roundToDouble()));
   }
@@ -98,6 +102,8 @@ class _DailyBudgetSheetState extends State<_DailyBudgetSheet> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
+                  // An empty or zero entry saves the 20,000 default rather
+                  // than nothing, so the prompt doesn't come back.
                   onPressed: () async {
                     final v = double.tryParse(_ctrl.text.replaceAll(',', ''));
                     final s = vm.settings;

@@ -13,6 +13,7 @@ import 'cloud_codec.dart';
 import 'connectivity_service.dart';
 import 'firebase_bootstrap.dart';
 
+/// What the cloud account screen shows about sync.
 enum SyncStatus {
   /// Firebase isn't configured in this build. Local-only, as before.
   disabled,
@@ -20,12 +21,19 @@ enum SyncStatus {
   /// No account signed in. Local-only; changes are still tracked so they
   /// upload if this account signs back in.
   signedOut,
+
+  /// A full pull-then-push ([SyncService.syncNow]) is running.
   syncing,
+
+  /// The last full sync finished without errors.
   synced,
 
   /// Last attempt couldn't reach the server. Local data is unaffected and
   /// changes are queued.
   offline,
+
+  /// Something other than a connection problem went wrong; see
+  /// [SyncService.lastError].
   error,
 
   /// This phone holds data linked to a different account. Nothing syncs
@@ -50,6 +58,13 @@ enum SyncStatus {
 /// The Firestore rules additionally reject a write older than what the
 /// server already has, so a stale queued edit can't clobber a newer one.
 /// Deletes are stored as tombstones (`deleted: true`) so they propagate.
+///
+/// Bookkeeping keys in the `sync_meta` box (record key = `box/id`):
+/// * `dirty:<record>`: edit time (ms) of a local change not yet confirmed by
+///   the server.
+/// * `ts:<record>`: edit time of the version both sides last agreed on.
+/// * `lastPull:<box>`: highest `updatedAtMs` already pulled for that box.
+/// * `linkedUid`, `initialUploadDone`, `lastSyncedAt`: per-phone state.
 class SyncService extends ChangeNotifier {
   SyncService({
     required this.repo,
@@ -73,19 +88,39 @@ class SyncService extends ChangeNotifier {
   /// Called after cloud changes were written into Hive, so the UI refreshes.
   VoidCallback? onRemoteChangesApplied;
 
+  /// Records per Firestore batch/page. Firestore caps a batch at 500 writes.
   static const _batchLimit = 400;
   static const _metaBox = 'sync_meta';
 
   late Box _meta;
   final List<StreamSubscription> _subs = [];
+
+  /// Record keys this service is writing into Hive itself (pulled from the
+  /// cloud). Their box events are skipped once, so they aren't re-uploaded.
   final Set<String> _suppress = {};
+
+  /// Record key -> edit time currently being uploaded, so a second flush
+  /// doesn't send the same version again while the first is still pending.
   final Map<String, int> _inFlight = {};
+
+  /// Batch commits not yet acknowledged; only [flushNow] waits on these.
   final Set<Future<void>> _commits = {};
+
+  /// Debounce for uploads: rapid edits are sent together.
   Timer? _flushTimer;
+
+  /// Safety net: a full sync every 15 minutes while online.
   Timer? _periodic;
   bool _started = false;
+
+  /// Guards against overlapping [syncNow] runs.
   bool _syncing = false;
+
+  /// The account currently being synced.
   String? _activeUid;
+
+  /// A signed-in account waiting for the user's choice, because this phone
+  /// holds another account's data.
   String? _pendingUid;
 
   late SyncStatus status;
@@ -99,6 +134,7 @@ class SyncService extends ChangeNotifier {
     return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
   }
 
+  /// Local changes not yet confirmed by the server.
   int get pendingCount =>
       _started ? _meta.keys.where((k) => k is String && k.startsWith('dirty:')).length : 0;
 
@@ -123,6 +159,10 @@ class SyncService extends ChangeNotifier {
   // Account linking
   // ---------------------------------------------------------------------------
 
+  /// Decides what to do when the signed-in account changes. The phone stays
+  /// linked to the first account that synced on it. Signing in as a
+  /// different one doesn't merge two people's data: it pauses and asks
+  /// ([SyncStatus.needsAccountChoice]).
   Future<void> _onAuthChanged() async {
     final uid = auth.uid;
     if (uid == null) {
@@ -164,6 +204,8 @@ class SyncService extends ChangeNotifier {
       appLockPasswordHash: old.appLockPasswordHash,
     );
 
+    // Suppress the delete events, or the old data's removal would be
+    // uploaded as deletions into the new account.
     for (final name in CloudCodec.syncedBoxes) {
       final box = repo.boxFor(name);
       for (final k in box.keys) {
@@ -199,6 +241,10 @@ class SyncService extends ChangeNotifier {
   // Local changes → cloud
   // ---------------------------------------------------------------------------
 
+  /// Called for every write or delete in a synced box. Marks the record
+  /// dirty with the current time (its edit time for conflict resolution),
+  /// then schedules an upload 1.5 s later, restarting the timer on each new
+  /// edit.
   void _onLocalEvent(String box, BoxEvent e) {
     final key = '$box/${e.key}';
     if (_suppress.remove(key)) return;
@@ -224,6 +270,8 @@ class SyncService extends ChangeNotifier {
     }
     if (dirty.isEmpty) return;
 
+    // Each document stores the encoded record (or null plus `deleted: true`
+    // when it's gone locally) and the edit time used to resolve conflicts.
     final db = _db;
     final entries = dirty.entries.toList();
     for (var i = 0; i < entries.length; i += _batchLimit) {
@@ -284,6 +332,9 @@ class SyncService extends ChangeNotifier {
   // Full sync: pull, then push
   // ---------------------------------------------------------------------------
 
+  /// Pulls cloud changes into Hive, then uploads local ones. Runs on sign-in,
+  /// when the connection returns, every 15 minutes, and on demand. Does
+  /// nothing if a sync is already running or no account is linked.
   Future<void> syncNow() async {
     final uid = _activeUid;
     if (!_started || uid == null || _syncing) return;
@@ -321,7 +372,13 @@ class SyncService extends ChangeNotifier {
     }
   }
 
-  /// Returns true if any local record changed.
+  /// Downloads, box by box, every document whose `updatedAtMs` is at or
+  /// after the last pull, in pages of [_batchLimit]. Returns true if any
+  /// local record changed.
+  ///
+  /// The query uses `>=` rather than `>` so documents sharing the boundary
+  /// timestamp aren't skipped; re-reading one is harmless because
+  /// [_applyRemote] ignores versions it already has.
   Future<bool> _pull(String uid) async {
     var changed = false;
     for (final name in CloudCodec.syncedBoxes) {
@@ -350,6 +407,9 @@ class SyncService extends ChangeNotifier {
     return changed;
   }
 
+  /// Writes one cloud document into Hive if it's newer than both the last
+  /// agreed version and any pending local edit (last write wins). Returns
+  /// true if Hive was changed.
   Future<bool> _applyRemote(String name, Box box, DocumentSnapshot<Map<String, dynamic>> doc) async {
     final m = doc.data();
     if (m == null) return false;
@@ -408,6 +468,8 @@ class SyncService extends ChangeNotifier {
   CollectionReference<Map<String, dynamic>> _col(String uid, String box) =>
       _db.collection('users').doc(uid).collection(box);
 
+  /// Connection failures show as [SyncStatus.offline] without an error
+  /// message; anything else is a real [SyncStatus.error].
   void _fail(Object e) {
     final offline = e is FirebaseException && (e.code == 'unavailable' || e.code == 'deadline-exceeded');
     lastError = offline ? null : e.toString();

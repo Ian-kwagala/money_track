@@ -8,16 +8,35 @@ import 'package:money_track/services/capture/capture_service.dart';
 import 'package:money_track/services/capture/sms_bridge.dart';
 import 'package:money_track/viewmodels/tracker_view_model.dart';
 
+// Shared set-up for the auto-capture tests: a fake Android SMS bridge, a
+// "phone" that boots the real repository, view model and CaptureService on a
+// temporary Hive folder, and sample SMS texts in the formats the parser knows.
+
 /// Stands in for the Android side: an inbox, a queue of newly arrived SMS
 /// and a permission answer.
 class FakeSmsBridge implements SmsBridge {
+  /// The permission state reported by [access].
   SmsAccess current = SmsAccess.denied;
+
+  /// What the user "answers" when [requestAccess] shows the permission prompt.
   SmsAccess answer = SmsAccess.granted;
+
+  /// Mirrors the native on/off switch set by [setListening].
   bool listening = false;
+
+  /// Set once the service has asked for notification permission.
   bool askedToNotify = false;
+
+  /// Messages already in the phone's inbox, returned by [readInbox].
   final inbox = <RawSms>[];
+
+  /// Messages the native receiver has queued and not yet handed over.
   final queue = <RawSms>[];
+
+  /// The `since` of every inbox read, so tests can check how far back it looked.
   final inboxReadsSince = <DateTime>[];
+
+  // Fires like the native "queued" call that tells the app to collect the queue.
   final _queued = StreamController<void>.broadcast();
 
   /// An SMS arriving while the app is open.
@@ -63,8 +82,13 @@ class Phone {
   final TrackerViewModel vm;
   final CaptureService capture;
   final FakeSmsBridge bridge;
+
+  /// The time CaptureService sees; tests move it to simulate days passing.
   static DateTime now = DateTime(2026, 10, 12, 9, 0);
 
+  /// Starts a phone. Pass the [dir] and [bridge] of an earlier phone to
+  /// reopen its storage, as [restart] does. Lifecycle watching is off because
+  /// there's no real app lifecycle in a test.
   static Future<Phone> boot({Directory? dir, FakeSmsBridge? bridge}) async {
     dir ??= await Directory.systemTemp.createTemp('mt_capture_test');
     final repo = MoneyRepository();
@@ -76,6 +100,7 @@ class Phone {
     return Phone._(dir, vm, capture, bridge);
   }
 
+  /// Stops the capture service and closes Hive, like the app being killed.
   Future<void> shutdown() async {
     capture.dispose();
     await Hive.close();
@@ -87,6 +112,7 @@ class Phone {
     return boot(dir: dir, bridge: bridge);
   }
 
+  /// The transaction with [id], or null if there isn't one.
   TxRecord? tx(String id) {
     for (final t in vm.transactions) {
       if (t.id == id) return t;
@@ -95,9 +121,15 @@ class Phone {
   }
 }
 
+/// Builds an SMS; by default from Airtel Money, about a week before [Phone.now].
 RawSms sms(String body, {DateTime? at, String sender = 'AirtelMoney'}) =>
     RawSms(sender: sender, body: body, receivedAt: at ?? DateTime(2026, 10, 5, 8, 0));
 
+// Sample messages in the real formats, with names and numbers changed.
+// airtelSent and airtelSent2 go to the same person, so tests can check that
+// a choice made for her is remembered. umeme is a bill payment, nssfInterest
+// is a savings credit (tests send it as 'NSSF'), and promo is an advert that
+// must never become a transaction.
 const airtelSent = 'SENT UGX 21,000 to GRACE AKELLO on 256700345. Fee UGX 500.0 Bal UGX 11,450. TID 157700004.';
 const airtelSent2 = 'SENT UGX 8,000 to GRACE AKELLO on 256700345. Fee UGX 300.0 Bal UGX 3,150. TID 157700005.';
 const airtelReceived =

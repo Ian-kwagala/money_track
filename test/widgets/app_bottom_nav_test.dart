@@ -2,6 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_track/ui/widgets/app_bottom_nav.dart';
 
+// Tests for AppBottomNav: four tabs with the round Add button in the middle,
+// rising above the bar. They check the layout, which taps reach which target
+// (including the clear strip beside the raised button, which must let taps
+// through to the page), the phone's bottom gesture area, and screen-reader
+// labels.
+
+/// Four tabs named like the app's own.
 const _items = [
   AppNavItem(label: 'Home', icon: Icons.home_outlined),
   AppNavItem(label: 'Budgets', icon: Icons.account_balance_wallet_outlined),
@@ -9,6 +16,7 @@ const _items = [
   AppNavItem(label: 'Settings', icon: Icons.settings_outlined),
 ];
 
+/// Widgets of [type] inside the nav bar.
 Finder _inNav(Type type) => find.descendant(of: find.byType(AppBottomNav), matching: find.byType(type));
 
 /// The white bar (the first box drawn inside the nav).
@@ -18,10 +26,13 @@ Rect _bar(WidgetTester t) => t.getRect(_inNav(DecoratedBox).first);
 Rect _button(WidgetTester t) => t.getRect(_inNav(InkWell));
 
 void main() {
+  // What each test's taps reached: tab indexes, Add presses and page taps.
   late List<int> selected;
   late int added;
   late int pageTaps;
 
+  /// Shows the nav at the bottom of a 390x800 screen over a tappable page.
+  /// [bottomInset] simulates the phone's gesture area under the bar.
   Future<void> pump(WidgetTester tester, {int index = 0, double bottomInset = 0}) async {
     selected = [];
     added = 0;

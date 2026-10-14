@@ -8,15 +8,23 @@ import 'package:money_track/services/capture/sms_bridge.dart';
 
 import 'capture_test_helpers.dart';
 
+// Tests for CaptureService, the logic behind auto-capture, run against the
+// real repository on a temporary Hive folder with a fake SMS bridge (see
+// capture_test_helpers.dart). The groups follow a message's life: turning the
+// feature on, collecting SMS, confirming them as transactions, and offering
+// to correct a wallet balance from the balance printed in the SMS.
 void main() {
   late Phone phone;
 
+  // Every test starts on a fresh phone at the same fixed time.
   setUp(() async {
     Phone.now = DateTime(2026, 10, 12, 9, 0);
     phone = await Phone.boot();
   });
   tearDown(() => phone.shutdown());
 
+  // Switching the feature on and off, the SMS permission, and the first
+  // 30-day import.
   group('turning on', () {
     test('imports the last 30 days of money SMS and nothing else', () async {
       phone.bridge.inbox.addAll([
@@ -59,6 +67,8 @@ void main() {
     });
   });
 
+  // How SMS get in: inbox scans, the live queue and pasted text, and how
+  // the same message seen twice is kept once.
   group('collecting', () {
     setUp(() => phone.capture.turnOn());
 
@@ -124,6 +134,8 @@ void main() {
     });
 
     test('a message confirmed on another phone (restored from backup) is not offered again', () async {
+      // Confirmed transactions get the id "sms_<fingerprint>", so a synced
+      // copy of one is enough to recognise the message.
       await phone.vm.addTransaction(TxRecord(
         id: 'sms_${CaptureService.fingerprint(airtelReceived)}',
         type: TxType.income,
@@ -136,6 +148,8 @@ void main() {
     });
   });
 
+  // Turning a waiting message into transactions: the main one has the id
+  // "sms_<id>" and any fee is a separate expense "sms_<id>_fee".
   group('confirming', () {
     test('a send is an expense, with the fee as its own expense', () async {
       await phone.capture.ingest([sms(airtelSent)]);
@@ -262,6 +276,8 @@ void main() {
     });
   });
 
+  // After confirming, the balance printed in the SMS is compared with the
+  // wallet's balance in the app, and a difference is offered as a fix.
   group('balance check', () {
     test('offers to match the wallet to the newest SMS balance', () async {
       await phone.capture.ingest([sms(airtelSent)]);
@@ -271,6 +287,7 @@ void main() {
       expect(mismatch, isNotNull);
       expect(mismatch!.walletId, 'wallet_airtel');
       expect(mismatch.smsBalance, 11450);
+      // The seeded Airtel wallet starts at 0, so 21,000 sent plus the 500 fee.
       expect(mismatch.appBalance, -21500);
 
       await phone.capture.matchBalance(mismatch);
@@ -285,6 +302,8 @@ void main() {
     });
 
     test('says nothing when the balance already matches', () async {
+      // Set the balance to what it was before the deposit, so after it the
+      // app and the SMS agree.
       final airtel = phone.vm.walletById('wallet_airtel');
       await phone.vm.setWalletBalance(airtel, 33675 - 31200);
       await phone.capture.ingest([sms(airtelDeposit)]);

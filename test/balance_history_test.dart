@@ -2,12 +2,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:money_track/models/transaction.dart';
 import 'package:money_track/services/balance_history.dart';
 
+// Tests for BalanceHistory and the helpers behind the Home balance trend
+// chart. BalanceHistory works backwards: the total at a past moment is
+// today's total minus every change since then. balanceTrend picks the points
+// for each chart range, and niceAxis picks round gridlines for the chart.
+
+/// "Now" for every test: Tuesday 13 October 2026, 15:00.
 final _now = DateTime(2026, 10, 13, 15, 0);
 
+/// A transaction on wallet [wallet] (or from [wallet] to [to] for a transfer).
 TxRecord _tx(String id, TxType type, double amount, DateTime at, {String wallet = 'w1', String? to}) =>
     TxRecord(id: id, type: type, amount: amount, walletId: wallet, toWalletId: to, dateTime: at);
 
 void main() {
+  // How much a single transaction changes the total across the user's
+  // wallets (w1 and w2 here).
   group('change to the total', () {
     final h = BalanceHistory(currentTotal: 0, transactions: const [], walletIds: {'w1', 'w2'});
 
@@ -92,6 +101,7 @@ void main() {
     });
   });
 
+  // The chart's y-axis: min, max and gridline interval for a set of totals.
   group('niceAxis', () {
     test('fits the values with round gridlines', () {
       final a = niceAxis([1230000, 1480000, 1720000]);

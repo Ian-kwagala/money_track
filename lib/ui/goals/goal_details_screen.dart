@@ -8,6 +8,11 @@ import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 import 'goal_funds_dialog.dart';
 
+/// One savings goal in detail: deadline countdown, progress bar, saved /
+/// target / remaining figures, and buttons to add or withdraw money.
+///
+/// Watches the view model, so the figures update as soon as money is moved
+/// (the [goal] object itself is changed in place by the funds dialog).
 class GoalDetailsScreen extends StatelessWidget {
   final SavingsGoal goal;
 
@@ -203,6 +208,8 @@ class GoalDetailsScreen extends StatelessWidget {
     );
   }
 
+  /// Deletes the goal after confirming, then goes back to the goals list.
+  /// The goal's wallet movements are left in place (see the dialog text).
   Future<void> _confirmDelete(BuildContext context, TrackerViewModel vm) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -229,6 +236,7 @@ class GoalDetailsScreen extends StatelessWidget {
   }
 }
 
+/// A small labelled figure ("Saved", "Target", "Remaining").
 class _StatBox extends StatelessWidget {
   final String label;
   final String value;

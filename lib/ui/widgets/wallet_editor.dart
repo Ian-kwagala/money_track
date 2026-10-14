@@ -20,6 +20,7 @@ Future<void> showWalletEditor(BuildContext context, {Wallet? wallet}) async {
   );
   var type = wallet?.type ?? WalletType.cash;
 
+  // Shared look for the dialog's fields.
   InputDecoration deco(String label, {String? hint}) => InputDecoration(
         labelText: label,
         hintText: hint,
@@ -31,6 +32,8 @@ Future<void> showWalletEditor(BuildContext context, {Wallet? wallet}) async {
         ),
       );
 
+  // The dialog returns 'save', 'delete', or null (cancelled). The work is
+  // done after it closes, so the dialog itself stays simple.
   final action = await showDialog<String>(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -113,6 +116,9 @@ Future<void> showWalletEditor(BuildContext context, {Wallet? wallet}) async {
   }
 }
 
+/// Asks before deleting, spelling out what happens to the wallet's
+/// transactions and bills (see TrackerViewModel.removeWallet). The last
+/// remaining wallet can't be deleted.
 Future<void> _confirmDelete(BuildContext context, TrackerViewModel vm, Wallet wallet) async {
   final messenger = ScaffoldMessenger.of(context);
   if (vm.wallets.length <= 1) {

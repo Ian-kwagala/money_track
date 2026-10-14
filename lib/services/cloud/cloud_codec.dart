@@ -23,6 +23,8 @@ import '../../models/wallet.dart';
 /// When adding a field to a model, add it to both [encode] and [decode]
 /// here, or it will silently not sync.
 class CloudCodec {
+  /// Boxes that sync. The auto-capture boxes are deliberately left out:
+  /// SMS contents stay on the phone.
   static const syncedBoxes = <String>[
     HiveBoxes.wallets,
     HiveBoxes.categories,
@@ -37,6 +39,9 @@ class CloudCodec {
     HiveBoxes.alertRules,
   ];
 
+  /// Hive model -> Firestore map. Enums are stored by `.name` and dates as
+  /// Firestore Timestamps, so the cloud data stays readable in the console
+  /// and doesn't depend on Hive's field numbers.
   static Map<String, dynamic> encode(String box, Object value) {
     switch (box) {
       case HiveBoxes.wallets:
@@ -199,6 +204,11 @@ class CloudCodec {
     throw ArgumentError('Box "$box" is not synced');
   }
 
+  /// Firestore map -> Hive model. Written defensively: a missing or
+  /// wrong-typed field falls back to the model's default instead of
+  /// throwing, so a document written by an older or newer app version still
+  /// loads.
+  ///
   /// [existing] is the record currently stored locally under the same key,
   /// if any. Settings use it to keep device-only fields (the app lock).
   static Object decode(String box, Map<String, dynamic> m, {Object? existing}) {
@@ -351,6 +361,9 @@ class CloudCodec {
     throw ArgumentError('Box "$box" is not synced');
   }
 
+  // Type-safe readers: each returns the fallback when the value is missing
+  // or isn't the expected type.
+
   static Timestamp? _ts(DateTime? d) => d == null ? null : Timestamp.fromDate(d);
 
   static DateTime? _date(Object? v) {
@@ -363,6 +376,8 @@ class CloudCodec {
   static double _dbl(Object? v, [double fallback = 0]) => v is num ? v.toDouble() : fallback;
   static int _int(Object? v, int fallback) => v is num ? v.toInt() : fallback;
 
+  /// Finds the enum value whose `.name` matches. A renamed or unknown value
+  /// gets [fallback].
   static T _enum<T extends Enum>(List<T> values, Object? name, T fallback) {
     for (final v in values) {
       if (v.name == name) return v;

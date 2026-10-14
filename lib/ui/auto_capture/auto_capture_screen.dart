@@ -16,6 +16,16 @@ import 'capture_review_sheet.dart';
 import 'check_message_sheet.dart';
 import 'turn_on_flow.dart';
 
+/// The review list for SMS auto-capture: money messages waiting to be
+/// confirmed, edited or ignored, plus recently handled ones (with Undo).
+///
+/// From top to bottom: a privacy note, a status area (unsupported / turn
+/// on / permission missing), "Confirm all", the waiting cards, and the
+/// recently handled list. Pull down to re-check for new messages. The
+/// floating button pastes a message by hand.
+///
+/// All the work happens in CaptureService; this file is UI and the confirm
+/// flow ([_confirm] and friends below).
 class AutoCaptureScreen extends StatelessWidget {
   const AutoCaptureScreen({super.key});
 
@@ -161,6 +171,7 @@ Future<void> _askThenConfirm(BuildContext context, Capture c, CaptureDraft draft
   await _save(context, c, draft);
 }
 
+/// Confirms [c] with [draft] and follows up (Undo snackbar, balance check).
 Future<void> _save(BuildContext context, Capture c, CaptureDraft draft) async {
   final mismatch = await context.read<CaptureService>().confirm(c, draft);
   // Not awaited: the snackbar and any balance question follow the card's exit.
@@ -188,6 +199,7 @@ Future<bool?> _askIfDuplicate(BuildContext context, TxRecord existing) {
   );
 }
 
+/// Opens the full editor for [c] and reacts to how it was closed.
 Future<void> _review(BuildContext context, Capture c) async {
   final outcome = await CaptureReviewSheet.show(context, c);
   if (outcome == null || !context.mounted) return;
@@ -203,6 +215,8 @@ Future<void> _ignore(BuildContext context, Capture c) async {
   if (context.mounted) _showUndo(context, c, 'Ignored');
 }
 
+/// After a confirm: offer Undo, then, if the SMS balance disagrees with the
+/// wallet, offer to update the wallet.
 Future<void> _afterConfirm(BuildContext context, Capture c, BalanceMismatch? mismatch) async {
   _showUndo(context, c, 'Saved');
   if (mismatch == null) return;
@@ -211,6 +225,8 @@ Future<void> _afterConfirm(BuildContext context, Capture c, BalanceMismatch? mis
   if (context.mounted) await _offerBalanceMatch(context, [mismatch]);
 }
 
+/// "Saved · John" / "Ignored · John" snackbar whose Undo puts the message
+/// back in the list (and removes any transactions it created).
 void _showUndo(BuildContext context, Capture c, String what) {
   final service = context.read<CaptureService>();
   final name = c.message.counterparty;
@@ -222,6 +238,8 @@ void _showUndo(BuildContext context, Capture c, String what) {
     ));
 }
 
+/// Confirms every card that needs no questions (see
+/// CaptureService.confirmAll) and reports how many were left for review.
 Future<void> _confirmAll(BuildContext context) async {
   final result = await context.read<CaptureService>().confirmAll();
   if (!context.mounted) return;
@@ -230,6 +248,9 @@ Future<void> _confirmAll(BuildContext context) async {
   if (result.mismatches.isNotEmpty) await _offerBalanceMatch(context, result.mismatches);
 }
 
+/// Lists each wallet whose balance differs from its latest SMS and, if the
+/// user agrees, adjusts the wallets to match. Transactions are untouched;
+/// the opening balance absorbs the difference.
 Future<void> _offerBalanceMatch(BuildContext context, List<BalanceMismatch> mismatches) async {
   final vm = context.read<TrackerViewModel>();
   final service = context.read<CaptureService>();
@@ -260,6 +281,9 @@ Future<void> _offerBalanceMatch(BuildContext context, List<BalanceMismatch> mism
 // Widgets
 // -----------------------------------------------------------------------------
 
+/// One waiting message: what happened, who with, when, the suggested
+/// wallet/category as chips (plus fee, pending and possible-duplicate
+/// flags), and Confirm / Edit / Ignore. Tapping the card opens the editor.
 class _CaptureCard extends StatelessWidget {
   final Capture capture;
   final Future<bool> Function() onConfirm;
@@ -283,6 +307,8 @@ class _CaptureCard extends StatelessWidget {
         ? MoneyFormat.timeShort(capture.when)
         : '${MoneyFormat.shortDay(capture.when)} · ${MoneyFormat.timeShort(capture.when)}';
     final source = capture.record.sender.isEmpty ? 'Pasted message' : '${m.provider.label} SMS';
+    // The provider's own wallet: where money arrived for incoming transfers,
+    // otherwise where it left.
     final providerWallet = m.kind.isMoneyIn && d.type == TxType.transfer ? d.toWalletId : d.walletId;
 
     return Material(
@@ -399,6 +425,9 @@ class _CaptureListState extends State<_CaptureList> {
   /// Captures on their way out, with the place they had in the list.
   final _leaving = <String, (int, Capture)>{};
 
+  /// Compares the old and new pending lists. Any card that disappeared is
+  /// kept in [_leaving] (at its old position) long enough to play the
+  /// exit animation, then dropped.
   @override
   void didUpdateWidget(_CaptureList old) {
     super.didUpdateWidget(old);
@@ -436,8 +465,13 @@ class _CaptureListState extends State<_CaptureList> {
   }
 }
 
+/// Wraps one card and plays its exit: optionally hold with a green "Saved"
+/// overlay, then fade, slide right and fold the height to zero.
 class _Leaving extends StatefulWidget {
+  /// True once the card has left the pending list.
   final bool leaving;
+
+  /// Pause on the "Saved" overlay before folding (confirmed cards only).
   final bool hold;
   final Widget child;
 
@@ -445,6 +479,9 @@ class _Leaving extends StatefulWidget {
 
   static const _holdFor = Duration(milliseconds: 450);
   static const _foldFor = Duration(milliseconds: 320);
+
+  /// Hold + fold + a small margin; how long _CaptureList keeps a leaving
+  /// card around.
   static const total = Duration(milliseconds: 450 + 320 + 60);
 
   @override
@@ -452,6 +489,7 @@ class _Leaving extends StatefulWidget {
 }
 
 class _LeavingState extends State<_Leaving> with SingleTickerProviderStateMixin {
+  /// 1 = fully shown, 0 = folded away.
   late final _controller = AnimationController(vsync: this, value: 1, duration: _Leaving._foldFor);
 
   @override
@@ -531,6 +569,7 @@ class _CategoryPicker extends StatelessWidget {
 
   const _CategoryPicker({required this.capture, required this.type});
 
+  /// Returned instead of a category ID when the user wants the full editor.
   static const moreOptions = '__more__';
 
   static Future<String?> show(BuildContext context, Capture c, TxType type) => showModalBottomSheet<String>(
@@ -614,6 +653,7 @@ class _CategoryPicker extends StatelessWidget {
   }
 }
 
+/// Small tinted label with an icon; tappable when [onTap] is set.
 class _Chip extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -648,6 +688,7 @@ class _Chip extends StatelessWidget {
   }
 }
 
+/// A confirmed or ignored message from the last week, with Undo.
 class _HandledTile extends StatelessWidget {
   final Capture capture;
 
@@ -674,6 +715,7 @@ class _HandledTile extends StatelessWidget {
   }
 }
 
+/// Pitch and "Turn on" button, shown while auto-capture is off.
 class _TurnOnCard extends StatelessWidget {
   const _TurnOnCard();
 
@@ -711,6 +753,7 @@ class _TurnOnCard extends StatelessWidget {
   }
 }
 
+/// Header ⋮ menu (only while on): rescan the last 30 days, or turn off.
 class _MoreMenu extends StatelessWidget {
   const _MoreMenu();
 
@@ -737,6 +780,7 @@ class _MoreMenu extends StatelessWidget {
   }
 }
 
+/// Tinted notice with an icon and an optional action button.
 class _Banner extends StatelessWidget {
   final IconData icon;
   final Color color;

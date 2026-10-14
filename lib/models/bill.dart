@@ -4,6 +4,11 @@ import 'frequency.dart';
 
 part 'bill.g.dart';
 
+/// A bill the user has to pay, such as rent, school fees or electricity,
+/// either once or on a repeating schedule.
+///
+/// Paying a recurring bill doesn't create a new bill. It sets
+/// [lastPaidDate], and [nextDueDate] moves on by one [frequency] cycle.
 @HiveType(typeId: 11)
 class Bill extends HiveObject {
   @HiveField(0)
@@ -20,18 +25,26 @@ class Bill extends HiveObject {
   @HiveField(3)
   DateTime dueDate;
 
+  /// Wallet the bill is normally paid from. Empty if there is none (e.g.
+  /// its wallet was deleted and no other wallet was left).
   @HiveField(4)
   String walletId;
 
   @HiveField(5)
   String? categoryId;
 
+  /// How many days before the due date reminders start.
   @HiveField(6)
   int reminderDaysBefore;
 
+  /// Link to a [RecurrenceRule]. Nothing sets it today, so [isRecurring] is
+  /// effectively always false; use [frequency] to tell if a bill repeats.
   @HiveField(7)
   String? recurrenceRuleId;
 
+  /// Legacy "paid" flag. It's set when a bill is paid but never reset for
+  /// recurring bills, so don't use it to decide what's due; use
+  /// [isDueWithin], [isOverdue] or [isSettled].
   @HiveField(8)
   bool isPaid;
 
@@ -77,6 +90,7 @@ class Bill extends HiveObject {
     return frequency.addCycle(lastPaidDate!, customDays: customDays);
   }
 
+  /// Whole days from now until [nextDueDate]; negative once overdue.
   int get daysUntilDue => nextDueDate.difference(DateTime.now()).inDays;
 
   /// A one-off bill that has been paid never comes due again. (Recurring
@@ -98,5 +112,6 @@ class Bill extends HiveObject {
     return amount * 30 / days;
   }
 
+  /// Past its due date and still needs paying (not paused or settled).
   bool get isOverdue =>!isPaused && !isSettled && nextDueDate.isBefore(DateTime.now());
 }

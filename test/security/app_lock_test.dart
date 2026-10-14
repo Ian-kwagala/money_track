@@ -6,6 +6,12 @@ import 'package:money_track/data/money_repository.dart';
 import 'package:money_track/services/security/pin_hash.dart';
 import 'package:money_track/viewmodels/tracker_view_model.dart';
 
+// Tests for the app lock in TrackerViewModel: setting, checking and turning
+// off the PIN, and upgrading PINs that older versions stored in plain text.
+// They run on real Hive files, so they can also check that the PIN never
+// appears in the settings file on disk.
+
+/// A PIN unlikely to appear in the settings file by chance.
 const _pin = '918273';
 
 void main() {
@@ -13,6 +19,7 @@ void main() {
   late MoneyRepository repo;
   late TrackerViewModel vm;
 
+  // A fresh temporary storage folder for every test.
   setUp(() async {
     dir = await Directory.systemTemp.createTemp('mt_lock_test');
     repo = MoneyRepository();
@@ -87,6 +94,7 @@ void main() {
     await vm.hashLegacyPin();
     await Hive.close();
 
+    // Reopen the same storage, as the next app launch would.
     repo = MoneyRepository();
     await repo.init(hivePath: dir.path);
     vm = TrackerViewModel(repo);

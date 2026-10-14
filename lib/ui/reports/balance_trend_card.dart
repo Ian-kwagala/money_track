@@ -20,6 +20,7 @@ class BalanceTrendCard extends StatefulWidget {
 }
 
 class _BalanceTrendCardState extends State<BalanceTrendCard> {
+  /// Selected span; Month by default.
   TrendRange _range = TrendRange.month;
 
   @override
@@ -96,6 +97,8 @@ class _BalanceTrendCardState extends State<BalanceTrendCard> {
                         getTitlesWidget: (v, _) {
                           final i = v.round();
                           if (i < 0 || i >= points.length || v != i.toDouble()) return const SizedBox.shrink();
+                          // Count from the right so the newest point (today)
+                          // always gets a label.
                           final fromEnd = points.length - 1 - i;
                           if (fromEnd % labelEvery != 0) return const SizedBox.shrink();
                           return Padding(
@@ -137,6 +140,7 @@ class _BalanceTrendCardState extends State<BalanceTrendCard> {
                       preventCurveOverShooting: true,
                       color: AppColors.primary,
                       barWidth: 3,
+                      // A single dot marks "now" at the end of the line.
                       dotData: FlDotData(
                         show: true,
                         checkToShowDot: (spot, _) => spot.x == points.length - 1,
@@ -184,6 +188,7 @@ class _BalanceTrendCardState extends State<BalanceTrendCard> {
   }
 }
 
+/// Week / Month / Year pill toggle; the selected option looks raised.
 class _RangePicker extends StatelessWidget {
   final TrendRange value;
   final ValueChanged<TrendRange> onChanged;

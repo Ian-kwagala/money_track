@@ -9,8 +9,10 @@ import '../theme/app_theme.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/transaction_tile.dart';
 
+/// Date filter chips on the Transactions screen.
 enum PeriodFilter { all, today, week, month }
 
+/// Chip text for each filter.
 extension on PeriodFilter {
   String get label => switch (this) {
         PeriodFilter.all => 'All time',
@@ -34,6 +36,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   TxType? _type; // null = all types
   String _query = '';
 
+  /// Whether [d] falls in the selected period. "Last 7 days" is today plus
+  /// the six days before; "This month" is the calendar month.
   bool _inPeriod(DateTime d, DateTime now) {
     switch (_period) {
       case PeriodFilter.all:
@@ -52,8 +56,11 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final vm = context.watch<TrackerViewModel>();
     final symbol = vm.settings.currencySymbol;
     final now = DateTime.now();
+    // Commas are dropped so "25,000" matches an amount of 25000.
     final query = _query.trim().toLowerCase().replaceAll(',', '');
 
+    // Apply the type, period and search filters. The search matches note,
+    // category, wallet name or the whole-number amount.
     final filtered = vm.transactions.where((t) {
       if (_type != null && t.type != _type) return false;
       if (!_inPeriod(t.dateTime, now)) return false;
@@ -69,6 +76,8 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final spent = filtered.where((t) => t.type == TxType.expense).fold<double>(0, (s, t) => s + t.amount);
     final received = filtered.where((t) => t.type == TxType.income).fold<double>(0, (s, t) => s + t.amount);
 
+    // Group by calendar day, newest day first. vm.transactions is already
+    // newest-first, so each day's list stays in order.
     final grouped = <DateTime, List<TxRecord>>{};
     for (final t in filtered) {
       final day = DateTime(t.dateTime.year, t.dateTime.month, t.dateTime.day);
@@ -192,6 +201,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   }
 }
 
+/// Date label above each day's card, with that day's total spending.
 class _DayHeader extends StatelessWidget {
   final String label;
   final double total;

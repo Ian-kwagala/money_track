@@ -17,12 +17,17 @@ import 'sms_bridge.dart';
 
 /// A captured SMS with what the current parser reads from it.
 class Capture {
+  /// What's stored on the phone.
   final CapturedSms record;
+
+  /// [record]'s body parsed just now; never stored.
   final ParsedMoneyMessage message;
 
   const Capture(this.record, this.message);
 
   String get id => record.id;
+
+  /// When the transaction happened: the date in the SMS, else its arrival.
   DateTime get when => message.occurredAt ?? record.receivedAt;
 }
 
@@ -35,6 +40,7 @@ class BalanceMismatch {
   const BalanceMismatch({required this.walletId, required this.smsBalance, required this.appBalance});
 }
 
+/// Outcome of [CaptureService.turnOn], so the UI can explain what to do next.
 enum TurnOnResult { on, denied, blocked, unsupported }
 
 /// Auto-capture: collects money SMS, keeps them for review on this phone,
@@ -66,16 +72,24 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
   /// the SMS app wrote a message to the inbox a little after it arrived.
   static const scanOverlap = Duration(days: 1);
 
+  // Keys in the capture_meta box. It also holds the wallet:/category: memory
+  // keys described in CaptureSuggestions.memory.
   static const _onKey = 'on';
   static const _lastScanKey = 'lastScanMs';
 
+  // Null until [start] has opened them.
   Box<CapturedSms>? _box;
   Box<dynamic>? _meta;
   StreamSubscription<void>? _queuedSub;
   SmsAccess _access = SmsAccess.denied;
   bool _watchingLifecycle = false;
+
+  // [refresh] runs one at a time; a call made while one is running sets
+  // _refreshAgain so the running one loops once more instead.
   bool _refreshing = false;
   bool _refreshAgain = false;
+
+  /// Cached parse of the pending list; cleared by [_changed].
   List<Capture>? _pending;
 
   bool get isReady => _box != null;
@@ -98,7 +112,12 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
       ..sort((a, b) => b.record.handledAt!.compareTo(a.record.handledAt!));
   }
 
+  /// Opens the capture boxes, clears out old messages and, if auto-capture
+  /// is on, collects anything that arrived while the app was closed. Called
+  /// once local storage is ready (see main.dart). [watchLifecycle] is false
+  /// in tests.
   Future<void> start({bool watchLifecycle = true}) async {
+    // 19/20 are the typeIds of CaptureStatus and CapturedSms.
     if (!Hive.isAdapterRegistered(19)) Hive.registerAdapter(CaptureStatusAdapter());
     if (!Hive.isAdapterRegistered(20)) Hive.registerAdapter(CapturedSmsAdapter());
     _box = await Hive.openBox<CapturedSms>(HiveBoxes.capturedSms);
@@ -118,6 +137,8 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// Coming back to the app picks up SMS received while it was in the
+  /// background.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed && isOn) refresh();
@@ -151,6 +172,7 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
     return TurnOnResult.on;
   }
 
+  /// Stops the background receiver. Messages already captured are kept.
   Future<void> turnOff() async {
     await bridge.setListening(false);
     await _meta!.put(_onKey, false);
@@ -207,6 +229,8 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
     final box = _box!;
     final seenKeys = {for (final r in box.values) r.dedupeKey};
     var added = 0;
+    // Two layers of de-duplication: the same text (fingerprint) and the same
+    // transaction worded differently (dedupeKey).
     for (final sms in messages) {
       final id = fingerprint(sms.body);
       if (box.containsKey(id)) continue;
@@ -244,6 +268,8 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
   // Reviewing
   // ---------------------------------------------------------------------------
 
+  /// A suggestions engine over the current wallets and categories, plus the
+  /// user's past choices read from the meta box.
   CaptureSuggestions get suggestions => CaptureSuggestions(
         wallets: vm.wallets,
         categories: vm.categories,
@@ -254,6 +280,7 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
         },
       );
 
+  /// The suggested way to record [c], before the user edits anything.
   CaptureDraft draftFor(Capture c) => suggestions.draftFor(c.message, fallbackTime: c.record.receivedAt);
 
   /// A transaction already in the app that looks like this one — same type,
@@ -292,6 +319,8 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
     ));
     final created = [ids.first];
 
+    // The fee is charged by the provider, so it comes out of the provider's
+    // wallet even when the main record is a transfer.
     final providerWallet = _providerWallet(c, d);
     if (d.fee > 0 && providerWallet != null) {
       await _ensureFeesCategory();
@@ -307,6 +336,9 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
       created.add(ids.last);
     }
 
+    // Remember the user's choices so the next message from this provider or
+    // counterparty is pre-filled the same way. Interest is skipped: its
+    // "counterparty" is the bank, not a payee.
     if (providerWallet != null) {
       await _meta!.put(CaptureSuggestions.walletMemoryKey(c.message.provider, c.message.account), providerWallet);
     }
@@ -341,6 +373,7 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
     return (confirmed: confirmed, skipped: queue.length - confirmed, mismatches: mismatches.values.toList());
   }
 
+  /// Marks [c] as not worth recording. Can be undone for a week.
   Future<void> ignore(Capture c) async {
     c.record
       ..status = CaptureStatus.ignored
@@ -368,6 +401,8 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
   BalanceMismatch? balanceCheck(Capture c, String? walletId) {
     final smsBalance = c.message.balance;
     if (smsBalance == null || walletId == null) return null;
+    // If anything newer touched this wallet, the SMS balance is out of date
+    // and comparing would raise a false alarm.
     final newerTransaction = vm.transactions.any((t) =>
         (t.walletId == walletId || t.toWalletId == walletId) &&
         t.dateTime.isAfter(c.when) &&
@@ -375,6 +410,7 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
     final newerPending = pending.any((p) => p.id != c.id && p.message.provider == c.message.provider && p.when.isAfter(c.when));
     if (newerTransaction || newerPending) return null;
     final appBalance = vm.walletBalance(walletId);
+    // Differences under 1 are rounding, not a real mismatch.
     if ((appBalance - smsBalance).abs() < 1) return null;
     return BalanceMismatch(walletId: walletId, smsBalance: smsBalance, appBalance: appBalance);
   }
@@ -396,6 +432,7 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
 
   bool _hasTransaction(String id) => vm.transactions.any((t) => t.id == id);
 
+  /// Creates the "Fees & Charges" category the first time a fee is recorded.
   Future<void> _ensureFeesCategory() async {
     if (vm.categoryById(CaptureSuggestions.feesCategoryId) != null) return;
     await vm.addCategory(Category(
@@ -408,6 +445,9 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
     ));
   }
 
+  /// Stored messages matching [include], each re-parsed with the current
+  /// parser, newest first. Ones the parser no longer understands are left
+  /// out.
   List<Capture> _captures(bool Function(CapturedSms) include) {
     final out = <Capture>[];
     for (final r in _box?.values ?? const <CapturedSms>[]) {
@@ -432,6 +472,7 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
     await _box!.deleteAll(old);
   }
 
+  /// Drops the cached pending list and tells listeners to rebuild.
   void _changed() {
     _pending = null;
     notifyListeners();

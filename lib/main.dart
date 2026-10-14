@@ -27,6 +27,15 @@ import 'ui/splash/splash_screen.dart';
 import 'ui/theme/app_theme.dart';
 import 'viewmodels/tracker_view_model.dart';
 
+/// App entry point. Builds the long-lived services, wires them together and
+/// hands them to the widget tree through Provider.
+///
+/// Startup order matters:
+/// 1. Firebase (optional), so the cloud services below know if they can work.
+/// 2. The services are created here, but local storage isn't opened yet.
+///    The splash screen calls TrackerViewModel.init, which opens Hive.
+/// 3. Once Hive is open, the view model's onReady starts cloud sync and SMS
+///    auto-capture in the background.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Local-only and fast (no network). If Firebase isn't configured or fails,
@@ -37,9 +46,13 @@ Future<void> main() async {
   final connectivity = ConnectivityService();
   final auth = AuthService();
   final sync = SyncService(repo: repo, auth: auth, connectivity: connectivity);
+  // CaptureService needs the view model and the view model's onReady needs
+  // CaptureService, so `capture` is declared late to break the cycle. It's
+  // assigned before onReady can run.
   late final CaptureService capture;
   final viewModel = TrackerViewModel(repo, onReady: () => Future.wait([sync.start(), capture.start()]));
   capture = CaptureService(vm: viewModel, bridge: SmsBridge.platform());
+  // When sync writes data pulled from the cloud into Hive, rebuild the UI.
   sync.onRemoteChangesApplied = viewModel.refreshFromStorage;
 
   final updateService = ShorebirdUpdateService();
@@ -49,6 +62,8 @@ Future<void> main() async {
   updateService.loadCurrentPatch();
   updateService.checkForUpdate();
 
+  // Every service is a ChangeNotifier, so screens can watch the ones they
+  // need. The last two are created lazily the first time a screen asks.
   runApp(MultiProvider(
     providers: [
       ChangeNotifierProvider.value(value: viewModel),
@@ -64,6 +79,11 @@ Future<void> main() async {
   ));
 }
 
+/// The MaterialApp. Rebuilds when the view model changes so a dark-mode
+/// toggle applies straight away.
+///
+/// The named routes are secondary screens opened from the home tabs,
+/// alerts and settings with `Navigator.pushNamed`.
 class MoneyTrackApp extends StatelessWidget {
   const MoneyTrackApp({super.key});
 
@@ -93,6 +113,10 @@ class MoneyTrackApp extends StatelessWidget {
   }
 }
 
+/// Chooses the top-level screen from the app's state and cross-fades
+/// between them:
+/// splash (still loading) -> onboarding (first run) -> lock (PIN required)
+/// -> home.
 class _RootRouter extends StatelessWidget {
   const _RootRouter();
 
@@ -108,6 +132,8 @@ class _RootRouter extends StatelessWidget {
     );
   }
 
+  // Each screen gets a distinct key so AnimatedSwitcher sees a new child and
+  // animates the change.
   Widget _resolveChild(TrackerViewModel vm) {
     if (!vm.initialized) {
       return const SplashScreen(key: ValueKey('splash'));

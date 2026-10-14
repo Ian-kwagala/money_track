@@ -8,6 +8,11 @@ import '../../viewmodels/tracker_view_model.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 
+/// Today's spending against the daily target (a progress ring), plus a
+/// Monday-to-Sunday bar chart and per-day rows for this week.
+///
+/// The target is [TrackerViewModel.dailyTarget]: the user's own daily budget,
+/// or an estimate when none is set.
 class DailySpendScreen extends StatelessWidget {
   const DailySpendScreen({super.key});
 
@@ -21,10 +26,11 @@ class DailySpendScreen extends StatelessWidget {
     final dailyTarget = vm.dailyTarget;
     final spentToday = vm.spentTotal(todayStart, now);
     final todayPct = dailyTarget > 0 ? (spentToday / dailyTarget).clamp(0.0, 1.0) : 0.0;
+    // Ring colour: normal, amber from 80%, red once the target is reached.
     final color = todayPct >= 1 ? AppColors.danger : todayPct >= 0.8 ? AppColors.warning : AppColors.primary;
     final remaining = (dailyTarget - spentToday).clamp(0.0, dailyTarget);
 
-    // Weekly data
+    // Weekly data: spending for each day from Monday (weekday 1) to Sunday.
     final weekStart = todayStart.subtract(Duration(days: now.weekday - 1));
     final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
     final dailyAmounts = <double>[];
@@ -35,6 +41,7 @@ class DailySpendScreen extends StatelessWidget {
     }
     final weekTotal = dailyAmounts.fold<double>(0, (a, b) => a + b);
     final maxDaily = dailyAmounts.fold<double>(0, (a, b) => a > b ? a : b);
+    // Leave 25% headroom above the tallest bar (or the target line).
     final chartMax = ((maxDaily > dailyTarget ? maxDaily : dailyTarget) * 1.25).clamp(1.0, double.infinity);
 
     return Scaffold(
@@ -132,6 +139,8 @@ class DailySpendScreen extends StatelessWidget {
                                     BarChartGroupData(
                                       x: i,
                                       barsSpace: 3,
+                                      // Two bars per day: the target (light)
+                                      // and what was spent (red if over).
                                       barRods: [
                                         BarChartRodData(toY: dailyTarget, color: AppColors.border, width: 14, borderRadius: const BorderRadius.vertical(top: Radius.circular(4))),
                                         BarChartRodData(toY: dailyAmounts[i], color: dailyAmounts[i] > dailyTarget ? AppColors.danger : AppColors.primary, width: 14, borderRadius: const BorderRadius.vertical(top: Radius.circular(4))),
@@ -179,6 +188,7 @@ class DailySpendScreen extends StatelessWidget {
   }
 }
 
+/// One day of the week: name, target and amount spent (red when over).
 class _DayRow extends StatelessWidget {
   final DateTime day;
   final double target;

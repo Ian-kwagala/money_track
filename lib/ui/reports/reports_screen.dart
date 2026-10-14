@@ -9,6 +9,11 @@ import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 import 'balance_trend_card.dart';
 
+/// The Analytics tab: this month's spending by category (donut chart), the
+/// balance trend, and income vs expense for the last six months.
+///
+/// All figures are computed from transactions on each build; nothing is
+/// cached.
 class ReportsScreen extends StatefulWidget {
   const ReportsScreen({super.key});
 
@@ -23,11 +28,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
     final symbol = vm.settings.currencySymbol;
     final now = DateTime.now();
 
-    // Income vs Expense — last 6 months
+    // Income vs Expense — last 6 months, oldest first. A month index below 1
+    // rolls back into the previous year.
     final monthly = <Map<String, dynamic>>[];
     for (var i = 5; i >= 0; i--) {
       final dt = DateTime(now.year, now.month - i, 1);
       final mStart = DateTime(dt.year, dt.month, 1);
+      // Day 0 of next month = the month's last day, at 00:00. The totals'
+      // end is inclusive, but this still leaves out anything after midnight
+      // on the last day of each month.
       final mEnd = DateTime(dt.year, dt.month + 1, 0);
       monthly.add({
         'm': _monthName(dt.month).substring(0, 3),
@@ -37,7 +46,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
     final barAxis = niceAxis([0, for (final m in monthly) ...[m['income'] as double, m['expense'] as double]]);
 
-    // Category totals
+    // Category totals for this month so far, largest first, each with its
+    // share of the total. Only the top six appear in the chart and legend.
     final monthStartDt = DateTime(now.year, now.month, 1);
     final categoryTotals = <_CategoryTotal>[];
     for (final cat in vm.expenseCategories) {
@@ -215,6 +225,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
   String _monthName(int m) => const ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][m - 1];
 }
 
+/// One slice of the category chart. [pct] is filled in once the overall
+/// total is known.
 class _CategoryTotal {
   final String name;
   final int color;

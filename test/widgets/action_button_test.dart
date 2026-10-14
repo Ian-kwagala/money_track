@@ -6,12 +6,19 @@ import 'package:money_track/ui/widgets/action_button.dart';
 
 import 'test_theme.dart';
 
+// Tests for ActionButton, the app's button for actions that take a moment
+// (saving, confirming). Its action returns a Future<bool>: while it runs the
+// button shows a spinner (only after a short delay, so quick actions don't
+// flicker); true shows a check and doneLabel, then calls onDone; false or an
+// error puts the button back as it was.
 void main() {
+  /// Shows [button] alone, 300 wide, in the app's theme.
   Future<void> pump(WidgetTester tester, Widget button) => tester.pumpWidget(
         MaterialApp(theme: testAppTheme(), home: Scaffold(body: Center(child: SizedBox(width: 300, child: button)))),
       );
 
   testWidgets('spinner while working, then a check, then onDone', (tester) async {
+    // The test decides when the "work" finishes by completing this.
     final work = Completer<bool>();
     var done = 0;
     await pump(

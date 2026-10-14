@@ -10,6 +10,12 @@ import '../capture/capture_test_helpers.dart';
 import 'real_fonts.dart';
 import 'test_theme.dart';
 
+// Widget tests for BalanceTrendCard, the balance-over-time chart, with a
+// year of made-up transactions. They read the numbers straight from the
+// fl_chart LineChart the card builds, so they check what is plotted, not
+// just the labels.
+
+/// The card's clock is fixed to this, so the ranges are predictable.
 final _now = DateTime(2026, 10, 13, 15, 0);
 
 void main() {
@@ -18,6 +24,8 @@ void main() {
   setUpAll(loadRealFonts);
   tearDown(() async => phone.shutdown());
 
+  /// Shows the card on a 390x600 screen. With [withMoney], first records a
+  /// year of salaries and regular spending; storage writes run in real time.
   Future<void> pumpCard(WidgetTester tester, {bool withMoney = true}) async {
     tester.view
       ..physicalSize = const Size(390, 600)
@@ -58,6 +66,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  // The chart's data and the y value (total) of each plotted point.
   LineChartData chart(WidgetTester tester) => tester.widget<LineChart>(find.byType(LineChart)).data;
   List<double> totals(WidgetTester tester) => [for (final s in chart(tester).lineBarsData.single.spots) s.y];
 

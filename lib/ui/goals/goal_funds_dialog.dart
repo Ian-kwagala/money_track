@@ -14,8 +14,10 @@ Future<void> showGoalFundsDialog(BuildContext context, SavingsGoal goal, {requir
   final vm = context.read<TrackerViewModel>();
   final symbol = vm.settings.currencySymbol;
   final ctrl = TextEditingController();
+  // Preselect the first wallet; null means "Not from a wallet".
   String? walletId = vm.wallets.isEmpty ? null : vm.wallets.first.id;
 
+  // StatefulBuilder lets the dropdown update its selection inside the dialog.
   final confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => StatefulBuilder(
@@ -65,11 +67,14 @@ Future<void> showGoalFundsDialog(BuildContext context, SavingsGoal goal, {requir
     messenger.showSnackBar(const SnackBar(content: Text('Enter an amount')));
     return;
   }
+  // A withdrawal can't take out more than the goal holds.
   if (!adding && amount > goal.currentAmount) amount = goal.currentAmount;
   if (amount <= 0) return;
 
   goal.currentAmount += adding ? amount : -amount;
   await vm.updateSavingsGoal(goal);
+  // Mirror the movement on the chosen wallet as a one-sided transfer tagged
+  // with the goal, so it changes the balance but isn't counted as spending.
   if (walletId != null) {
     await vm.recordLinkedMovement(
       linkId: 'goal:${goal.id}',

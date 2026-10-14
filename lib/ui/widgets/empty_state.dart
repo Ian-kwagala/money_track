@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 
+/// The placeholder a list shows when it has nothing in it yet: an icon, a
+/// title, a short explanation and an optional button (e.g. "Add a bill").
 class EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;

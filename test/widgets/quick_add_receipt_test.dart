@@ -17,11 +17,21 @@ import 'test_theme.dart';
 /// A 1×1 PNG, standing in for a receipt photo.
 final _png = base64Decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==');
 
+// Widget tests for the quick-add sheet: Save's checks and Undo, and the
+// receipt picker (gallery, camera, view, replace, remove, refused
+// permission). The image picker and the documents folder are swapped for
+// fakes through the Receipts hooks, and put back after each test.
 void main() {
   late Phone phone;
+
+  /// Stands in for the app's documents folder, where receipts are copied.
   late Directory docs;
+
+  // The real hooks, restored in tearDown.
   final realPick = Receipts.pick;
   final realDocuments = Receipts.documents;
+
+  /// Every source (camera or gallery) the fake picker was asked to use.
   final picked = <ImageSource>[];
 
   setUpAll(loadRealFonts);
@@ -32,6 +42,8 @@ void main() {
     await phone.shutdown();
   });
 
+  /// Boots a phone, installs the fake picker and opens the sheet the way
+  /// the app does, as a modal bottom sheet.
   Future<void> openQuickAdd(WidgetTester tester) async {
     tester.view
       ..physicalSize = const Size(390, 844)
@@ -42,6 +54,8 @@ void main() {
       docs = await Directory.systemTemp.createTemp('mt_docs');
     });
     Receipts.documents = () async => docs;
+    // The fake picker writes the PNG outside docs, like the real picker's
+    // temporary file, so the test can check the app copies it in.
     Receipts.pick = (source) async {
       picked.add(source);
       final f = File('${docs.path}/../picker_${DateTime.now().microsecondsSinceEpoch}.png')..writeAsBytesSync(_png);
@@ -82,6 +96,7 @@ void main() {
     return f;
   }
 
+  /// Types [digits] by tapping the sheet's number pad.
   Future<void> typeAmount(WidgetTester tester, String digits) async {
     for (final d in digits.split('')) {
       await tester.tap(inSheet(find.text(d)).last);
@@ -202,6 +217,7 @@ void main() {
 
   testWidgets('a refused camera permission is explained', (tester) async {
     await openQuickAdd(tester);
+    // The error image_picker reports when camera access is denied.
     Receipts.pick = (_) async => throw PlatformException(code: 'camera_access_denied');
     final attach = await receiptControl(tester, 'Attach receipt');
     await tester.runAsync(() => tester.tap(attach));

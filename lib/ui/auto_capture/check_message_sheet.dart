@@ -15,6 +15,8 @@ class CheckMessageSheet extends StatefulWidget {
 
   const CheckMessageSheet({super.key, this.onAdd});
 
+  /// Opens the sheet. Pass [onAdd] to offer the "Add to review list" button;
+  /// without it, the sheet is check-only.
   static Future<void> show(BuildContext context, {Future<bool> Function(String body)? onAdd}) => showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -52,6 +54,8 @@ class _CheckMessageSheetState extends State<CheckMessageSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // Re-parsed on every keystroke (onChanged calls setState), so the result
+    // updates live as the user edits the text.
     final text = _ctrl.text.trim();
     final parsed = text.isEmpty ? null : const MoneyMessageParser().parse(text, receivedAt: DateTime.now());
 
@@ -122,6 +126,7 @@ class _CheckMessageSheetState extends State<CheckMessageSheet> {
   }
 }
 
+/// Shown when the parser returns null for the pasted text.
 class _NotRecognised extends StatelessWidget {
   const _NotRecognised();
 
@@ -150,16 +155,20 @@ class _NotRecognised extends StatelessWidget {
   }
 }
 
+/// Everything the parser read, one labelled row per field it found.
 class _ParsedCard extends StatelessWidget {
   final ParsedMoneyMessage m;
   const _ParsedCard(this.m);
 
+  /// Always UGX: these are Ugandan provider messages, whatever currency the
+  /// user picked for the app. Decimals only when the amount has them.
   static String _ugx(double v) => MoneyFormat.money(v, symbol: 'UGX', decimals: v == v.roundToDouble() ? 0 : 2);
 
   @override
   Widget build(BuildContext context) {
     final color = m.kind.isMoneyIn ? AppColors.income : AppColors.danger;
     final at = m.occurredAt;
+    // (label, value) pairs; rows with a null value are skipped below.
     final rows = <(String, String?)>[
       ('From', m.provider.label),
       (m.kind.isMoneyIn ? 'Paid by' : 'Paid to', m.counterparty),

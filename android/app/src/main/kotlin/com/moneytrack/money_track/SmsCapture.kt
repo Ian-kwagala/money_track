@@ -26,9 +26,16 @@ import java.util.concurrent.Executors
  */
 object SmsCapture {
     const val CHANNEL = "money_track/sms"
+
+    // State lives in its own SharedPreferences file, so the receiver can read
+    // and write it without starting Flutter. KEY_QUEUE holds a JSON array of
+    // {sender, body, receivedAt}.
     private const val PREFS = "money_track_auto_capture"
     private const val KEY_ON = "on"
     private const val KEY_QUEUE = "queue"
+
+    // Caps: the oldest queued messages are dropped past MAX_QUEUED, and an
+    // inbox read returns at most MAX_INBOX messages.
     private const val MAX_QUEUED = 200
     private const val MAX_INBOX = 2000
     private const val NOTIFICATION_CHANNEL = "auto_capture"
@@ -40,6 +47,8 @@ object SmsCapture {
     private val movement = Regex("(?i)(received|sent|paid|withdrawn|transferred|deposit|credited|debited|trxn|transaction)")
     private val notMoney = Regex("(?i)\\b(OTP|verification code|failed|declined)\\b")
 
+    // Inbox queries run on [io]; method-channel replies must go back on the
+    // main thread, hence [main].
     private val io = Executors.newSingleThreadExecutor()
     private val main = Handler(Looper.getMainLooper())
 
@@ -54,14 +63,21 @@ object SmsCapture {
     fun mightBeMoney(body: String): Boolean =
         currency.containsMatchIn(body) && movement.containsMatchIn(body) && !notMoney.containsMatchIn(body)
 
+    /** Whether the user has auto-capture switched on; [SmsReceiver] ignores SMS otherwise. */
     fun isOn(context: Context): Boolean = prefs(context).getBoolean(KEY_ON, false)
 
+    /** Turning off also throws away anything still queued. */
     private fun setOn(context: Context, on: Boolean) {
         val edit = prefs(context).edit().putBoolean(KEY_ON, on)
         if (!on) edit.remove(KEY_QUEUE)
         edit.apply()
     }
 
+    /**
+     * Adds one message to the queue. Written with commit() (synchronous) rather than
+     * apply(), because the receiver's process may be killed right after onReceive.
+     * Synchronized with [takeQueued] so a message can't be lost between read and clear.
+     */
     @Synchronized
     fun enqueue(context: Context, sender: String, body: String, receivedAt: Long) {
         val queue = JSONArray(prefs(context).getString(KEY_QUEUE, "[]"))
@@ -70,6 +86,7 @@ object SmsCapture {
         prefs(context).edit().putString(KEY_QUEUE, queue.toString()).commit()
     }
 
+    /** Returns the queue, oldest first, and empties it. */
     @Synchronized
     private fun takeQueued(context: Context): List<Map<String, Any>> {
         val queue = JSONArray(prefs(context).getString(KEY_QUEUE, "[]"))
@@ -90,6 +107,7 @@ object SmsCapture {
             arrayOf(sinceMs.toString()),
             "${Telephony.Sms.DATE} DESC",
         )?.use { c ->
+            // Newest first so the cap keeps the most recent; reversed below.
             while (out.size < MAX_INBOX && c.moveToNext()) {
                 val sender = c.getString(0) ?: continue
                 val body = c.getString(1) ?: continue
@@ -101,6 +119,11 @@ object SmsCapture {
         return out
     }
 
+    /**
+     * Method-channel entry point; the calls mirror AndroidSmsBridge in
+     * lib/services/capture/sms_bridge.dart. readInbox can be slow, so it runs off
+     * the main thread, and a missing SMS permission comes back as a "permission" error.
+     */
     fun handle(context: Context, call: MethodCall, result: MethodChannel.Result) {
         when (call.method) {
             "setListening" -> {

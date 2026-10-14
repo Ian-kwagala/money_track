@@ -12,6 +12,8 @@ enum MoneyProvider {
   nssfSmartlife('NSSF Smartlife');
 
   const MoneyProvider(this.label);
+
+  /// Name shown to the user.
   final String label;
 }
 
@@ -27,9 +29,13 @@ enum MoneyMessageKind {
 
   const MoneyMessageKind(this.label, {required this.isMoneyIn});
   final String label;
+
+  /// Whether money arrived in the user's account (income side) rather than
+  /// leaving it.
   final bool isMoneyIn;
 }
 
+/// The structured details pulled out of one money SMS.
 class ParsedMoneyMessage {
   final MoneyProvider provider;
   final MoneyMessageKind kind;
@@ -84,6 +90,9 @@ class ParsedMoneyMessage {
 
   /// Identifies the underlying transaction, so the same SMS seen twice (or
   /// read once live and again in an inbox scan) is only offered once.
+  ///
+  /// The provider's transaction ID is the best key. Without one, it falls
+  /// back to kind + amount + time to the minute.
   String get dedupeKey {
     if (reference != null) return '${provider.name}:$reference';
     final at = occurredAt;

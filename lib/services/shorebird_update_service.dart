@@ -26,10 +26,15 @@ class ShorebirdUpdateService extends ChangeNotifier {
 
   bool get isAvailable => _updater.isAvailable;
 
+  /// The patch the app is running now; null if none (or not loaded yet).
   Patch? currentPatch;
   ShorebirdUpdateState state = ShorebirdUpdateState.idle;
+
+  /// Set when [state] is [ShorebirdUpdateState.error].
   String? errorMessage;
 
+  /// True while a check or download is in progress. Used to ignore repeat
+  /// taps and to show a spinner.
   bool get isBusy =>
       state == ShorebirdUpdateState.checking ||
       state == ShorebirdUpdateState.downloading;

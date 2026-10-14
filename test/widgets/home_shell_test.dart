@@ -19,6 +19,9 @@ import '../capture/capture_test_helpers.dart';
 import 'real_fonts.dart';
 import 'test_theme.dart';
 
+// Widget tests for HomeShell, the screen with the bottom bar that holds
+// Home, Budgets, Analytics and Settings. They check the bar, switching tabs,
+// the Add button, the Home stats and the alerts bell.
 void main() {
   late Phone phone;
 
@@ -26,6 +29,8 @@ void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
   tearDown(() async => phone.shutdown());
 
+  /// Shows HomeShell on a phone-sized screen with every provider the app
+  /// gives it. Auth and sync are inert (no Firebase, sync disabled, offline).
   Future<void> pumpShell(WidgetTester tester) async {
     tester.view
       ..physicalSize = const Size(390, 844)
@@ -61,6 +66,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  // A label inside the bottom bar, and which page the IndexedStack shows.
+  // Page 3 is Alerts, which has no tab on phones; the bell opens it.
   Finder inNav(String label) => find.descendant(of: find.byType(AppBottomNav), matching: find.text(label));
   int page(WidgetTester tester) => tester.widget<IndexedStack>(find.byType(IndexedStack)).index!;
 

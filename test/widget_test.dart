@@ -3,6 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:money_track/models/transaction.dart';
 
+// Basic smoke tests left over from the Flutter template: the transaction
+// types exist and a minimal widget tree renders. The real screen tests are in
+// test/widgets/ and test/capture/.
 void main() {
   test('TxType signed amount direction', () {
     expect(TxType.income, isNotNull);

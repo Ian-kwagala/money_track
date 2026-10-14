@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 
+/// idle -> busy (action running) -> done (check mark) -> idle.
 enum _Phase { idle, busy, done }
 
 /// A filled button that answers every press: it sinks slightly while held,
@@ -55,12 +56,16 @@ class ActionButton extends StatefulWidget {
 
 class _ActionButtonState extends State<ActionButton> {
   _Phase _phase = _Phase.idle;
+
+  /// Finger is down on the button (drives the "sink" scale effect).
   bool _held = false;
 
   /// The spinner only appears if the action takes a moment, so quick ones
   /// (or ones that hand over to a dialog) don't flicker.
   bool _spinnerShown = false;
 
+  /// Runs the action through the full phase cycle. An exception counts as
+  /// "didn't happen": it's logged and the button goes back to idle.
   Future<void> _run() async {
     if (_phase != _Phase.idle || widget.onPressed == null) return;
     HapticFeedback.lightImpact();
@@ -94,6 +99,9 @@ class _ActionButtonState extends State<ActionButton> {
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
     final base = widget.color ?? AppColors.primary;
+    // Colour priority: success green, then disabled grey, then dimmed, then
+    // the normal colour. It animates between them (TweenAnimationBuilder
+    // below).
     final Color background;
     if (_phase == _Phase.done) {
       background = AppColors.success;
@@ -107,6 +115,7 @@ class _ActionButtonState extends State<ActionButton> {
     final textStyle = (Theme.of(context).textTheme.labelLarge ?? const TextStyle())
         .copyWith(color: Colors.white, fontSize: widget.height < 46 ? 14 : 15, fontWeight: FontWeight.w700);
 
+    // Until the spinner delay passes, a busy button keeps showing its label.
     final phase = _phase == _Phase.busy && !_spinnerShown ? _Phase.idle : _phase;
     final Widget content = switch (phase) {
       _Phase.busy => const SizedBox(

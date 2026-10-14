@@ -16,7 +16,15 @@ import '../models/wallet.dart';
 import 'hive_boxes.dart';
 import 'seed_data.dart';
 
+/// The app's local database: a thin layer over the Hive boxes that hold
+/// every model.
+///
+/// Everything works offline from here. TrackerViewModel is the only UI-facing
+/// caller; SyncService also reaches in through [boxFor] to mirror the boxes
+/// to the cloud. The getters return fresh lists on every call, so callers
+/// can sort or filter them freely.
 class MoneyRepository {
+  // One Hive box per model. `late` because they're opened in [init].
   late Box<Wallet> _wallets;
   late Box<Category> _categories;
   late Box<TxRecord> _transactions;
@@ -39,6 +47,7 @@ class MoneyRepository {
   List<Category> get incomeCategories =>
       categories.where((c) => c.type == TxType.income).toList();
 
+  /// All transactions, newest first.
   List<TxRecord> get transactions {
     final list = _transactions.values.toList();
     list.sort((a, b) => b.dateTime.compareTo(a.dateTime));
@@ -59,6 +68,8 @@ class MoneyRepository {
 
   List<AlertRule> get alertRules => _alertRules.values.toList();
 
+  // Settings and user are single records. The fallbacks only matter before
+  // [init] has seeded them, and those defaults aren't saved.
   AppSettings get settings => _settings.values.isNotEmpty
       ? _settings.values.first
       : AppSettings();
@@ -67,6 +78,9 @@ class MoneyRepository {
       ? _users.values.first
       : User();
 
+  /// Never returns null, so screens can always render a wallet name. If [id]
+  /// no longer exists, falls back to the first wallet, or to a placeholder
+  /// when there are no wallets at all.
   Wallet walletById(String id) {
     try {
       return _wallets.values.firstWhere((w) => w.id == id);
@@ -86,6 +100,9 @@ class MoneyRepository {
     }
   }
 
+  /// Opens local storage. Must finish before anything else in this class is
+  /// used.
+  ///
   /// [hivePath] is only for tests; the app uses the platform default.
   Future<void> init({String? hivePath}) async {
     if (hivePath != null) {
@@ -93,6 +110,8 @@ class MoneyRepository {
     } else {
       await Hive.initFlutter();
     }
+    // Hive needs an adapter for every stored type before a box holding it is
+    // opened. (CaptureService registers its own adapters for the SMS boxes.)
     _registerAdapterSafe(WalletTypeAdapter());
     _registerAdapterSafe(WalletAdapter());
     _registerAdapterSafe(TxTypeAdapter());
@@ -119,6 +138,8 @@ class MoneyRepository {
     await updateWalletBalances();
   }
 
+  /// Registering the same typeId twice throws, which would happen when
+  /// [init] runs again (tests, or a retry after a failed start).
   void _registerAdapterSafe<T>(TypeAdapter<T> adapter) {
     if (!Hive.isAdapterRegistered(adapter.typeId)) {
       Hive.registerAdapter(adapter);
@@ -139,6 +160,9 @@ class MoneyRepository {
     _alertRules = await Hive.openBox<AlertRule>(HiveBoxes.alertRules);
   }
 
+  /// Fills empty boxes with the defaults from [SeedData] (categories,
+  /// wallets, settings and a blank user). Safe to run on every launch: boxes
+  /// that already have data are left alone.
   Future<void> _seedIfNeeded() async {
     final bool isNewInstall = _settings.isEmpty;
     if (_categories.isEmpty) {
@@ -187,6 +211,11 @@ class MoneyRepository {
 
   Future<void> deleteWallet(String id) => _wallets.delete(id);
 
+  /// The wallet's true balance: its opening balance plus every transaction
+  /// touching it. Income adds and expenses subtract on [TxRecord.walletId];
+  /// transfers subtract on the sending side and add on [TxRecord.toWalletId].
+  /// One-sided transfers (goal/debt movements) have just one side set, so
+  /// the same rules apply to them.
   double walletBalance(String walletId) {
     final opening = _wallets.get(walletId)?.openingBalance ?? 0;
     double net = 0;
@@ -202,6 +231,8 @@ class MoneyRepository {
     return opening + net;
   }
 
+  /// Recomputes and saves [Wallet.currentBalance] for every wallet. Call it
+  /// after any change that could move money.
   Future<void> updateWalletBalances() async {
     for (final w in _wallets.values) {
       w.currentBalance = walletBalance(w.id);
@@ -235,6 +266,7 @@ class MoneyRepository {
 
   Future<void> deleteBudget(String id) => _budgets.delete(id);
 
+  /// The first budget set on [categoryId], or null if it has none.
   Budget? budgetForCategory(String categoryId) {
     for (final b in _budgets.values) {
       if (b.categoryId == categoryId) return b;
@@ -242,6 +274,11 @@ class MoneyRepository {
     return null;
   }
 
+  // The totals below include transactions dated exactly at either end of the
+  // range. Note that Budget.periodFor returns an exclusive end, so a record
+  // at exactly midnight on the next period's first day is counted too.
+
+  /// Total spent in [categoryId] between the two dates.
   double spentByCategory(DateTime periodStart, DateTime periodEnd, String categoryId) {
     double total = 0;
     for (final t in _transactions.values) {
@@ -254,6 +291,7 @@ class MoneyRepository {
     return total;
   }
 
+  /// Total spent across all categories between the two dates.
   double spentTotal(DateTime periodStart, DateTime periodEnd) {
     double total = 0;
     for (final t in _transactions.values) {
@@ -265,6 +303,7 @@ class MoneyRepository {
     return total;
   }
 
+  /// Total income received between the two dates.
   double incomeTotal(DateTime periodStart, DateTime periodEnd) {
     double total = 0;
     for (final t in _transactions.values) {
@@ -279,6 +318,9 @@ class MoneyRepository {
   // ---------------------------------------------------------------------------
   // Settings
   // ---------------------------------------------------------------------------
+  // updateSettings and saveUser each copy the shared fields (name, currency,
+  // dark mode, notifications) onto the other record, so either can be edited.
+
   Future<void> updateSettings(AppSettings settings) async {
     await _settings.put('default', settings);
     if (_users.isNotEmpty) {
@@ -305,6 +347,10 @@ class MoneyRepository {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Goals, bills, debts and rules. Hive `put` is an upsert, so add and update
+  // are the same call.
+  // ---------------------------------------------------------------------------
   Future<void> addSavingsGoal(SavingsGoal goal) => _savingsGoals.put(goal.id, goal);
 
   Future<void> updateSavingsGoal(SavingsGoal goal) => _savingsGoals.put(goal.id, goal);

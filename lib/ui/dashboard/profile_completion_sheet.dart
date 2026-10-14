@@ -13,6 +13,9 @@ import '../format/money_input.dart';
 class CompletenessCheck {
   static const _shownKey = 'profileCompletionShown';
 
+  /// Shows the sheet at most once per install, and only if the date of birth
+  /// is still missing. The "shown" flag is set before showing, so closing
+  /// the sheet any way counts.
   static Future<void> maybeShow(BuildContext context) async {
     final vm = context.read<TrackerViewModel>();
     if (vm.currentUser.dateOfBirth != null) return;
@@ -31,6 +34,8 @@ class CompletenessCheck {
   }
 }
 
+/// The form itself: name, date of birth, occupation, and the current balance
+/// of each wallet. Prefilled from what's already saved.
 class ProfileCompletionSheet extends StatefulWidget {
   const ProfileCompletionSheet({super.key});
 
@@ -41,6 +46,7 @@ class ProfileCompletionSheet extends StatefulWidget {
 class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
   late final TextEditingController _nameCtrl;
   late final TextEditingController _occupationCtrl;
+  /// One balance field per wallet, keyed by wallet ID.
   final Map<String, TextEditingController> _balanceCtrls = {};
   DateTime? _dateOfBirth;
   bool _saving = false;
@@ -70,6 +76,8 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
     super.dispose();
   }
 
+  /// Age from the date picked so far (same rule as [User.age]), shown next
+  /// to the date.
   int? get _age {
     final dob = _dateOfBirth;
     if (dob == null) return null;
@@ -148,6 +156,7 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
                         final now = DateTime.now();
                         final picked = await showDatePicker(
                           context: context,
+                          // Opens around age 25; allows ages 10 to 100.
                           initialDate: _dateOfBirth ?? DateTime(now.year - 25, now.month, now.day),
                           firstDate: DateTime(now.year - 100),
                           lastDate: DateTime(now.year - 10, now.month, now.day),
@@ -254,6 +263,9 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
     );
   }
 
+  /// Saves the profile, then sets each wallet's balance. Balances go through
+  /// setWalletBalance, so existing transactions are kept and the opening
+  /// balance absorbs the difference.
   Future<void> _save() async {
     setState(() => _saving = true);
     final vm = context.read<TrackerViewModel>();

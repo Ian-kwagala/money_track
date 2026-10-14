@@ -13,9 +13,17 @@ import '../format/money_input.dart';
 /// and to check off the bills they've settled since. Runs from an anchor of
 /// [User.lastPayDate] (seeded from [User.createdAt] until the first
 /// confirmation) advanced by [User.incomeFrequency].
+///
+/// The flow is: "Did you receive your salary?" -> log the amount into a
+/// wallet -> tick off bills paid from it.
 class PaydayCheck {
+  /// SharedPreferences key for the last day the prompt was shown, so
+  /// answering "Not yet" asks again tomorrow, not on every app open.
   static const _promptDateKey = 'paydayPromptDate';
 
+  /// Shows the payday prompt if a payday has passed since the last one the
+  /// user confirmed. Irregular income has no payday to predict, so it's
+  /// skipped.
   static Future<void> maybeShow(BuildContext context) async {
     final vm = context.read<TrackerViewModel>();
     final user = vm.currentUser;
@@ -51,6 +59,8 @@ class PaydayCheck {
     await _confirmIncome(context, vm, label);
   }
 
+  /// Asks how much arrived and in which wallet (prefilled with the expected
+  /// monthly income), records it as income, then moves on to the bills.
   static Future<void> _confirmIncome(BuildContext context, TrackerViewModel vm, String label) async {
     if (vm.wallets.isEmpty) return;
     final user = vm.currentUser;
@@ -126,6 +136,9 @@ class PaydayCheck {
     if (context.mounted) await _showBillsChecklist(context, vm);
   }
 
+  /// Lets the user tick the bills they've paid (and adjust the amounts).
+  /// Each ticked bill gets an expense on its wallet (if it has one) and is
+  /// marked paid, which moves it to its next due date.
   static Future<void> _showBillsChecklist(BuildContext context, TrackerViewModel vm) async {
     // Bills that fall due before the next expected payday (or are overdue).
     final now = DateTime.now();

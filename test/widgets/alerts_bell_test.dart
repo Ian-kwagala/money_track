@@ -11,6 +11,13 @@ import '../capture/capture_test_helpers.dart';
 import 'real_fonts.dart';
 import 'test_theme.dart';
 
+// Tests for AlertsService (which works out the current alerts and remembers
+// which ones were dismissed) and AlertsBell (the Home app-bar icon with an
+// unread-count badge). Bills due tomorrow are used to raise alerts, whose
+// ids are "bill_<bill id>". Dismissals are kept in SharedPreferences, which
+// is mocked empty before each test.
+
+/// An unpaid bill due tomorrow, which raises one bill alert.
 Bill _billDueSoon(String id) =>
     Bill(id: id, name: 'Water $id', amount: 54000, dueDate: DateTime.now().add(const Duration(days: 1)));
 
@@ -42,6 +49,7 @@ void main() {
       await first.ready;
       await first.dismiss('bill_b1');
 
+      // A new service reads the saved dismissals, as on the next launch.
       final afterRestart = AlertsService();
       await afterRestart.ready;
       expect(afterRestart.countFor(phone.vm), 0);
@@ -58,6 +66,8 @@ void main() {
   });
 
   group('AlertsBell', () {
+    /// Shows the bell with two bill alerts waiting and a stand-in /alerts
+    /// page. Set-up that saves to storage runs in real time (runAsync).
     Future<AlertsService> pumpBell(WidgetTester tester) async {
       late AlertsService alerts;
       await tester.runAsync(() async {

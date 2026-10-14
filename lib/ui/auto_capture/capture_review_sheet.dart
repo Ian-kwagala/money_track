@@ -13,9 +13,13 @@ import '../format/money_input.dart';
 import '../theme/app_theme.dart';
 import '../widgets/action_button.dart';
 
-/// What happened in a [CaptureReviewSheet].
+/// What happened in a [CaptureReviewSheet]. The sheet returns null if it was
+/// just closed.
 class CaptureOutcome {
   final bool confirmed;
+
+  /// Set when confirming showed the wallet's balance disagrees with the SMS,
+  /// so the caller can offer to fix it.
   final BalanceMismatch? mismatch;
 
   const CaptureOutcome.confirmed(this.mismatch) : confirmed = true;
@@ -24,6 +28,7 @@ class CaptureOutcome {
         mismatch = null;
 }
 
+/// Amount with decimals only when it has them (SMS amounts can be "500.50").
 String captureMoney(double v, String symbol) =>
     MoneyFormat.money(v, symbol: symbol, decimals: v == v.roundToDouble() ? 0 : 2);
 
@@ -48,6 +53,8 @@ class CaptureReviewSheet extends StatefulWidget {
 }
 
 class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
+  /// The draft being edited, starting from the service's suggestion. Every
+  /// field edit writes straight into it.
   late final CaptureDraft _d;
   late final TextEditingController _note;
   late final TextEditingController _amount;
@@ -73,6 +80,9 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
     super.dispose();
   }
 
+  // The date and time pickers each replace only their own part of the
+  // draft's dateTime.
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -92,6 +102,10 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
     setState(() => _d.dateTime = DateTime(d.year, d.month, d.day, picked.hour, picked.minute));
   }
 
+  /// Switches between expense / income / transfer, rearranging wallets to
+  /// fit: turning into a transfer adds a second wallet (the first other
+  /// one) on the opposite side, and turning back keeps only the provider's
+  /// wallet. The category is re-suggested for the new type.
   void _setType(TxType type, List<Wallet> wallets) {
     setState(() {
       if (type == TxType.transfer && _d.type != TxType.transfer) {
@@ -142,6 +156,7 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
     });
   }
 
+  /// Result of the last confirm, handed back to the caller in [_close].
   BalanceMismatch? _mismatch;
 
   /// Saves; the button then shows its check and [_close] runs.
@@ -171,7 +186,11 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
     final symbol = vm.settings.currencySymbol;
     final wallets = vm.wallets;
     final categories = _d.type == TxType.transfer ? const <Category>[] : vm.categoriesOf(_d.type);
+    // Re-checked on every edit: changing amount, wallet or date can make the
+    // duplicate warning appear or go away.
     final duplicate = service.possibleDuplicate(widget.capture, _d);
+    // The provider's own wallet slot is empty, e.g. no NSSF wallet exists
+    // yet; offer to create one.
     final providerSideEmpty = _d.type == TxType.transfer && _m.kind.isMoneyIn ? _d.toWalletId == null : _d.walletId == null;
     final kindColor = _m.kind.isMoneyIn ? AppColors.income : AppColors.danger;
 
@@ -387,6 +406,7 @@ InputDecoration _field(String label) => InputDecoration(
           OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: BorderSide.none),
     );
 
+/// Outlined button showing the current date or time; tapping opens a picker.
 class _PickerButton extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -410,6 +430,8 @@ class _PickerButton extends StatelessWidget {
   }
 }
 
+/// Wallet dropdown. A value that isn't one of [wallets] shows as unselected
+/// ("Choose a wallet").
 class _WalletField extends StatelessWidget {
   final String label;
   final String? value;
@@ -444,6 +466,7 @@ class _WalletField extends StatelessWidget {
   }
 }
 
+/// Tinted warning/info box with an icon.
 class _Notice extends StatelessWidget {
   final Color color;
   final IconData icon;

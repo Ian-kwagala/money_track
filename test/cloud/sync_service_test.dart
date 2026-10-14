@@ -16,6 +16,13 @@ import 'package:money_track/services/cloud/cloud_codec.dart';
 import 'package:money_track/services/cloud/connectivity_service.dart';
 import 'package:money_track/services/cloud/sync_service.dart';
 
+// Tests for SyncService, the offline-first backup to Firestore. Each test
+// boots one or two simulated phones on real Hive storage and shares one
+// in-memory FakeFirebaseFirestore as "the cloud". Each record is stored at
+// users/<uid>/<box>/<id> as {data, deleted, updatedAtMs}; the newest
+// updatedAtMs wins, and a delete is kept as a tombstone (deleted: true,
+// data: null) so other devices learn about it.
+
 /// Stands in for Firebase Auth. AuthService's own constructor does nothing
 /// when Firebase isn't initialised, which is always the case in tests.
 class FakeAuth extends AuthService {
@@ -23,6 +30,7 @@ class FakeAuth extends AuthService {
   String? _uid;
   String? _email;
 
+  /// Signs in as [uid] and fires an auth change, as Firebase would.
   void signInAs(String uid) {
     _uid = uid;
     _email = '$uid@example.com';
@@ -59,8 +67,11 @@ class Phone {
   final MoneyRepository repo;
   final FakeAuth auth;
   final SyncService sync;
+
+  /// How many times the sync service reported applying cloud changes.
   int remoteApplied = 0;
 
+  /// A fresh install on its own temporary folder, online, signed out.
   static Future<Phone> boot(FakeFirebaseFirestore cloud) async {
     final dir = await Directory.systemTemp.createTemp('mt_sync_test');
     final repo = MoneyRepository();
@@ -87,6 +98,7 @@ class Phone {
 /// Lets Hive's box.watch() events and auth stream events be delivered.
 Future<void> settle() => Future<void>.delayed(const Duration(milliseconds: 30));
 
+/// A minimal expense; tests change [amount] to tell versions apart.
 TxRecord tx(String id, double amount) =>
     TxRecord(id: id, type: TxType.expense, amount: amount, walletId: 'w', dateTime: DateTime(2026, 9, 1));
 
@@ -94,6 +106,8 @@ void main() {
   late FakeFirebaseFirestore cloud;
   late Phone phone;
 
+  // Direct access to the fake cloud, to check what was uploaded or to write
+  // "another device's" changes.
   CollectionReference<Map<String, dynamic>> col(String uid, String box) =>
       cloud.collection('users').doc(uid).collection(box);
 
@@ -162,6 +176,7 @@ void main() {
     await phone.sync.start();
     await phone.sync.flushNow();
 
+    // Another device saves a newer version, stamped a minute in the future.
     await col('u1', HiveBoxes.transactions).doc('t1').set({
       'data': CloudCodec.encode(HiveBoxes.transactions, tx('t1', 999)),
       'deleted': false,
@@ -221,6 +236,8 @@ void main() {
   });
 
   test('a sync still running when the service is disposed finishes quietly', () async {
+    // A second service on the same storage, so the phone's own service is
+    // left for tearDown to dispose.
     final other = SyncService(
       repo: phone.repo,
       auth: phone.auth,
@@ -272,6 +289,7 @@ void main() {
   });
 
   test('another account signing in on this phone never gets this phone\'s data', () async {
+    // u1 uses the phone with a lock PIN and a profile, and backs up.
     await phone.repo.updateSettings(phone.repo.settings
       ..appLockEnabled = true
       ..appLockPin = '1234');
@@ -298,6 +316,8 @@ void main() {
     phone.auth.signInAs('u2');
     await settle();
 
+    // Sync waits for the user to choose what to do with this phone's data
+    // instead of merging two people's records.
     expect(phone.sync.status, SyncStatus.needsAccountChoice);
     expect(await cloudDoc('u2', HiveBoxes.transactions, 'mine'), isNull,
         reason: 'u1\'s records must not be uploaded into u2\'s account');
@@ -310,6 +330,7 @@ void main() {
     expect(phone.repo.settings.appLockPin, '1234', reason: 'the device lock survives an account switch');
     expect(await cloudDoc('u2', HiveBoxes.transactions, 'mine'), isNull);
     expect(phone.repo.currentUser.name, isNot('Alice'));
+    // Search everything stored under u2 for u1's name and phone number.
     final u2Everything = (await cloud.collection('users').doc('u2').get()).data().toString() +
         [for (final box in CloudCodec.syncedBoxes) (await col('u2', box).get()).docs.map((d) => d.data())].toString();
     expect(u2Everything, isNot(contains('Alice')));

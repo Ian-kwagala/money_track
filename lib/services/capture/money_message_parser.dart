@@ -26,6 +26,7 @@ class MoneyMessageParser {
   /// can't fake a "RECEIVED UGX…" text into someone's records.
   /// [receivedAt] is used when the message itself carries no date.
   ParsedMoneyMessage? parse(String body, {String? sender, DateTime? receivedAt}) {
+    // Collapse line breaks and repeated spaces so every rule sees one line.
     final text = body.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (text.isEmpty) return null;
     if (sender != null && isPersonalNumber(sender)) return null;
@@ -35,8 +36,12 @@ class MoneyMessageParser {
     if (provider == null) return null;
     final kind = _kindOf(text);
     if (kind == null) return null;
+    // "You have received 1GB data bundle" isn't money arriving.
     if (kind == MoneyMessageKind.received && _airtimeOrBundle.hasMatch(text)) return null;
 
+    // Sort every money figure by the label just before it: a fee, the
+    // balance, or (the first unlabelled one) the transaction amount. Fees
+    // are summed because some messages list a fee and a tax separately.
     double? amount;
     int amountEnd = 0;
     var fee = 0.0;
@@ -56,6 +61,7 @@ class MoneyMessageParser {
     }
     if (amount == null || amount <= 0) return null;
 
+    // The other party is named after the amount ("... UGX 5,000 from JOHN").
     final party = _counterparty(kind, text.substring(amountEnd));
 
     return ParsedMoneyMessage(
@@ -147,6 +153,8 @@ class MoneyMessageParser {
     return null;
   }
 
+  /// Words that mean nothing actually moved (yet): codes, failures and
+  /// requests waiting for approval.
   static final _notACompletedTransaction = RegExp(
     r'\b(?:OTP|one[- ]time (?:pin|password|code)|verification code|failed|unsuccessful|'
     r'not successful|insufficient|declined|cancell?ed|is requesting|has requested|'
@@ -170,11 +178,15 @@ class MoneyMessageParser {
     caseSensitive: false,
   );
 
+  // A figure counts as a fee or a balance when one of these words appears
+  // within the 30 characters before it, with no digits in between.
   static const _feeLabels = r'(?:fees?|charges?|tax|levy|commission)';
   static const _balanceLabels = r'(?:bal|balance)';
   static final _feeLabelBefore = RegExp('\\b$_feeLabels\\b[^\\d]{0,15}\$', caseSensitive: false);
   static final _balanceLabelBefore = RegExp('\\b$_balanceLabels\\b[^\\d]{0,15}\$', caseSensitive: false);
 
+  /// The number from whichever [_money] alternative matched (currency before
+  /// or after), without thousands separators.
   static double? _numberIn(Match m) {
     for (var i = 1; i <= m.groupCount; i++) {
       final g = m.group(i);
@@ -193,6 +205,8 @@ class MoneyMessageParser {
     caseSensitive: false,
   );
 
+  /// The first labelled ID that contains a digit, so words that follow a
+  /// label (e.g. "Ref: Payment") aren't taken for an ID.
   static String? _reference(String text) {
     for (final m in _referencePattern.allMatches(text)) {
       final id = m.group(1)!;
@@ -207,6 +221,8 @@ class MoneyMessageParser {
     caseSensitive: false,
   );
 
+  /// Optional time after a date ("14:02", "at 14:02:33"). Its groups are 4-6
+  /// in every date pattern below, which [_date] relies on.
   static const _time = r'(?:,?\s+(?:at\s+)?(\d{1,2}):(\d{2})(?::(\d{2}))?)?';
 
   /// "05-October-2026 06:38", "2026-08-06 12:00:52", "2026-09-26 at 14:02",
@@ -231,11 +247,15 @@ class MoneyMessageParser {
     'july', 'august', 'september', 'october', 'november', 'december',
   ];
 
+  /// 1-12 for a month name or abbreviation of 3+ letters ("Oct", "October");
+  /// 0 when unknown, which [_date] then rejects.
   static int _month(String name) {
     final n = name.toLowerCase();
     return _months.indexWhere((full) => full.startsWith(n) && n.length >= 3) + 1;
   }
 
+  /// Builds a date from the matched parts, or null if they don't form a
+  /// real date and time. Two-digit years are taken as 20xx.
   static DateTime? _date(String? year, int month, String? day, Match m) {
     var y = int.parse(year!);
     if (y < 100) y += 2000;
@@ -249,6 +269,8 @@ class MoneyMessageParser {
     return date.month == month ? date : null;
   }
 
+  /// The valid date that appears earliest in the text, whichever pattern
+  /// matches it. Falls back to [receivedAt].
   static DateTime? _occurredAt(String text, DateTime? receivedAt) {
     Match? earliest;
     DateTime? found;
@@ -296,6 +318,10 @@ class MoneyMessageParser {
   static final _numberAfterParty = RegExp(r'^\s*(?:\.\s*)?\(\s*(\+?\d{9,13})\s*\)|^\s+on\s+(\+?\d{9,13})\b');
   static final _phoneish = RegExp(r'^\+?\d{9,13}$');
 
+  /// Finds the counterparty after its intro word (e.g. "from"). The segment
+  /// may hold "NAME, 0772123456" in either order, so each comma-separated
+  /// part is classed as a phone number or a name. Phrases like "from your
+  /// account" are skipped.
   static ({String? name, String? number}) _counterparty(MoneyMessageKind kind, String rest) {
     final intro = _partyIntro[kind];
     if (intro == null) return (name: null, number: null);

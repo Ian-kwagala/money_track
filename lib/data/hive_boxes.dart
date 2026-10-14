@@ -1,4 +1,10 @@
+/// Names of the Hive boxes (local on-device tables) the app stores data in.
+///
+/// Each name is also the on-disk file name, so renaming one makes the app
+/// start with an empty box and lose what was saved under the old name.
+/// The names double as collection keys for cloud sync (see CloudCodec).
 class HiveBoxes {
+  // Synced to the user's cloud account (see SyncService).
   static const wallets = 'wallets';
   static const categories = 'categories';
   static const transactions = 'transactions';

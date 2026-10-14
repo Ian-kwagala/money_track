@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// The app's design tokens: colours, shadows and corner radii, converted
+/// from the original web design (the CSS variable names are noted beside
+/// each value).
+///
+/// These are compile-time constants, not theme lookups. A widget that uses
+/// `AppColors.textPrimary` directly keeps that colour in dark mode too; use
+/// `Theme.of(context).colorScheme` where a widget must follow the theme.
 class AppColors {
   // Light theme (Lovable exact oklch -> hex)
   static const bg = Color(0xFFEAF2EE);           // --background: oklch(0.978 0.008 150)
@@ -59,7 +66,10 @@ class AppColors {
   static const darkPrimary = Color(0xFF0B8457);
 }
 
+/// Builds the Material light and dark themes from [AppColors]. main.dart
+/// picks one from the user's dark-mode setting.
 class AppTheme {
+  // Shortcuts kept for older call sites.
   static const primary = AppColors.primary;
   static const primaryDark = Color(0xFF0F5B3F);
   static const accent = AppColors.accent;
@@ -147,6 +157,8 @@ class AppTheme {
     );
   }
 
+  /// Dark variant. Lighter on overrides than [light]: most colours come from
+  /// the seed-generated scheme.
   static ThemeData dark({bool googleFonts = true}) {
     return ThemeData(
       useMaterial3: true,

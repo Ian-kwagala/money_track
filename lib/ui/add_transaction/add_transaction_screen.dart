@@ -11,7 +11,14 @@ import '../format/money_input.dart';
 import '../widgets/action_button.dart';
 import '../widgets/receipt_picker.dart';
 
+/// The full transaction form: expense, income or transfer between two
+/// wallets, with amount, category, wallet(s), note, date and time, receipt
+/// and frequency.
+///
+/// Also the edit screen: pass [edit] to load an existing record. Saving then
+/// overwrites it under the same ID, and a delete button appears.
 class AddTransactionScreen extends StatefulWidget {
+  /// The record to edit, or null to add a new one.
   final TxRecord? edit;
 
   const AddTransactionScreen({super.key, this.edit});
@@ -75,6 +82,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final theme = Theme.of(context);
     final symbol = vm.settings.currencySymbol;
 
+    // Default wallets: "from" is the first wallet; "to" is the second (or
+    // the first if there's only one, which the transfer UI then blocks).
     if (_walletId.isEmpty && vm.wallets.isNotEmpty) {
       _walletId = vm.wallets.first.id;
     }
@@ -85,6 +94,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       _toWalletId = vm.wallets.first.id;
     }
 
+    // Transfers have no category.
     final categories = _type == TxType.income
         ? vm.incomeCategories
         : _type == TxType.expense
@@ -331,6 +341,8 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     );
   }
 
+  /// Date picker, then time picker. Cancelling either keeps the old value.
+  /// Dates up to a year ahead are allowed, for planned entries.
   Future<void> _pickDateTime() async {
     final picked = await showDatePicker(
       context: context,
@@ -376,6 +388,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     try {
       final vm = context.read<TrackerViewModel>();
       final existing = widget.edit;
+      // A fresh record replaces the old one (same ID when editing). linkId
+      // isn't carried over: goal/debt records never open in this screen
+      // (TransactionTile explains them instead).
       final tx = TxRecord(
         id: existing?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
         type: _type,
@@ -400,6 +415,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     }
   }
 
+  /// Edit mode only: deletes after confirming, then closes the screen.
   Future<void> _delete() async {
     final existing = widget.edit;
     if (existing == null) return;
@@ -436,6 +452,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   }
 }
 
+/// Small all-caps section heading ("CATEGORY", "WALLET"...).
 class _Label extends StatelessWidget {
   final String text;
   const _Label(this.text);
@@ -449,6 +466,7 @@ class _Label extends StatelessWidget {
   }
 }
 
+/// Single-wallet picker for income and expenses: one chip per wallet.
 class _WalletChips extends StatelessWidget {
   final List<Wallet> wallets;
   final String selectedId;
@@ -478,6 +496,8 @@ class _WalletChips extends StatelessWidget {
   }
 }
 
+/// "From → To" pair of wallet dropdowns for transfers. Each menu is sized
+/// to half the row (120-180 px).
 class _WalletPair extends StatelessWidget {
   final String fromId;
   final String toId;

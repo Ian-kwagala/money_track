@@ -14,7 +14,16 @@ import 'theme/app_theme.dart';
 import 'widgets/app_bottom_nav.dart';
 import '../viewmodels/tracker_view_model.dart';
 
+/// The main app frame after onboarding and unlock: the five top-level pages
+/// plus their navigation.
+///
+/// Two layouts from one set of pages:
+/// * phones (< 900 px wide): a bottom bar with four tabs and a central Add
+///   button. Alerts is reached from Home's bell instead of a tab.
+/// * wide screens (web/desktop): a left sidebar with all five, a centred
+///   480 px content column and a floating Add button.
 class HomeShell extends StatefulWidget {
+  /// Index into the page list to open on first (0 = Home).
   final int initialIndex;
 
   const HomeShell({super.key, this.initialIndex = 0});
@@ -30,6 +39,9 @@ class _HomeShellState extends State<HomeShell> {
   void initState() {
     super.initState();
     _index = widget.initialIndex;
+    // After the first frame, run the one-off prompts in turn: each waits for
+    // the previous one to close, so they never stack. Each decides for
+    // itself whether it needs to appear.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       await CompletenessCheck.maybeShow(context);
@@ -40,6 +52,7 @@ class _HomeShellState extends State<HomeShell> {
     });
   }
 
+  /// All top-level pages, in the same order as `pages` in [build].
   static const _navItems = [
     _NavInfo(label: 'Home', icon: Icons.home_outlined, activeIcon: Icons.home),
     _NavInfo(label: 'Budgets', icon: Icons.account_balance_wallet_outlined, activeIcon: Icons.account_balance_wallet),
@@ -82,6 +95,8 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  /// Sidebar + centred content. Only the selected page is built here (no
+  /// IndexedStack), so switching tabs rebuilds the page.
   Widget _buildWide(BuildContext context, List<Widget> pages) {
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -111,6 +126,8 @@ class _HomeShellState extends State<HomeShell> {
                           child: pages[_index],
                         ),
                       ),
+                      // Keep the Add button next to the content column
+                      // rather than at the far edge of a wide window.
                       Positioned(
                         right: sideInset < 24 ? 24 : sideInset + 8,
                         bottom: 24,
@@ -127,6 +144,8 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  /// Pages in an IndexedStack (each keeps its scroll position and state when
+  /// you switch tabs), with the bottom bar overlaid.
   Widget _buildMobile(BuildContext context, List<Widget> pages) {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -145,6 +164,8 @@ class _HomeShellState extends State<HomeShell> {
               items: [
                 for (final i in _mobileTabs) AppNavItem(label: _navItems[i].label, icon: _navItems[i].icon),
               ],
+              // Translate between bar positions (0-3) and page indices.
+              // indexOf gives -1 when a page without a tab (Alerts) is open.
               currentIndex: _mobileTabs.indexOf(_index),
               onTabSelected: (i) => setState(() => _index = _mobileTabs[i]),
               action: AppNavAction(
@@ -160,6 +181,7 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  /// The Add button's sheet for entering a transaction quickly.
   Future<void> _openQuickAdd(BuildContext context) async {
     await showModalBottomSheet(
       context: context,
@@ -170,6 +192,7 @@ class _HomeShellState extends State<HomeShell> {
   }
 }
 
+/// Label and icons (outlined, filled when active) for one top-level page.
 class _NavInfo {
   final String label;
   final IconData icon;
@@ -289,6 +312,7 @@ class _Sidebar extends StatelessWidget {
   }
 }
 
+/// One sidebar entry; the active one is green with a filled icon.
 class _SidebarItem extends StatelessWidget {
   final _NavInfo info;
   final bool active;
@@ -324,10 +348,18 @@ class _SidebarItem extends StatelessWidget {
 }
 
 /// Shared PageHeader used by all screens
+///
+/// Title and optional subtitle, a back chevron, and on the right either
+/// [action] or, by default, a light/dark mode toggle.
 class PageHeader extends StatelessWidget {
   final String title;
   final String? subtitle;
+
+  /// Show the back chevron. Turn it off for top-level tabs, which have
+  /// nothing to go back to.
   final bool back;
+
+  /// Replaces the default dark-mode toggle.
   final Widget? action;
 
   /// Extra buttons shown before [action] (or the dark-mode toggle).

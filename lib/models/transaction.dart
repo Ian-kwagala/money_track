@@ -4,16 +4,28 @@ import 'frequency.dart';
 
 part 'transaction.g.dart';
 
+/// What a transaction does to the user's money.
 @HiveType(typeId: 2)
 enum TxType {
+  /// Money coming in to [TxRecord.walletId].
   @HiveField(0)
   income,
+
+  /// Money spent from [TxRecord.walletId].
   @HiveField(1)
   expense,
+
+  /// Money moved from [TxRecord.walletId] to [TxRecord.toWalletId]. Doesn't
+  /// change the user's total, so it never counts as income or spending.
   @HiveField(2)
   transfer,
 }
 
+/// One money movement: an income, an expense or a transfer.
+///
+/// Wallet balances aren't stored on the transaction. They're derived by
+/// adding up every transaction that touches a wallet (see
+/// MoneyRepository.walletBalance).
 @HiveType(typeId: 4)
 class TxRecord extends HiveObject {
   @HiveField(0)
@@ -22,24 +34,32 @@ class TxRecord extends HiveObject {
   @HiveField(1)
   TxType type;
 
+  /// Always positive; [type] decides the direction (see [signedAmount]).
   @HiveField(2)
   double amount;
 
+  /// The wallet the money comes from (expense, transfer) or lands in
+  /// (income). Empty for a one-sided incoming transfer (see [linkId]).
   @HiveField(3)
   String walletId;
 
+  /// Destination wallet; only set for transfers.
   @HiveField(4)
   String? toWalletId;
 
+  /// The [Category] it's filed under. Empty when none was picked, which is
+  /// normal for transfers and goal/debt movements.
   @HiveField(5)
   String categoryId;
 
   @HiveField(6)
   String note;
 
+  /// When the money moved (chosen by the user, not when it was entered).
   @HiveField(7)
   DateTime dateTime;
 
+  /// Local file path of an attached receipt photo, if any.
   @HiveField(8)
   String? receiptPath;
 
@@ -86,6 +106,8 @@ class TxRecord extends HiveObject {
   /// The wallet a one-sided transfer actually touched.
   String get oneSidedWalletId => isOneSidedIn ? (toWalletId ?? '') : walletId;
 
+  /// The effect on the user's overall total: +amount for income, -amount for
+  /// expenses, and 0 for transfers (which only move money between wallets).
   double get signedAmount {
     switch (type) {
       case TxType.income:

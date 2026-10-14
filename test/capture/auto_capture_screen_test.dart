@@ -13,6 +13,19 @@ import '../widgets/real_fonts.dart';
 import '../widgets/test_theme.dart';
 import 'capture_test_helpers.dart';
 
+// Widget tests for the auto-capture screens: the review list with its cards,
+// the category picker, the Edit sheet, the duplicate warning and the Home
+// banner.
+//
+// The phone's storage is real Hive on disk, which flutter_test's fake clock
+// can't wait for. So anything that saves (booting, ingesting, tapping a
+// button that confirms) runs inside tester.runAsync, and `until` polls in
+// real time for the save to finish before the test pumps frames again.
+// Several tests also set a phone-sized 390x844 view so the cards lay out as
+// they do on a real device.
+
+/// The app's providers and theme around [home], with the /capture route the
+/// Home banner opens.
 Widget _app(Phone phone, Widget home) => MultiProvider(
       providers: [
         ChangeNotifierProvider<TrackerViewModel>.value(value: phone.vm),
@@ -24,6 +37,7 @@ Widget _app(Phone phone, Widget home) => MultiProvider(
 void main() {
   late Phone phone;
 
+  // Real fonts so text measures as on a phone; each test boots its own phone.
   setUpAll(loadRealFonts);
   setUp(() => Phone.now = DateTime(2026, 10, 12, 9, 0));
   tearDown(() async => phone.shutdown());
@@ -114,6 +128,7 @@ void main() {
     expect(main.categoryId, 'cat_expense_rent');
     expect(main.amount, 21000);
 
+    // Dismiss the balance question if it appears; it isn't what this test checks.
     await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 800)));
     await tester.pumpAndSettle();
     if (find.text('Not now').evaluate().isNotEmpty) {
@@ -251,6 +266,7 @@ void main() {
     await tester.pump();
     expect(find.text('Sent · UGX 20,500'), findsOneWidget, reason: 'the heading follows the edited amount');
 
+    // Move the date back a day, to 4 October, in the date picker.
     final date = find.byIcon(Icons.calendar_today_outlined);
     await tester.ensureVisible(date);
     await tester.pumpAndSettle();

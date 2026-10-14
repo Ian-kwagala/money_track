@@ -3,6 +3,12 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_track/services/security/pin_hash.dart';
 
+// Tests for PinHash, which stores the app-lock PIN as
+// "pbkdf2-sha256$<iterations>$<base64 salt>$<base64 hash>" instead of the PIN
+// itself. The first test checks the PBKDF2 maths against known answers; the
+// rest check the stored format and that only the right PIN verifies.
+
+/// Turns a hex string into bytes.
 List<int> _hex(String s) => [for (var i = 0; i < s.length; i += 2) int.parse(s.substring(i, i + 2), radix: 16)];
 
 /// A stored hash built by hand from a published PBKDF2-HMAC-SHA256 test

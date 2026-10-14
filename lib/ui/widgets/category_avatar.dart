@@ -3,10 +3,20 @@ import 'package:flutter/material.dart';
 import '../../models/category.dart';
 import '../theme/app_theme.dart';
 
+/// A round, softly tinted badge with an icon in the middle, used for
+/// categories and wallets in lists.
 class CategoryAvatar extends StatelessWidget {
+  /// An icon key (wallet keys like 'cash', or a category key like
+  /// 'restaurant') or an emoji.
   final String icon;
+
+  /// Tint for the icon and its background; the app's primary colour if null.
   final Color? color;
+
+  /// Diameter in logical pixels; the icon is drawn at half of it.
   final double size;
+
+  /// Shown when [icon] isn't recognised.
   final IconData? fallback;
 
   const CategoryAvatar({
@@ -35,6 +45,10 @@ class CategoryAvatar extends StatelessWidget {
     );
   }
 
+  /// Resolves [icon] in order: wallet icon keys, then emoji, then category
+  /// icon keys, then [fallback]. The emoji check needs two or more code
+  /// points starting above U+2000, so a single-code-point emoji such as
+  /// "🍕" falls through to [fallback].
   Widget _buildIcon(Color fg) {
     final known = _iconMap[icon];
     if (known != null) {
@@ -50,6 +64,7 @@ class CategoryAvatar extends StatelessWidget {
     return Icon(fallback ?? Icons.category_outlined, color: fg, size: size * 0.5);
   }
 
+  /// The legacy wallet icon keys stored in [Wallet.icon].
   static const _iconMap = <String, IconData>{
     'cash': Icons.payments_outlined,
     'mobile': Icons.smartphone_outlined,

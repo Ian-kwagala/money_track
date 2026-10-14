@@ -5,6 +5,10 @@ import '../models/transaction.dart';
 /// The total money across the user's wallets at past moments, worked back
 /// from today's balances: the total at time t is today's total minus every
 /// change to it recorded after t.
+///
+/// Working backwards means the chart always ends exactly at the balance
+/// the user sees today, even if opening balances were edited along the way.
+/// Used by the balance trend card on the Reports screen.
 class BalanceHistory {
   BalanceHistory({required this.currentTotal, required Iterable<TxRecord> transactions, this.walletIds})
       : _transactions = transactions.toList();
@@ -34,7 +38,8 @@ class BalanceHistory {
     }
   }
 
-  /// The total at [moment].
+  /// The total at [moment]. Scans every transaction, which is fine for the
+  /// few dozen chart points it's called for.
   double totalAt(DateTime moment) {
     var later = 0.0;
     for (final t in _transactions) {
@@ -76,6 +81,9 @@ List<TrendPoint> balanceTrend(BalanceHistory history, TrendRange range, DateTime
     case TrendRange.week:
     case TrendRange.month:
       final days = range == TrendRange.week ? 7 : 30;
+      // One point per day, at midnight ending that day (or now, for today).
+      // `today.day - i` may go below 1; DateTime rolls it into the previous
+      // month.
       for (var i = days - 1; i >= 0; i--) {
         final day = DateTime(today.year, today.month, today.day - i);
         final end = i == 0 ? now : DateTime(day.year, day.month, day.day + 1);
@@ -83,6 +91,7 @@ List<TrendPoint> balanceTrend(BalanceHistory history, TrendRange range, DateTime
         points.add(TrendPoint(end, label, history.totalAt(end)));
       }
     case TrendRange.year:
+      // One point per month, at the start of the following month (or now).
       for (var i = 11; i >= 0; i--) {
         final month = DateTime(now.year, now.month - i, 1);
         final end = i == 0 ? now : DateTime(month.year, month.month + 1, 1);
@@ -103,6 +112,8 @@ List<TrendPoint> balanceTrend(BalanceHistory history, TrendRange range, DateTime
     lo -= pad == 0 ? 1000 : pad;
     hi += pad == 0 ? 1000 : pad;
   }
+  // Pick a round gridline spacing, then snap the ends outward to multiples
+  // of it.
   final step = _niceStep((hi - lo) / lines);
   var min = (lo / step).floorToDouble() * step;
   var max = (hi / step).ceilToDouble() * step;

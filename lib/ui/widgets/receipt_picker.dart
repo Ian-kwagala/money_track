@@ -29,7 +29,11 @@ class Receipts {
 
 /// "Attach receipt": take a photo or pick one; once attached it shows a
 /// thumbnail, and tapping it offers View, Replace and Remove.
+///
+/// It doesn't save anything on the transaction itself. It reports the new
+/// path (or null when removed) through [onChanged], and the form saves it.
 class ReceiptPicker extends StatefulWidget {
+  /// The attached receipt's file path, or null/empty for none.
   final String? path;
   final ValueChanged<String?> onChanged;
 
@@ -39,13 +43,17 @@ class ReceiptPicker extends StatefulWidget {
   State<ReceiptPicker> createState() => _ReceiptPickerState();
 }
 
+/// What the user picked in the options sheet.
 enum _Choice { camera, gallery, view, remove }
 
 class _ReceiptPickerState extends State<ReceiptPicker> {
+  /// True while a photo is being taken/picked and copied.
   bool _working = false;
 
   bool get _has => widget.path != null && widget.path!.isNotEmpty;
 
+  /// Shows the options sheet; View and Remove only appear once a receipt is
+  /// attached.
   Future<void> _open() async {
     final choice = await showModalBottomSheet<_Choice>(
       context: context,
@@ -105,6 +113,8 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
     }
   }
 
+  /// Gets a photo from [source], keeps a copy and reports its path. Errors
+  /// (permission denied, no camera...) become a snackbar.
   Future<void> _pick(ImageSource source) async {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _working = true);
@@ -123,6 +133,7 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
     }
   }
 
+  /// Plain-language messages for image_picker's error codes.
   static String _explain(PlatformException e) => switch (e.code) {
     'camera_access_denied' => 'Camera permission is off. Allow it in App info → Permissions to take receipt photos.',
     'photo_access_denied' => 'Photo access is off. Allow it in App info → Permissions to pick receipts.',
@@ -184,6 +195,9 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
 }
 
 /// A receipt full screen, with pinch to zoom.
+///
+/// Receipt files aren't synced (only their path is), so on another phone
+/// the image won't be found and the error text below is shown instead.
 class ReceiptViewer extends StatelessWidget {
   final String path;
 

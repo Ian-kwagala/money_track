@@ -6,6 +6,13 @@ import 'package:money_track/models/frequency.dart';
 import 'package:money_track/models/transaction.dart';
 import 'package:money_track/ui/format/money_input.dart';
 
+// Unit tests for small pieces of money logic: the amount field's formatting
+// (ThousandsSeparatorInputFormatter and MoneyInput), when bills are due,
+// monthly equivalents of bills and budgets, and one-sided transfers (money
+// moved to or from a goal or debt rather than another wallet).
+
+/// Runs the amount formatter as if the field went from [old] to [text], with
+/// the cursor at [cursor] (the end by default), and returns what it shows.
 TextEditingValue _type(String text, {int? cursor, String old = ''}) {
   const f = ThousandsSeparatorInputFormatter();
   return f.formatEditUpdate(
@@ -78,6 +85,7 @@ void main() {
         dueDate: DateTime.now().subtract(const Duration(days: 10)),
         frequency: Frequency.once,
       );
+      // Due ten days ago and not yet paid.
       expect(bill.isOverdue, isTrue);
       expect(bill.isDueWithin(7), isTrue);
 
@@ -108,6 +116,7 @@ void main() {
     });
   });
 
+  // A month counts as 30 days here, so a weekly limit is multiplied by 30/7.
   test('Budget monthly equivalent scales daily/weekly limits', () {
     Budget b(Frequency f) => Budget(id: 'b', categoryId: 'c', amount: 1000, periodStart: DateTime.now(), frequency: f);
     expect(b(Frequency.daily).monthlyEquivalent, 30000);

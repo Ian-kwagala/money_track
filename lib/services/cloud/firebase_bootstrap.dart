@@ -11,8 +11,12 @@ import '../../firebase_options.dart';
 /// false and the app keeps working fully offline on Hive.
 class FirebaseBootstrap {
   static bool _ready = false;
+
+  /// Whether Firebase started. Every cloud service checks this first and
+  /// does nothing when it's false.
   static bool get isReady => _ready;
 
+  /// Called once from main() before anything else. Never throws.
   static Future<void> init() async {
     try {
       await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);

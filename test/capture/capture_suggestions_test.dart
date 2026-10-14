@@ -6,11 +6,21 @@ import 'package:money_track/services/capture/capture_suggestions.dart';
 import 'package:money_track/services/capture/money_message.dart';
 import 'package:money_track/services/capture/money_message_parser.dart';
 
+// Tests for CaptureSuggestions, which turns a parsed SMS into a draft
+// transaction: which wallet, which type (expense, income or transfer) and
+// which category. It runs on the app's seed wallets and categories, with no
+// storage involved.
+
 const _parser = MoneyMessageParser();
+
+/// When the test messages "arrived"; drafts fall back to it when the SMS has no date.
 final _at = DateTime(2026, 10, 5, 7, 0);
 
+/// Parses [sms], which the test expects to be a money message.
 ParsedMoneyMessage _read(String sms) => _parser.parse(sms, receivedAt: _at)!;
 
+/// Suggestions over the seed wallets and categories, plus [extraWallets]
+/// the user has added and the remembered past choices in [memory].
 CaptureSuggestions _with({List<Wallet> extraWallets = const [], Map<String, String> memory = const {}}) =>
     CaptureSuggestions(
       wallets: [...SeedData.wallets(), ...extraWallets],
@@ -30,6 +40,7 @@ const _nssfInterest = 'Dear JOHN OKELLO MUGISHA, your Smartlife account - SL1000
 const _centenaryCard = 'Centenary: Dear JOHN MUGISHA, your card trxn of UGX 4,200 on A/C **123 has been '
     'registered on 2026-09-26 at 14:02 now pending settlement. Available balance: UGX 3,155.';
 
+/// An Airtel merchant payment to [name], for testing name-based guesses.
 String _paidTo(String name) => 'PAID UGX 5,000 to $name Charge UGX 0, TID 1580700099. Bal UGX 2,675';
 
 void main() {
@@ -167,6 +178,7 @@ void main() {
   });
 
   group('category', () {
+    // Payee name -> the category its keywords should pick; one test per entry.
     final cases = {
       'UMEME LIMITED': 'cat_expense_electricity',
       'NWSC': 'cat_expense_water',

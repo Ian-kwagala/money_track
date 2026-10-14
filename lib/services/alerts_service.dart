@@ -8,13 +8,19 @@ import '../ui/format/money_format.dart';
 import '../ui/theme/app_theme.dart';
 import '../viewmodels/tracker_view_model.dart';
 
+/// One alert as shown on the Alerts screen.
 class AlertItem {
+  /// Stable ID that encodes what the alert is about (and, for time-bound
+  /// alerts, the day or week), so a dismissal sticks to exactly this alert.
   final String id;
   final IconData icon;
   final Color iconColor;
   final Color iconBg;
   final String title;
   final String description;
+
+  /// Used to sort the list; for alerts that aren't tied to one moment it's
+  /// an offset from now that sets their position.
   final DateTime when;
 
   const AlertItem({
@@ -58,8 +64,10 @@ class AlertsService extends ChangeNotifier {
   List<AlertItem> active(TrackerViewModel vm) =>
       build(vm, vm.settings.currencySymbol, _now()).where((a) => !_dismissed.contains(a.id)).toList();
 
+  /// The number on the bell icon.
   int countFor(TrackerViewModel vm) => active(vm).length;
 
+  /// Hides [id] for good, remembering it in SharedPreferences.
   Future<void> dismiss(String id) async {
     if (_dismissed.contains(id)) return;
     _dismissed.add(id);
@@ -69,11 +77,16 @@ class AlertsService extends ChangeNotifier {
     await prefs.setStringList(_prefsKey, _dismissed);
   }
 
+  /// Every alert that currently applies, dismissed or not, newest first.
+  /// Each kind is gated by its toggle in [AppSettings]. Static and pure (no
+  /// stored state), so tests can call it directly with a fixed [now].
   static List<AlertItem> build(TrackerViewModel vm, String symbol, DateTime now) {
 
     final alerts = <AlertItem>[];
     final settings = vm.settings;
 
+    // Daily budget: warns at 80%, then again when exceeded. The ID includes
+    // the date, so tomorrow's alert is new even if today's was dismissed.
     final dailyBudget = settings.dailyBudget;
     if (settings.budgetWarningsEnabled && dailyBudget != null && dailyBudget > 0) {
       final todayStart = DateTime(now.year, now.month, now.day);
@@ -104,6 +117,9 @@ class AlertsService extends ChangeNotifier {
       }
     }
 
+    // Category budgets: same 80% / exceeded thresholds over each budget's
+    // own period. Both share one ID per budget, so dismissing the 80%
+    // warning also hides the "exceeded" one for that budget.
     for (final budget in settings.budgetWarningsEnabled ? vm.budgets : const <Budget>[]) {
       final cat = vm.categoryById(budget.categoryId);
       final (periodStart, periodEnd) = budget.periodFor(now);
@@ -137,6 +153,8 @@ class AlertsService extends ChangeNotifier {
       }
     }
 
+    // Bills due within their reminder window, or overdue. A window of 0 (or
+    // less) is treated as the default of 3 days.
     for (final bill in settings.billRemindersEnabled ? vm.bills : const <Bill>[]) {
       final threshold = bill.reminderDaysBefore > 0 ? bill.reminderDaysBefore : 3;
       if (!bill.isDueWithin(threshold)) continue;
@@ -156,6 +174,8 @@ class AlertsService extends ChangeNotifier {
 
     if (settings.unusualSpendingEnabled) alerts.addAll(_unusualSpending(vm, symbol, now));
 
+    // A rolling 7-day summary (today plus the 6 days before), not a
+    // calendar week.
     if (settings.weeklySummaryEnabled) {
       final weekStart = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
       final spent = vm.spentTotal(weekStart, now);
@@ -210,6 +230,7 @@ class AlertsService extends ChangeNotifier {
     return items;
   }
 
+  /// "today", "tomorrow" or "in N days".
   static String _dueLabel(int days) {
     if (days == 0) return 'today';
     if (days == 1) return 'tomorrow';

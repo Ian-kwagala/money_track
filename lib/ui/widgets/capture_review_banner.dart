@@ -10,6 +10,8 @@ class CaptureReviewBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Watching CaptureService makes the banner appear and disappear as
+    // messages arrive or get reviewed.
     final n = context.watch<CaptureService>().pendingCount;
     if (n == 0) return const SizedBox.shrink();
 

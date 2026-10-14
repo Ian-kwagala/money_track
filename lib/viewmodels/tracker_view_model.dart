@@ -16,9 +16,28 @@ import '../models/user.dart';
 import '../models/wallet.dart';
 import '../services/security/pin_hash.dart';
 
+/// The single app-wide state object that every screen reads and writes
+/// through.
+///
+/// Provided at the root of the widget tree (see main.dart); screens get it
+/// with `context.watch<TrackerViewModel>()` to rebuild on changes, or
+/// `context.read` to call methods. Getters read straight from
+/// [MoneyRepository] (Hive), so they're always current. Every write goes to
+/// the repository and then calls [notifyListeners] so the UI rebuilds.
+///
+/// Rule of thumb: any write that can change a wallet's balance (a
+/// transaction or wallet change) also calls
+/// [MoneyRepository.updateWalletBalances] to refresh the cached
+/// [Wallet.currentBalance].
 class TrackerViewModel extends ChangeNotifier {
   final MoneyRepository repo;
+
+  /// True once local storage has opened successfully. Screens show a loading
+  /// or error state until then.
   bool initialized = false;
+
+  /// Whether the user has entered their PIN this session. Not persisted, so
+  /// the app is locked again after every restart.
   bool _isUnlocked = false;
 
   /// Runs once local storage is open (used to start cloud sync). Not awaited,
@@ -27,12 +46,16 @@ class TrackerViewModel extends ChangeNotifier {
 
   TrackerViewModel(this.repo, {this.onReady});
 
+  /// Message describing why local storage failed to open, if it did.
   String? initError;
   bool get hasInitError => initError != null;
 
   /// Re-reads everything from local storage (e.g. after a cloud sync wrote to it).
   void refreshFromStorage() => notifyListeners();
 
+  /// Opens local storage, upgrades any plain-text PIN, then kicks off
+  /// [onReady]. Errors are caught and kept in [initError] so the app can show
+  /// a retry screen instead of crashing.
   Future<void> init() async {
     try {
       initError = null;
@@ -51,6 +74,7 @@ class TrackerViewModel extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   // Auth & Onboarding
   // ---------------------------------------------------------------------------
+  /// True for a fresh install, until [completeOnboarding] runs.
   bool get needsOnboarding => !settings.onboardingCompleted;
 
   /// A PIN has been set (stored as a hash, or in plain text by a version
@@ -58,10 +82,15 @@ class TrackerViewModel extends ChangeNotifier {
   bool get hasPin =>
       PinHash.isHash(settings.appLockPasswordHash) || (settings.appLockPin?.isNotEmpty ?? false);
 
+  /// The lock is switched on *and* there is a PIN to check against.
   bool get isAppLocked => settings.appLockEnabled && hasPin;
 
+  /// Whether the app content may be shown: always true when no lock is set.
   bool get isUnlocked => _isUnlocked || !isAppLocked;
 
+  // unlock() is called by the lock screen after a correct PIN. lock() puts
+  // the lock screen back; its only caller is the "Lock now" button in
+  // AccountSettingsScreen, which no screen currently opens.
   void unlock() {
     _isUnlocked = true;
     notifyListeners();
@@ -72,6 +101,9 @@ class TrackerViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Checks [pin] against the stored hash. If only a legacy plain-text PIN
+  /// exists, compares against that and upgrades it to a hash on success.
+  /// With no PIN stored at all, any input is accepted.
   Future<bool> verifyPin(String pin) async {
     final s = settings;
     final hash = s.appLockPasswordHash;
@@ -124,6 +156,9 @@ class TrackerViewModel extends ChangeNotifier {
     await repo.boxFor(HiveBoxes.settings).compact();
   }
 
+  /// Saves everything collected by the onboarding flow to both the [User]
+  /// and [AppSettings] records, marks onboarding done, and optionally sets
+  /// up the app lock. Optional arguments left null keep their current value.
   Future<void> completeOnboarding({
     required String name,
     required String phone,
@@ -185,6 +220,8 @@ class TrackerViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Saves edits from AccountSettingsScreen. When [isVariable] is
+  /// given, [User.incomeType] is re-derived the same way onboarding does it.
   Future<void> updateAccountDetails({
     required String name,
     required String phone,
@@ -222,8 +259,10 @@ class TrackerViewModel extends ChangeNotifier {
 
   Wallet walletById(String id) => repo.walletById(id);
 
+  /// Live balance computed from transactions (see MoneyRepository.walletBalance).
   double walletBalance(String id) => repo.walletBalance(id);
 
+  /// Adds or updates a wallet, then refreshes every cached balance.
   Future<void> saveWallet(Wallet wallet) async {
     await repo.updateWallet(wallet);
     await repo.updateWalletBalances();
@@ -309,6 +348,7 @@ class TrackerViewModel extends ChangeNotifier {
 
   List<Category> get categories => repo.categories;
 
+  /// Categories for one kind of transaction (income or expense).
   List<Category> categoriesOf(TxType type) =>
       repo.categories.where((c) => c.type == type).toList();
 
@@ -332,8 +372,11 @@ class TrackerViewModel extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   // Transactions
   // ---------------------------------------------------------------------------
+  /// Every transaction, newest first.
   List<TxRecord> get transactions => repo.transactions;
 
+  // Transaction writes always refresh wallet balances, since any of them can
+  // move money in or out of a wallet.
   Future<void> addTransaction(TxRecord tx) async {
     await repo.addTransaction(tx);
     await repo.updateWalletBalances();
@@ -360,6 +403,8 @@ class TrackerViewModel extends ChangeNotifier {
   Budget? budgetForCategory(String categoryId) =>
       repo.budgetForCategory(categoryId);
 
+  // Totals over a date range (s = start, e = end, both inclusive), counting
+  // only income/expense records. Transfers never count.
   double spentByCategory(DateTime s, DateTime e, String cid) =>
       repo.spentByCategory(s, e, cid);
 
@@ -496,6 +541,8 @@ class TrackerViewModel extends ChangeNotifier {
     _markDirty();
   }
 
+  /// Deletes every transaction (wallets, categories, budgets, goals and bills
+  /// are kept), so balances fall back to the wallets' opening balances.
   Future<void> clearAll() async {
     for (final t in repo.transactions) {
       await repo.deleteTransaction(t.id);
@@ -504,6 +551,8 @@ class TrackerViewModel extends ChangeNotifier {
     _markDirty();
   }
 
+  /// Called after every write so listening screens rebuild. Cloud sync picks
+  /// up the change separately, by watching the Hive boxes.
   void _markDirty() {
     notifyListeners();
   }

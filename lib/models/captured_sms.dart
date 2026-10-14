@@ -5,10 +5,15 @@ part 'captured_sms.g.dart';
 /// Where a captured money SMS is in the user's review.
 @HiveType(typeId: 19)
 enum CaptureStatus {
+  /// Waiting in the review list for the user to confirm or ignore.
   @HiveField(0)
   pending,
+
+  /// Turned into transactions (see [CapturedSms.transactionIds]).
   @HiveField(1)
   confirmed,
+
+  /// Dismissed by the user; no transactions were created.
   @HiveField(2)
   ignored,
 }
@@ -36,9 +41,11 @@ class CapturedSms extends HiveObject {
   @HiveField(2)
   String sender;
 
+  /// The full SMS text, kept so it can be re-parsed (see the class doc).
   @HiveField(3)
   String body;
 
+  /// When the phone received the SMS (or when it was pasted in).
   @HiveField(4)
   DateTime receivedAt;
 
@@ -50,6 +57,9 @@ class CapturedSms extends HiveObject {
   @HiveField(6)
   List<String> transactionIds;
 
+  /// When it was confirmed or ignored; null while still pending. Decides
+  /// which handled messages appear in the "recently handled" list for undo.
+  /// (Clean-up after [CaptureService.keepHandledFor] goes by [receivedAt].)
   @HiveField(7)
   DateTime? handledAt;
 

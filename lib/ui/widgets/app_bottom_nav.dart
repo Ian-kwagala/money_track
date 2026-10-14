@@ -127,6 +127,8 @@ class AppBottomNav extends StatelessWidget {
   }
 }
 
+/// One tab: icon over label, both fading between the selected and
+/// unselected colour.
 class _Tab extends StatelessWidget {
   final AppNavItem item;
   final bool selected;
@@ -203,6 +205,9 @@ class _ActionLabel extends StatelessWidget {
   }
 }
 
+/// The round raised button. Shrinks slightly while pressed. The outer ring
+/// is painted in the bar colour, which is what makes it look cut into the
+/// bar.
 class _ActionButton extends StatefulWidget {
   final AppNavAction action;
   final _NavColors colors;
@@ -254,6 +259,7 @@ class _ActionButtonState extends State<_ActionButton> {
   }
 }
 
+/// Shared label style for tabs and the action label.
 TextStyle _labelStyle(Color color, {required bool bold}) => TextStyle(
       fontSize: 11,
       height: 1.2,

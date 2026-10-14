@@ -3,6 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../../viewmodels/tracker_view_model.dart';
 
+/// The first screen: an animated logo shown while local storage opens.
+///
+/// It also starts that loading: [initState] calls TrackerViewModel.init.
+/// When init succeeds, the root router moves on by itself. If it fails, the
+/// error is shown with a Retry button.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -20,6 +25,8 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+    // One 900 ms timeline, split into stages: the logo pops in and fades up
+    // first, then the title and tagline fade in.
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
@@ -36,6 +43,7 @@ class _SplashScreenState extends State<SplashScreen>
       parent: _controller,
       curve: const Interval(0.35, 0.75, curve: Curves.easeOut),
     );
+    // Not awaited: the view model notifies when it's done.
     context.read<TrackerViewModel>().init();
   }
 
@@ -162,6 +170,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
+/// Four dots that pulse one after another, in a loop.
 class _LoadingIndicator extends StatefulWidget {
   const _LoadingIndicator({required this.color});
 
@@ -199,6 +208,7 @@ class _LoadingIndicatorState extends State<_LoadingIndicator>
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: ScaleTransition(
+              // Each dot's interval starts 0.12 later, which makes the wave.
               scale: Tween(begin: 0.5, end: 1.2).animate(
                 CurvedAnimation(
                   parent: _controller,

@@ -16,9 +16,21 @@ import '../../models/wallet.dart';
 import '../widgets/transaction_tile.dart';
 import 'daily_spend_screen.dart';
 
+/// The Home tab: the at-a-glance summary of the user's money.
+///
+/// From top to bottom: announcement and SMS-review banners, total balance
+/// with a pill per wallet, this month's income and spending, shortcut chips
+/// to the secondary screens, bills due within a week, top three spending
+/// categories, saved-this-month / average daily spend beside today's
+/// spending ring, the four most recent transactions, and the monthly budget
+/// bar.
+///
+/// Everything is computed from the view model on each build; nothing is
+/// cached.
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
+  /// "Tuesday, 13 Oct" for the header subtitle.
   String _headerDate(DateTime now) {
     const months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -62,10 +74,13 @@ class DashboardScreen extends StatelessWidget {
     final totalBudget = vm.monthlyBudgetTotal;
     final dailyTarget = vm.dailyTarget;
 
+    // "Saved" here is simply income minus spending this month (it can go
+    // negative). The daily average divides by days elapsed, today included.
     final savedThisMonth = incomeThisMonth - spentThisMonth;
     final avgDailySpend = spentThisMonth / now.day;
 
-    // Category totals for Top spending
+    // Category totals for Top spending: this month, keyed by category name,
+    // largest three kept.
     final categoryTotals = <String, double>{};
     final catColorMap = <String, int>{};
     for (final cat in vm.expenseCategories) {
@@ -291,6 +306,7 @@ class _BalanceCard extends StatelessWidget {
   }
 }
 
+/// One wallet's name and short-form balance inside the balance card.
 class _WalletPill extends StatelessWidget {
   final String name;
   final double balance;
@@ -376,7 +392,10 @@ class _IncomeSpentCard extends StatelessWidget {
 }
 
 /// Horizontal shortcuts row
+///
+/// Chips that open the secondary screens by their named routes in main.dart.
 class _Shortcuts extends StatelessWidget {
+  /// (label, icon, route name)
   static const _items = [
     ('Transactions', Icons.receipt_outlined, '/transactions'),
     ('Daily spend', Icons.today_outlined, '/daily'),
@@ -470,6 +489,7 @@ class _UpcomingBills extends StatelessWidget {
   }
 }
 
+/// One bill with its due status (red overdue, amber within 3 days).
 class _UpcomingBillRow extends StatelessWidget {
   final Bill bill;
   final String symbol;
@@ -525,6 +545,7 @@ class _TopSpending extends StatelessWidget {
     required this.catColorMap,
   });
 
+  /// The category's own colour, or a fixed fallback by position.
   Color _colorFor(String name, int idx) {
     if (catColorMap.containsKey(name)) return Color(catColorMap[name]!);
     const fallback = [AppColors.catFood, AppColors.catTransport, AppColors.catRent];
@@ -659,6 +680,9 @@ class _StatCard extends StatelessWidget {
 }
 
 /// Today spend ring card
+///
+/// Today's spending against [budget] (the daily target). Tap for the daily
+/// spend screen.
 class _TodaySpendCard extends StatelessWidget {
   final double spent;
   final double budget;
@@ -769,6 +793,9 @@ class _RecentSection extends StatelessWidget {
 }
 
 /// Monthly budget progress bar
+///
+/// All spending this month against the sum of every budget scaled to a
+/// month (TrackerViewModel.monthlyBudgetTotal).
 class _MonthlyBudgetBar extends StatelessWidget {
   final double spent;
   final double budget;

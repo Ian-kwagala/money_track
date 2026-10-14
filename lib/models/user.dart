@@ -4,6 +4,11 @@ import 'income_profile.dart';
 
 part 'user.g.dart';
 
+/// The person using the app: profile details and income information.
+///
+/// There's one record, stored under the key `'default'` in the users box.
+/// Name, currency, dark mode and notifications also live on [AppSettings];
+/// MoneyRepository keeps the two copies in step.
 @HiveType(typeId: 7)
 class User extends HiveObject {
   @HiveField(0)
@@ -33,12 +38,15 @@ class User extends HiveObject {
   @HiveField(8)
   String email;
 
+  /// Main source of income as picked during onboarding. Together with
+  /// [isVariable] it decides [incomeType].
   @HiveField(9)
   String incomeSource; // 'salary' or 'informal'
 
   @HiveField(10)
   String? occupation;
 
+  /// When onboarding was completed.
   @HiveField(11)
   DateTime? createdAt;
 

@@ -13,6 +13,7 @@ class RawSms {
   const RawSms({required this.sender, required this.body, required this.receivedAt});
 }
 
+/// Whether the app may read SMS, in the terms the UI needs to explain it.
 enum SmsAccess {
   granted,
 
@@ -30,12 +31,20 @@ enum SmsAccess {
 
 /// The phone's SMS, as far as auto-capture needs it. Messages from personal
 /// phone numbers are dropped on the native side and never reach Dart.
+///
+/// An interface, so tests can supply a fake phone and CaptureService never
+/// touches platform code directly.
 abstract class SmsBridge {
+  /// The real bridge on Android; a do-nothing one everywhere else.
   factory SmsBridge.platform() =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android ? AndroidSmsBridge() : const UnsupportedSmsBridge();
 
   bool get isSupported;
+
+  /// The current permission state, without asking the user.
   Future<SmsAccess> access();
+
+  /// Shows Android's permission dialog if it still can.
   Future<SmsAccess> requestAccess();
 
   /// Opens this app's App info page in Android settings.
@@ -59,8 +68,13 @@ abstract class SmsBridge {
   Stream<void> get onQueued;
 }
 
+/// Talks to the native Android side over the `money_track/sms` method
+/// channel. The Kotlin code receives SMS in the background, filters them and
+/// queues them until Dart asks for them.
 class AndroidSmsBridge implements SmsBridge {
   AndroidSmsBridge() {
+    // Native calls 'queued' whenever it stores a new message while the app
+    // is running.
     _channel.setMethodCallHandler((call) async {
       if (call.method == 'queued') _queued.add(null);
     });
@@ -78,6 +92,7 @@ class AndroidSmsBridge implements SmsBridge {
   @override
   Future<SmsAccess> requestAccess() async => _accessFrom(await Permission.sms.request());
 
+  /// Maps permission_handler's states onto the three the UI distinguishes.
   static SmsAccess _accessFrom(PermissionStatus status) {
     if (status.isGranted) return SmsAccess.granted;
     if (status.isPermanentlyDenied || status.isRestricted) return SmsAccess.blocked;
@@ -103,6 +118,8 @@ class AndroidSmsBridge implements SmsBridge {
   @override
   Stream<void> get onQueued => _queued.stream;
 
+  /// Native sends a list of maps `{sender, body, receivedAt (ms)}`. Entries
+  /// without a body are skipped rather than crashing.
   static List<RawSms> _decode(List<Object?>? raw) => [
         for (final m in raw ?? const <Object?>[])
           if (m is Map && m['body'] is String)

@@ -35,6 +35,8 @@ class MoneyInput {
     return '${_groupInt(intPart)}$frac';
   }
 
+  /// Inserts a comma before every group of three digits, counting from the
+  /// right ("1234567" -> "1,234,567").
   static String _groupInt(String intPart) {
     final sb = StringBuffer();
     for (var i = 0; i < intPart.length; i++) {
@@ -48,6 +50,7 @@ class MoneyInput {
 /// Formats numeric input as "1,234,567.89" while the user types, keeping the
 /// cursor next to the digit it was beside.
 class ThousandsSeparatorInputFormatter extends TextInputFormatter {
+  /// Maximum digits allowed after the decimal point; 0 disallows a point.
   final int decimalDigits;
 
   const ThousandsSeparatorInputFormatter({this.decimalDigits = 2});
@@ -79,6 +82,7 @@ class ThousandsSeparatorInputFormatter extends TextInputFormatter {
       final ch = text[i];
       final code = ch.codeUnitAt(0);
       var keep = false;
+      // 48-57 are the ASCII codes for '0'-'9'.
       if (code >= 48 && code <= 57) {
         if (!seenDot) {
           keep = true;

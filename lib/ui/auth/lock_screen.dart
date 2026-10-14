@@ -4,6 +4,11 @@ import 'package:provider/provider.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
 
+/// The PIN pad shown instead of the app while the app lock is on and the
+/// user hasn't unlocked this session (see _RootRouter in main.dart).
+///
+/// PINs are 4 to 6 digits. A correct PIN calls [TrackerViewModel.unlock],
+/// and the root router then swaps this screen for the home screen.
 class LockScreen extends StatefulWidget {
   const LockScreen({super.key});
 
@@ -12,10 +17,15 @@ class LockScreen extends StatefulWidget {
 }
 
 class _LockScreenState extends State<LockScreen> {
+  /// Digits typed so far.
   String _pin = '';
   String? _error;
+
+  /// True while the PIN hash is being checked (it's deliberately slow).
   bool _loading = false;
 
+  /// Handles a numpad key: a digit, 'back' (delete last digit) or 'check'
+  /// (verify).
   void _onKey(String key) {
     if (key == 'check') {
       _verify();
@@ -30,7 +40,8 @@ class _LockScreenState extends State<LockScreen> {
       }
     });
     if (_pin.length == 4) {
-      // auto verify at 4 digits if desired, or wait for unlock button
+      // Intentionally empty: there's no auto-verify at 4 digits, because the
+      // PIN may be up to 6 long. The user taps Unlock or the check key.
     }
   }
 
@@ -61,6 +72,8 @@ class _LockScreenState extends State<LockScreen> {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
+            // Tighter spacing and smaller keys on short screens, so the
+            // numpad fits without scrolling.
             final isSmall = constraints.maxHeight < 700;
             return Column(
               children: [
@@ -98,7 +111,8 @@ class _LockScreenState extends State<LockScreen> {
                   }),
                 ),
                 const SizedBox(height: 8),
-                // Pin length indicator for 6 digits but we show 4 dots for simplicity; if pin 6, show extra?
+                // Only four dots are drawn, so for a 5th or 6th digit show a
+                // "5/6" counter instead.
                 if (_pin.length > 4)
                   Text('${_pin.length}/6', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
                 const SizedBox(height: 8),
@@ -146,6 +160,7 @@ class _LockScreenState extends State<LockScreen> {
     );
   }
 
+  /// There's no in-app PIN reset yet; this only explains the options.
   void _showForgotDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -161,6 +176,8 @@ class _LockScreenState extends State<LockScreen> {
   }
 }
 
+/// 3x4 keypad: digits, backspace and a check (verify) key. Reports presses
+/// through [onKey].
 class _LockNumpad extends StatelessWidget {
   final ValueChanged<String> onKey;
   final bool isSmall;

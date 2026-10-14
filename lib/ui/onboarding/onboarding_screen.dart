@@ -7,6 +7,14 @@ import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
 import '../format/money_input.dart';
 
+/// First-run setup, shown by the root router until onboarding is complete.
+///
+/// Six steps in a swipe-locked PageView, moved by Continue/Back:
+/// 0 Welcome, 1 Security (PIN), 2 Personal details, 3 Income, 4 Wallets,
+/// 5 Preferences. This State owns every field, and the step widgets below
+/// are plain views over it. Nothing is saved until the last step's "Create
+/// account", which calls TrackerViewModel.completeOnboarding. The root
+/// router then switches to the home screen by itself.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -23,7 +31,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
 
-  // Step 2: Wallet
+  // Step 4: Wallets. Keyed by the seeded wallets' names (see SeedData), which
+  // is how _completeOnboarding finds the wallet to update.
   final Map<String, bool> _walletSelected = {
     'MTN Mobile Money': true,
     'Airtel Money': true,
@@ -62,6 +71,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _darkMode = false;
   bool _notifications = true;
 
+  // Step indices. Only the steps with required fields need names, for the
+  // checks in [_next].
   static const _totalSteps = 6;
   static const _securityStep = 1;
   static const _personalStep = 2;
@@ -86,6 +97,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
+  /// Validates the current step, then moves on. On the last step it
+  /// finishes onboarding instead. Security needs a matching PIN of 4+
+  /// digits (when the lock is on); Personal needs a username and phone.
   void _next() {
     if (_currentStep == _securityStep) {
       if (_enableLock) {
@@ -124,28 +138,34 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
   }
 
+  /// Saves everything from all six steps.
   Future<void> _completeOnboarding() async {
     final vm = context.read<TrackerViewModel>();
     // Update existing seeded wallets with user-provided balances and details
+    // (matched by name). Turning a wallet off here only skips it; the wallet
+    // itself stays.
     for (final entry in _walletSelected.entries) {
       final bal = double.tryParse(_walletBalanceCtrls[entry.key]!.text.replaceAll(',', '')) ?? 0;
       final detail = _walletDetailCtrls[entry.key]!.text.trim();
       final existing = vm.wallets.where((w) => w.name == entry.key).toList();
       if (existing.isNotEmpty) {
         final w = existing.first;
-        // If wallet is deselected, we could keep it but onboarding keeps all; for now update balance if selected
+        // Deselected wallets are left as they are (balance not set).
         if (entry.value) {
-          // If detail provided for bank/mobile, append to name for personalization (e.g., "Bank – Stanbic")
+          // Only the Bank detail is used: it renames the wallet, e.g.
+          // "Bank – Stanbic".
           if (detail.isNotEmpty && entry.key == 'Bank' && !w.name.contains(detail)) {
             w.name = 'Bank – $detail';
           }
-          // For mobile money, detail is phone number - stored as wallet name suffix for display
-          // Keep icon as 'mobile' to preserve icon, not overwriting with phone number
+          // The phone number (mobile money) and location (cash) details are
+          // collected but not saved anywhere.
           await vm.setWalletBalance(w, bal);
         }
       }
     }
 
+    // Same rule as TrackerViewModel.updateAccountDetails: "varies" wins,
+    // otherwise salary = formal and anything else = informal.
     final monthlyIncome = double.tryParse(_monthlyIncomeCtrl.text.replaceAll(',', ''));
     final incomeType = _isVariable
         ? IncomeType.variable
@@ -186,7 +206,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Progress indicator
+            // Progress indicator: one segment per step, filled up to the
+            // current one.
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
@@ -228,6 +249,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
             Expanded(
+              // Swiping is disabled so every step change goes through
+              // [_next]'s validation.
               child: PageView(
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
@@ -315,6 +338,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
+/// Step 0: logo, welcome text and the three headline features.
 class _WelcomeStep extends StatelessWidget {
   final VoidCallback onNext;
   const _WelcomeStep({required this.onNext});
@@ -366,6 +390,7 @@ class _WelcomeStep extends StatelessWidget {
   }
 }
 
+/// Icon, title and one-line description on the welcome step.
 class _WelcomeFeature extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -390,6 +415,7 @@ class _WelcomeFeature extends StatelessWidget {
   }
 }
 
+/// Step 2: username and phone (required), email (optional).
 class _PersonalStep extends StatelessWidget {
   final TextEditingController nameCtrl;
   final TextEditingController phoneCtrl;
@@ -477,6 +503,11 @@ class _PersonalStep extends StatelessWidget {
   }
 }
 
+/// Step 4: a card per default wallet, with an on/off switch, a detail field
+/// (bank name / phone / location) and an initial balance.
+///
+/// It edits the parent's maps directly and calls [onChanged] so the parent
+/// rebuilds.
 class _WalletStep extends StatelessWidget {
   final Map<String, bool> walletSelected;
   final Map<String, TextEditingController> walletBalanceCtrls;
@@ -572,6 +603,8 @@ class _WalletStep extends StatelessWidget {
     );
   }
 
+  // Colour and icon picked from the wallet's name (brand yellow for MTN,
+  // red for Airtel...).
   Color _walletColor(String name) {
     if (name.contains('MTN')) return const Color(0xFFFFCC00);
     if (name.contains('Airtel')) return const Color(0xFFED1C24);
@@ -586,6 +619,8 @@ class _WalletStep extends StatelessWidget {
   }
 }
 
+/// Step 3: income source (salary or informal), plus optional occupation,
+/// average monthly income, pay frequency, "varies" switch and date of birth.
 class _IncomeStep extends StatelessWidget {
   final String incomeSource;
   final TextEditingController occupationCtrl;
@@ -747,6 +782,7 @@ class _IncomeStep extends StatelessWidget {
   }
 }
 
+/// A selectable card acting as a radio button for the income source.
 class _IncomeCard extends StatelessWidget {
   final bool selected;
   final IconData icon;
@@ -784,6 +820,7 @@ class _IncomeCard extends StatelessWidget {
   }
 }
 
+/// Step 1: app lock switch (on by default) and the PIN entered twice.
 class _SecurityStep extends StatelessWidget {
   final TextEditingController pinCtrl;
   final TextEditingController pinConfirmCtrl;
@@ -873,6 +910,8 @@ class _SecurityStep extends StatelessWidget {
   }
 }
 
+/// Step 5: currency (UGX, KES or USD), dark mode and notifications. The
+/// currency code doubles as its display symbol.
 class _PreferencesStep extends StatelessWidget {
   final String currency;
   final ValueChanged<String> onCurrency;
@@ -920,6 +959,7 @@ class _PreferencesStep extends StatelessWidget {
   }
 }
 
+/// Icon + title on the left, a control on the right.
 class _PrefRow extends StatelessWidget {
   final IconData icon;
   final String title;

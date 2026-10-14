@@ -6,7 +6,16 @@ import '../models/category.dart';
 import '../models/transaction.dart';
 import '../models/wallet.dart';
 
+/// The defaults a fresh install starts with: categories, wallets and settings.
+///
+/// Category IDs are derived from their names ("Airtime & Data" becomes
+/// `cat_expense_airtime_and_data`), so they're stable across installs and
+/// devices. That stops cloud sync from creating duplicates when two phones
+/// both seed the same defaults. Don't rename a default without considering
+/// existing data.
 class SeedData {
+  /// Colour for each default icon key. Used to colour the income categories
+  /// (expense categories list their colour inline below).
   static const defaultCategoryColors = <String, Color>{
     // spec-matched pastel tints -> solid pairs
     'restaurant': Color(0xFFEA580C), // Food orange
@@ -24,6 +33,7 @@ class SeedData {
   };
 
   static List<Category> expenseCategories() {
+    // (name, icon key, colour)
     final defs = <(String, String, Color)>[
       ('Food', 'restaurant', Color(0xFFEA580C)),
       ('Transport', 'directions_bus', Color(0xFF3B82F6)),
@@ -51,6 +61,7 @@ class SeedData {
   }
 
   static List<Category> incomeCategories() {
+    // (name, icon key); colour comes from [defaultCategoryColors].
     final defs = <(String, String)>[
       ('Salary', 'payments'),
       ('Business', 'work'),
@@ -70,10 +81,13 @@ class SeedData {
         .toList();
   }
 
+  /// Colour for [icon], or the app's brand green if it has none.
   static int _pickColor(String icon) {
     return (defaultCategoryColors[icon] ?? const Color(0xFF0B8457)).toARGB32();
   }
 
+  /// The common Ugandan money places: MTN and Airtel mobile money, cash and
+  /// a bank account.
   static List<Wallet> wallets() {
     // No demo balances - user sets during onboarding
     return [

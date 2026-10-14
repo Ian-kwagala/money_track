@@ -2,6 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:money_track/services/capture/money_message.dart';
 import 'package:money_track/services/capture/money_message_parser.dart';
 
+// Tests for MoneyMessageParser, which reads an SMS and pulls out the
+// provider, kind of transaction, amount, fee, other party, balance, reference
+// and date, or returns null for anything that isn't a completed money
+// transaction. Most samples are real messages; the group marked "assumed"
+// uses layouts not yet seen in a real SMS.
+
 const _parser = MoneyMessageParser();
 
 /// Real messages received in Uganda, copied exactly. Only names, phone,
@@ -24,6 +30,7 @@ const _mtnTransfer = 'You have transferred 6067.00 UGX to MoKash . (2567000999) 
     'account 100200 at 2026-08-06 12:00:52. Your new balance: 0.82 UGX. Message from sender: Auto '
     'Debit Request. Message to receiver: 20260806000005. Financial Transaction Id: 42500000006.';
 
+/// When a test message "arrived"; used as its date when the text has none.
 final _arrived = DateTime(2026, 10, 5, 7, 0);
 
 void main() {
@@ -157,6 +164,8 @@ void main() {
     });
   });
 
+  // Messages that mention money but must not become transactions; each
+  // entry becomes its own test, named by its key.
   group('not transactions', () {
     final ignored = <String, String>{
       'OTP': 'Your OTP is 482913. Do not share it with anyone. Centenary Bank',
@@ -240,6 +249,8 @@ void main() {
     });
   });
 
+  // dedupeKey identifies a transaction, so the same one reaching the app
+  // twice (inbox and live queue, or two wordings) is stored once.
   group('dedupeKey', () {
     test('the same message read twice gives the same key', () {
       expect(_parser.parse(_airtelSent)!.dedupeKey, _parser.parse(_airtelSent, sender: 'AirtelMoney')!.dedupeKey);
@@ -257,6 +268,9 @@ void main() {
     });
   });
 
+  // Names usually arrive in capitals. tidyName title-cases them, keeps known
+  // acronyms such as UMEME in capitals, leaves mixed-case names alone and
+  // trims stray spaces and punctuation.
   test('tidyName', () {
     expect(MoneyMessageParser.tidyName('MATILDA NAKAGOLO'), 'Matilda Nakagolo');
     expect(MoneyMessageParser.tidyName('UMEME LIMITED'), 'UMEME Limited');

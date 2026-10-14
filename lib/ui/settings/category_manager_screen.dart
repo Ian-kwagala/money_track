@@ -8,6 +8,16 @@ import '../home_shell.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 
+/// Lists every category in three groups (monthly expenses, one-time
+/// expenses, income) with this month's spending, and lets the user create,
+/// edit or delete them in a bottom sheet.
+///
+/// Heads-up on icons: this screen uses its own icon keys ('ShoppingBag',
+/// 'Bus'...), mapped by [_iconForName]. The rest of the app uses
+/// [Category.materialIcon], which knows the seeded keys ('restaurant',
+/// 'directions_bus'...). Neither map knows the other's keys, so a category
+/// created here shows a generic icon on other screens, and a default
+/// category shows a generic icon here.
 class CategoryManagerScreen extends StatefulWidget {
   const CategoryManagerScreen({super.key});
 
@@ -16,14 +26,20 @@ class CategoryManagerScreen extends StatefulWidget {
 }
 
 class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
+  // State of the create/edit sheet, which is shown as the Scaffold's
+  // persistent bottomSheet while [_showSheet] is true.
   final _nameCtrl = TextEditingController();
   String _selectedIcon = 'ShoppingBag';
   bool _showSheet = false;
+
+  /// The category being edited, or null when creating a new one.
   Category? _editingCategory;
 
   // 0 = Expense Monthly, 1 = Expense One-time, 2 = Income
   int _typeIndex = 0;
 
+  /// Icon keys offered in the picker grid (named after the original web
+  /// design's icon set).
   static const _iconNames = [
     'ShoppingBag', 'Bus', 'Home', 'Zap', 'Droplets', 'Fuel',
     'Spray', 'Heart', 'Music', 'Coffee', 'Smartphone', 'GraduationCap',
@@ -35,6 +51,8 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     'Bone', 'Controller', 'Clapperboard', 'Gift', 'Box',
   ];
 
+  // Same mapping as the top-level _iconForName at the bottom of this file
+  // (this copy shadows it inside the State). Keep the two in step.
   IconData _iconForName(String name) {
     switch (name) {
       case 'ShoppingBag': return Icons.shopping_bag_outlined;
@@ -88,6 +106,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     }
   }
 
+  /// Opens the sheet empty, ready for a new monthly expense category.
   void _openCreateSheet() {
     _editingCategory = null;
     _nameCtrl.clear();
@@ -96,6 +115,8 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     setState(() => _showSheet = true);
   }
 
+  /// Opens the sheet filled in from [cat], with the type tab worked out from
+  /// its [Category.type] and [Category.frequency].
   void _openEditSheet(Category cat) {
     _editingCategory = cat;
     _nameCtrl.text = cat.name;
@@ -199,6 +220,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     );
   }
 
+  /// Three-column grid of category cards, each showing this month's spend.
   Widget _buildGrid(TrackerViewModel vm, List<Category> cats, DateTime monthStart, DateTime now, String symbol) {
     return GridView.count(
       crossAxisCount: 3,
@@ -219,6 +241,8 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     );
   }
 
+  /// The create/edit form: type, name, icon picker, save (and delete when
+  /// editing).
   Widget _buildSheet(BuildContext context, TrackerViewModel vm) {
     final isEditing = _editingCategory != null;
     return Container(
@@ -345,6 +369,9 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
                 onPressed: _nameCtrl.text.trim().isEmpty
                     ? null
                     : () async {
+                        // The type tab sets both fields; income is stored
+                        // with frequency 'once', which nothing reads for
+                        // income.
                         final TxType txType = _typeIndex == 2 ? TxType.income : TxType.expense;
                         final String freq = _typeIndex == 0 ? 'monthly' : 'once';
 
@@ -395,6 +422,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     );
   }
 
+  /// One segment of the Monthly / One-time / Income selector.
   Widget _typeChip(int index, String label, IconData icon, Color color) {
     final selected = _typeIndex == index;
     return Expanded(
@@ -423,6 +451,8 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
   }
 }
 
+/// One category tile: icon, name, type and this month's spend ("—" for
+/// none). Tapping opens it for editing.
 class _CategoryCard extends StatelessWidget {
   final Category category;
   final double spent;
@@ -474,6 +504,9 @@ class _CategoryCard extends StatelessWidget {
   }
 }
 
+/// Icon for one of this screen's icon keys (see [CategoryManagerScreen] for
+/// how these differ from [Category.materialIcon]'s keys). Used by
+/// [_CategoryCard]; the State class has an identical copy.
 IconData _iconForName(String name) {
   switch (name) {
     case 'ShoppingBag': return Icons.shopping_bag_outlined;

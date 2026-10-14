@@ -6,9 +6,11 @@ import '../../services/capture/capture_service.dart';
 /// Explains what auto-capture reads, asks Android for SMS permission and
 /// helps when Android refuses. Used by the Auto-capture screen and Settings.
 Future<void> turnOnAutoCapture(BuildContext context) async {
+  // Grab these before any await, while [context] is certainly still valid.
   final capture = context.read<CaptureService>();
   final messenger = ScaffoldMessenger.of(context);
 
+  // Explain first: Android's own permission prompt says nothing about why.
   final go = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -29,6 +31,8 @@ Future<void> turnOnAutoCapture(BuildContext context) async {
   );
   if (go != true || !context.mounted) return;
 
+  // Tell the user how it went. "Blocked" means Android won't show its
+  // dialog again, so go straight to the manual steps.
   switch (await capture.turnOn()) {
     case TurnOnResult.on:
       final n = capture.pendingCount;

@@ -6,6 +6,10 @@ import 'package:flutter/foundation.dart';
 import 'firebase_bootstrap.dart';
 
 /// Optional account for cloud backup & sync. The app never requires it.
+///
+/// A thin wrapper over Firebase email/password sign-in. It keeps the
+/// current user in sync with Firebase and turns Firebase error codes into
+/// friendly [AuthFailure] messages the UI can show as-is.
 class AuthService extends ChangeNotifier {
   AuthService() {
     if (!FirebaseBootstrap.isReady) return;
@@ -27,6 +31,8 @@ class AuthService extends ChangeNotifier {
   String? get displayName => _user?.displayName;
   DateTime? get accountCreatedAt => _user?.metadata.creationTime;
 
+  /// Emits on every sign-in and sign-out. SyncService uses it to switch
+  /// which account's data it syncs.
   Stream<fb.User?> get userChanges =>
       isAvailable ? fb.FirebaseAuth.instance.authStateChanges() : const Stream.empty();
 
@@ -44,6 +50,8 @@ class AuthService extends ChangeNotifier {
 
   Future<void> signOut() => _guard(() => fb.FirebaseAuth.instance.signOut());
 
+  /// Runs [action], making sure every failure reaches the caller as an
+  /// [AuthFailure] with a readable message.
   Future<void> _guard(Future<void> Function() action) async {
     if (!isAvailable) throw const AuthFailure('Cloud accounts are not set up in this build.');
     try {
@@ -53,6 +61,9 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  /// User-facing text for a FirebaseAuthException code. Wrong-password and
+  /// unknown-user share one message, so it doesn't reveal which emails have
+  /// accounts.
   static String _message(String code) {
     switch (code) {
       case 'invalid-email':
@@ -83,6 +94,7 @@ class AuthService extends ChangeNotifier {
   }
 }
 
+/// A sign-in/account error with a message that's ready to show the user.
 class AuthFailure implements Exception {
   const AuthFailure(this.message);
   final String message;

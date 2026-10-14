@@ -34,6 +34,8 @@ class PinHash {
   /// Whether [pin] is the PIN [stored] was made from. False for anything
   /// that isn't a well-formed hash.
   static Future<bool> verify(String pin, String stored) async {
+    // Unpack "scheme$iterations$salt$hash", then re-hash the PIN with the
+    // same salt and iteration count and compare.
     final parts = stored.split('\$');
     if (parts.length != 4 || parts[0] != _scheme) return false;
     final iterations = int.tryParse(parts[1]);
@@ -53,8 +55,12 @@ class PinHash {
   /// PBKDF2 with HMAC-SHA256 (RFC 8018), one 32-byte block.
   static Uint8List _pbkdf2(List<int> password, List<int> salt, int iterations) {
     final hmac = Hmac(sha256, password);
+    // U1 = HMAC(password, salt || INT(1)), where INT(1) is the block index
+    // as a 4-byte big-endian number. One block is enough for a 32-byte key.
     var u = hmac.convert([...salt, 0, 0, 0, 1]).bytes;
     final out = Uint8List.fromList(u);
+    // U2..Un: each round hashes the previous one, and the result is the XOR
+    // of every round.
     for (var i = 1; i < iterations; i++) {
       u = hmac.convert(u).bytes;
       for (var j = 0; j < out.length; j++) {

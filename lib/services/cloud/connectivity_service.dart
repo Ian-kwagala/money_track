@@ -11,6 +11,8 @@ import 'package:flutter/foundation.dart';
 /// reachable. It is used to show online/offline state and to trigger a sync
 /// when the connection comes back.
 class ConnectivityService extends ChangeNotifier {
+  /// Starts offline, then reads the current state and listens for changes.
+  /// Platform errors are ignored, which leaves the last known state.
   ConnectivityService() : _online = false {
     _connectivity.checkConnectivity().then(_update).catchError((_) {});
     _sub = _connectivity.onConnectivityChanged.listen(_update, onError: (_) {});
@@ -26,6 +28,8 @@ class ConnectivityService extends ChangeNotifier {
   bool _online;
   bool get isOnline => _online;
 
+  /// Fires each time the device goes from offline to online. SyncService
+  /// listens to it to push pending changes.
   final _cameOnline = StreamController<void>.broadcast();
   Stream<void> get onCameOnline => _cameOnline.stream;
 
@@ -33,6 +37,8 @@ class ConnectivityService extends ChangeNotifier {
   void setOnline(bool online) =>
       _update([online ? ConnectivityResult.wifi : ConnectivityResult.none]);
 
+  /// Online means any connection type other than "none" (Wi-Fi, mobile
+  /// data, ethernet...). Only notifies on an actual change.
   void _update(List<ConnectivityResult> results) {
     final online = results.any((r) => r != ConnectivityResult.none);
     if (online == _online) return;

@@ -12,6 +12,13 @@ import '../format/money_input.dart';
 import '../widgets/action_button.dart';
 import '../widgets/receipt_picker.dart';
 
+/// The bottom sheet behind the Add button: the fastest way to log an
+/// expense or income.
+///
+/// Built around a phone-style numpad. Pick the type, key in the amount,
+/// choose a wallet and one of the first eight categories, optionally a
+/// frequency, receipt and note, then save. Transfers and back-dated entries
+/// use the full AddTransactionScreen instead.
 class QuickAddSheet extends StatefulWidget {
   const QuickAddSheet({super.key});
 
@@ -24,11 +31,18 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   String? _categoryId;
   String _walletId = '';
   final _noteCtrl = TextEditingController();
+
+  /// The amount as typed on the numpad, digits only ("25000"); grouped with
+  /// commas only for display.
   String _amountDisplay = '0';
   Frequency _frequency = Frequency.once;
   String? _receiptPath;
+
+  /// The record just saved, kept for the Undo snackbar in [_close].
   TxRecord? _saved;
 
+  /// Every frequency except custom, which needs a day count this sheet
+  /// doesn't ask for.
   static const _frequencyOptions = [
     Frequency.once,
     Frequency.daily,
@@ -55,6 +69,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     final screenH = media.size.height;
     final isSmall = screenH < 700;
 
+    // Default to the first wallet the first time there is one.
     if (_walletId.isEmpty && vm.wallets.isNotEmpty) {
       _walletId = vm.wallets.first.id;
     }
@@ -104,6 +119,8 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                 padding: EdgeInsets.only(bottom: 8, left: 0, right: 0),
                 child: Column(
                   children: [
+                    // Expense / Income toggle. Switching clears the category,
+                    // since the two have different category lists.
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Container(
@@ -161,6 +178,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                       ),
                     ),
                     SizedBox(height: isSmall ? 10 : 14),
+                    // Wallet chips, scrolling sideways.
                     SizedBox(
                       height: 36,
                       child: ListView.separated(
@@ -195,6 +213,8 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                     SizedBox(height: isSmall ? 10 : 14),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
+                      // Category grid: the first eight only, to keep the sheet
+                      // compact.
                       child: GridView.count(
                         crossAxisCount: 4,
                         shrinkWrap: true,
@@ -291,6 +311,9 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                 children: [
                   _Numpad(
                     isSmall: isSmall,
+                    // Edit the typed amount: backspace never goes below "0",
+                    // "000" is ignored while the amount is 0, and the first
+                    // digit replaces the leading 0.
                     onKey: (key) {
                       setState(() {
                         if (key == 'back') {
@@ -335,6 +358,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
 
   double get _amount => double.tryParse(_amountDisplay.replaceAll(',', '')) ?? 0;
 
+  /// Amount and category set; drives the Save button's dimmed look.
   bool get _ready => _amount > 0 && (_categoryId?.isNotEmpty ?? false);
 
   /// True once saved; the button then shows its check and [_close] runs.
@@ -390,6 +414,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   }
 }
 
+/// A category as a round icon with its name underneath; ringed when chosen.
 class _CatChip extends StatelessWidget {
   final Category cat;
   final bool selected;
@@ -426,6 +451,8 @@ class _CatChip extends StatelessWidget {
   }
 }
 
+/// 1-9, "000", 0 and backspace. Reports each press as a string key ('back'
+/// for backspace).
 class _Numpad extends StatelessWidget {
   final ValueChanged<String> onKey;
   final bool isSmall;

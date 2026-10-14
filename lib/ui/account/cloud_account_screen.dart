@@ -8,6 +8,10 @@ import '../home_shell.dart';
 import '../theme/app_theme.dart';
 
 /// Optional sign-in for cloud backup & sync. The app works fully without it.
+///
+/// Shows one of four states: cloud not available in this build, the
+/// "different account" choice, the signed-in status panel, or the sign-in
+/// form.
 class CloudAccountScreen extends StatelessWidget {
   const CloudAccountScreen({super.key});
 
@@ -48,6 +52,8 @@ class CloudAccountScreen extends StatelessWidget {
   }
 }
 
+/// Account email, sync status, pending uploads, a "Sync now" button
+/// (disabled while offline or already syncing) and sign-out.
 class _SignedIn extends StatelessWidget {
   const _SignedIn();
 
@@ -121,6 +127,7 @@ class _SignedIn extends StatelessWidget {
     );
   }
 
+  /// "just now", "5 min ago", "3 h ago", "2 days ago".
   static String _ago(DateTime t) {
     final d = DateTime.now().difference(t);
     if (d.inMinutes < 1) return 'just now';
@@ -130,6 +137,10 @@ class _SignedIn extends StatelessWidget {
   }
 }
 
+/// Shown when someone signs in with an account other than the one this
+/// phone's data belongs to (SyncStatus.needsAccountChoice). They either
+/// wipe this phone and load the new account's backup, or keep the data and
+/// sign out.
 class _AccountConflict extends StatelessWidget {
   const _AccountConflict();
 
@@ -182,6 +193,8 @@ class _AccountConflict extends StatelessWidget {
   }
 }
 
+/// Email/password form that switches between "Sign in" and "Create account".
+/// Errors from AuthService arrive already worded for the user.
 class _SignInForm extends StatefulWidget {
   const _SignInForm();
 
@@ -193,6 +206,8 @@ class _SignInFormState extends State<_SignInForm> {
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
+
+  /// Create-account mode (shows the name field) rather than sign-in.
   bool _creating = false;
   bool _busy = false;
   String? _error;
@@ -205,6 +220,8 @@ class _SignInFormState extends State<_SignInForm> {
     super.dispose();
   }
 
+  /// On success there's nothing to do here: AuthService notifies, and the
+  /// screen swaps this form for the signed-in panel.
   Future<void> _submit() async {
     final auth = context.read<AuthService>();
     setState(() {
@@ -299,6 +316,7 @@ class _SignInFormState extends State<_SignInForm> {
   }
 }
 
+/// A white card holding a column of content.
 class _Panel extends StatelessWidget {
   const _Panel({required this.children});
   final List<Widget> children;
@@ -315,6 +333,7 @@ class _Panel extends StatelessWidget {
   }
 }
 
+/// A tinted info box with an icon.
 class _Note extends StatelessWidget {
   const _Note({required this.icon, required this.text});
   final IconData icon;

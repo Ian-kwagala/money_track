@@ -12,6 +12,11 @@ import 'goal_details_screen.dart';
 import 'goal_funds_dialog.dart';
 import '../format/money_input.dart';
 
+/// All savings goals: overall totals, a summary row (count, completed, past
+/// deadline) and one card per goal, nearest deadline first.
+///
+/// Each card can add funds, open its details, or (from its ⋮ menu) edit,
+/// withdraw, pause/resume or delete the goal.
 class GoalsScreen extends StatelessWidget {
   const GoalsScreen({super.key});
 
@@ -111,6 +116,9 @@ class GoalsScreen extends StatelessWidget {
     );
   }
 
+  /// Creates a goal in two steps: pick the deadline first, then name and
+  /// amounts. A "current amount" entered here is just a starting figure; it
+  /// doesn't move money out of any wallet.
   Future<void> _showGoalDialog(BuildContext context, TrackerViewModel vm) async {
     final nameController = TextEditingController();
     final targetController = TextEditingController();
@@ -151,6 +159,7 @@ class GoalsScreen extends StatelessWidget {
       ),
     );
 
+    // A goal needs a name; amounts are stored as positive numbers.
     if (result == null || (result['name'] as String).isEmpty) return;
 
     final goal = SavingsGoal(
@@ -188,6 +197,8 @@ class GoalsScreen extends StatelessWidget {
     }
   }
 
+  /// Edits name, target, deadline and colour. The saved amount is changed
+  /// only through add/withdraw, so wallet balances stay consistent.
   Future<void> _editGoalDialog(BuildContext context, TrackerViewModel vm, SavingsGoal goal) async {
     final nameCtrl = TextEditingController(text: goal.name);
     final targetCtrl = TextEditingController(text: MoneyInput.text(goal.targetAmount));
@@ -250,6 +261,8 @@ class GoalsScreen extends StatelessWidget {
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            // Save stays open (does nothing) until there's a name and a
+            // positive target.
             FilledButton(
               onPressed: () {
                 if (nameCtrl.text.trim().isEmpty) return;
@@ -276,6 +289,7 @@ class GoalsScreen extends StatelessWidget {
   }
 }
 
+/// A small boxed number with a label underneath.
 class _SummaryStat extends StatelessWidget {
   final String label;
   final String value;
@@ -299,6 +313,7 @@ class _SummaryStat extends StatelessWidget {
   }
 }
 
+/// Icon for a goal's stored icon key ([SavingsGoal.icon]); a flag otherwise.
 IconData _iconForGoal(String icon) {
   switch (icon) {
     case 'savings': return Icons.shield_outlined;
@@ -309,6 +324,8 @@ IconData _iconForGoal(String icon) {
   }
 }
 
+/// One goal: progress ring, name, saved vs target, deadline, an "Add funds"
+/// button and a ⋮ menu. Paused goals are drawn in grey.
 class _GoalCard extends StatelessWidget {
   final SavingsGoal goal;
   final String symbol;

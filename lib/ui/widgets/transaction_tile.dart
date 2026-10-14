@@ -8,6 +8,12 @@ import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 import 'category_avatar.dart';
 
+/// One row in a transaction list: avatar, title, wallet and time, and the
+/// signed amount.
+///
+/// Handles three shapes of record: one-sided transfers (goal/debt money or
+/// a deleted wallet's leftovers), ordinary transfers ("MTN → Cash"), and
+/// income/expenses (titled by note, else by category).
 class TransactionTile extends StatelessWidget {
   final TxRecord tx;
   /// Defaults to opening the transaction for editing (where it can also be
@@ -46,6 +52,8 @@ class TransactionTile extends StatelessWidget {
           : (tx.type == TxType.income ? AppColors.income : AppTheme.primary);
     }
 
+    // Money in is green with "+"; money out uses the normal text colour with
+    // "-"; transfers between the user's own wallets are neutral and unsigned.
     final amountColor = tx.isOneSided
         ? (tx.isOneSidedIn ? AppColors.income : Theme.of(context).colorScheme.onSurface)
         : switch (tx.type) {
@@ -167,6 +175,7 @@ class TransactionTile extends StatelessWidget {
     }
   }
 
+  /// Just the time for today ("2:05 PM"), otherwise date and time.
   static String _when(DateTime d) => MoneyFormat.isSameDay(d, DateTime.now())
       ? MoneyFormat.time(d)
       : '${MoneyFormat.shortDay(d)}, ${MoneyFormat.time(d)}';

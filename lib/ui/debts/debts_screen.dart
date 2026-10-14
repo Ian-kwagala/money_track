@@ -101,6 +101,9 @@ class DebtsScreen extends StatelessWidget {
     );
   }
 
+  /// Add a debt (when [existing] is null) or edit one. A new debt can record
+  /// the loan itself in a wallet. Editing just changes the record: no money
+  /// moves, and the amount entered becomes what's still owed.
   Future<void> _editDebtDialog(BuildContext context, TrackerViewModel vm, {Debt? existing}) async {
     final isNew = existing == null;
     final personCtrl = TextEditingController(text: existing?.counterparty ?? '');
@@ -244,6 +247,9 @@ class DebtsScreen extends StatelessWidget {
     messenger.showSnackBar(const SnackBar(content: Text('Debt saved')));
   }
 
+  /// Records part or all of a repayment. It lowers [Debt.amount] (capped at
+  /// what's owed), settles the debt at zero, and optionally moves the money
+  /// through a wallet.
   Future<void> _recordPaymentDialog(BuildContext context, TrackerViewModel vm, Debt debt) async {
     final symbol = vm.settings.currencySymbol;
     final iOwe = debt.direction == DebtDirection.owedByMe;
@@ -317,6 +323,7 @@ class DebtsScreen extends StatelessWidget {
     ));
   }
 
+  /// Deletes only the debt record; its wallet movements stay in place.
   Future<void> _confirmDelete(BuildContext context, TrackerViewModel vm, Debt debt) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -341,6 +348,7 @@ class DebtsScreen extends StatelessWidget {
   }
 }
 
+/// "You owe" / "Owed to you" total for open debts.
 class _TotalCard extends StatelessWidget {
   final String label;
   final double amount;
@@ -374,6 +382,8 @@ class _TotalCard extends StatelessWidget {
   }
 }
 
+/// One debt: who, how much is left, direction (red = you owe, green = owed
+/// to you), due status and actions. Settled debts are faded.
 class _DebtCard extends StatelessWidget {
   final Debt debt;
   final String symbol;
@@ -388,6 +398,7 @@ class _DebtCard extends StatelessWidget {
     final iOwe = debt.direction == DebtDirection.owedByMe;
     final accent = iOwe ? AppColors.danger : AppColors.success;
     final now = DateTime.now();
+    // Overdue from the day after the due date (compared with today's midnight).
     final overdue = !debt.isSettled && debt.dueDate != null && debt.dueDate!.isBefore(DateTime(now.year, now.month, now.day));
 
     final String status;

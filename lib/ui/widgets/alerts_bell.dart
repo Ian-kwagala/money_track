@@ -15,6 +15,8 @@ class AlertsBell extends StatelessWidget {
     final vm = context.watch<TrackerViewModel>();
     final count = context.watch<AlertsService>().countFor(vm);
 
+    // Screen readers hear one button with the count, instead of the icon and
+    // badge as separate items.
     return Semantics(
       button: true,
       label: count == 0 ? 'Alerts' : 'Alerts, $count unread',
@@ -34,6 +36,8 @@ class AlertsBell extends StatelessWidget {
                 decoration: const BoxDecoration(color: AppColors.muted, shape: BoxShape.circle),
                 child: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary, size: 18),
               ),
+              // Red count badge over the top-right corner. Its border uses the
+              // page background so it looks cut out of the bell.
               if (count > 0)
                 Positioned(
                   top: -4,

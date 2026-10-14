@@ -7,6 +7,9 @@ import '../../viewmodels/tracker_view_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/empty_state.dart';
 
+/// The list of active alerts (budgets, bills, unusual spending, weekly
+/// summary). The alerts themselves are built by AlertsService; this screen
+/// only shows them and lets the user dismiss each one.
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
 
@@ -58,12 +61,14 @@ class _AlertsScreenState extends State<AlertsScreen> {
   }
 }
 
+/// One alert: icon, title, description, relative time and a Dismiss button.
 class _AlertCard extends StatelessWidget {
   final AlertItem alert;
   final VoidCallback onDismiss;
 
   const _AlertCard({required this.alert, required this.onDismiss});
 
+  /// "5 min ago", "3 hr ago", "2 days ago". Never shows less than a minute.
   String _timeAgo(DateTime time) {
     final diff = DateTime.now().difference(time);
     if (diff.inMinutes < 60) return '${diff.inMinutes.clamp(1, 59)} min ago';

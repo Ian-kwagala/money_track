@@ -10,6 +10,13 @@ import '../theme/app_theme.dart';
 import '../format/money_input.dart';
 import '../widgets/wallet_editor.dart';
 
+/// "Account & Security": edit profile and income details, set/change the
+/// app-lock PIN, manage wallets, lock the app now, or clear all
+/// transactions.
+///
+/// Note: nothing in the app navigates here at the moment (no route or push
+/// opens it), so these features are only reachable once a link is added,
+/// e.g. from Settings.
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
 
@@ -18,6 +25,8 @@ class AccountSettingsScreen extends StatefulWidget {
 }
 
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
+  // Form state, prefilled from the saved user in initState and written back
+  // only when Save is tapped.
   late TextEditingController _nameCtrl;
   late TextEditingController _phoneCtrl;
   late TextEditingController _emailCtrl;
@@ -55,6 +64,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     super.dispose();
   }
 
+  /// Saves the account form (name required) and closes the screen.
   Future<void> _save() async {
     if (_nameCtrl.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Username is required')));
@@ -80,6 +90,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     }
   }
 
+  /// Sets or changes the PIN (4-6 digits, typed twice). Saving a PIN also
+  /// turns the lock on (see TrackerViewModel.setPin). The dialog stays open
+  /// until every check passes.
   Future<void> _changePin() async {
     final vm = context.read<TrackerViewModel>();
     // Changing an active PIN needs the current one.
@@ -435,6 +448,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         Container(width: 36, height: 36, decoration: const BoxDecoration(color: AppColors.bg, shape: BoxShape.circle), child: const Icon(Icons.lock_outline, color: AppColors.primary, size: 18)),
                         const SizedBox(width: 12),
                         const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('App lock', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary)), Text('Require PIN on every open', style: TextStyle(fontSize: 11, color: AppColors.textSecondary))])),
+                        // Turning the lock on without a PIN asks for one first.
                         Switch(
                           value: s.appLockEnabled,
                           onChanged: (v) async {
@@ -518,6 +532,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   children: [
                     Row(children: [Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: const Icon(Icons.logout, color: AppColors.danger, size: 18)), const SizedBox(width: 12), const Expanded(child: Text('Lock now', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary))), FilledButton(onPressed: () { vm.lock(); Navigator.pop(context); }, style: FilledButton.styleFrom(backgroundColor: AppColors.danger, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const Text('Lock', style: TextStyle(color: Colors.white)))]),
                     const SizedBox(height: 12),
+                    // "Clear all data" runs vm.clearAll, which deletes every
+                    // transaction only. Wallets, budgets, goals, bills, debts
+                    // and the profile are kept, despite the dialog's wording.
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(

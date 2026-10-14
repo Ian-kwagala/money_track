@@ -17,6 +17,7 @@ class SmsReceiver : BroadcastReceiver() {
         val parts = Telephony.Sms.Intents.getMessagesFromIntent(intent) ?: return
         val now = System.currentTimeMillis()
         var queued = false
+        // Last sender whose text looks like money; at most one notification per broadcast.
         var moneyFrom: String? = null
         // A long SMS arrives in several parts; join them back up per sender.
         for ((sender, messages) in parts.filterNotNull().groupBy { it.originatingAddress ?: "" }) {

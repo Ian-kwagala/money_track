@@ -10,6 +10,12 @@ import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 import '../format/money_input.dart';
 
+/// The Budgets tab: an overall "spent of budget" card for this month, then
+/// one card per category budget, filterable by period (daily, weekly,
+/// monthly).
+///
+/// Each category has at most one budget; the add dialog only offers
+/// categories that don't have one yet.
 class BudgetsScreen extends StatefulWidget {
   const BudgetsScreen({super.key});
 
@@ -35,6 +41,8 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
 
+    // Overall card: everything spent this month (in any category, budgeted
+    // or not) against the sum of all budgets scaled to a month.
     final spentMonth = vm.spentTotal(monthStart, now);
     final totalBudget = vm.monthlyBudgetTotal;
     final overallPct = totalBudget > 0 ? spentMonth / totalBudget : 0.0;
@@ -157,6 +165,8 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                               style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground)),
                         ),
                       ),
+                    // Each budget's spending is measured over its own current
+                    // period. Budgets whose category was deleted are hidden.
                     ...visibleBudgets.map((b) {
                       final cat = vm.categoryById(b.categoryId);
                       if (cat == null) return const SizedBox.shrink();
@@ -184,6 +194,8 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
 
   String _monthName(int m) => const ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][m - 1];
 
+  /// New budget: pick an unbudgeted expense category, a reset period and a
+  /// limit.
   Future<void> _addBudgetDialog(BuildContext context, TrackerViewModel vm) async {
     final budgetedCategoryIds = vm.budgets.map((b) => b.categoryId).toSet();
     final availableCategories = vm.expenseCategories
@@ -319,6 +331,8 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     }
   }
 
+  /// Change a budget's period or limit. Saves under the same ID, replacing
+  /// the old record.
   Future<void> _editBudgetDialog(BuildContext context, TrackerViewModel vm, {required Category category, Budget? existing}) async {
     final controller = TextEditingController(text: existing == null ? '' : MoneyInput.text(existing.amount));
     Frequency frequency = existing?.frequency ?? Frequency.monthly;
@@ -362,6 +376,8 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
   }
 }
 
+/// One category budget: spent vs limit, percentage and a progress bar
+/// (amber from 80%, red at 100%), plus edit and delete.
 class _BudgetTile extends StatelessWidget {
   final Category category;
   final Budget budget;
@@ -462,6 +478,7 @@ class _BudgetTile extends StatelessWidget {
     );
   }
 }
+/// A pill-shaped filter tab (All / Daily / Weekly / Monthly).
 class _FrequencyTab extends StatelessWidget {
   final String label;
   final bool selected;

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:money_track/ui/auto_capture/check_message_sheet.dart';
 
+// Tests for the "Check a message" sheet, where the user pastes an SMS to see
+// what the parser makes of it without saving anything.
+
+/// Shows the sheet on its own, inside a bare app.
 Future<void> _pumpSheet(WidgetTester tester) =>
     tester.pumpWidget(const MaterialApp(home: Scaffold(body: CheckMessageSheet())));
 

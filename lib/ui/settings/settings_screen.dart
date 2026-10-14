@@ -17,6 +17,12 @@ import '../widgets/empty_state.dart';
 import '../format/money_input.dart';
 import '../widgets/wallet_editor.dart';
 
+/// The Settings tab: a column of cards for backup & sync, wallets, daily
+/// budget, alert toggles, SMS auto-capture, dark mode, the icon library,
+/// and app updates.
+///
+/// Most rows save straight away through `vm.updateSettings`; there's no
+/// separate Save step.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
@@ -25,6 +31,8 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  /// Edits [AppSettings.dailyBudget]. An empty or zero entry leaves it
+  /// unchanged.
   Future<void> _editDailyBudgetDialog(BuildContext context, TrackerViewModel vm) async {
     final ctrl = TextEditingController(text: vm.settings.dailyBudget == null ? '' : MoneyInput.text(vm.settings.dailyBudget!));
     final result = await showDialog<double>(
@@ -80,7 +88,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Cloud backup & sync (optional account)
+                  // Cloud backup & sync (optional account). The icon and
+                  // subtitle summarise the state; tap for CloudAccountScreen.
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
                     child: InkWell(
@@ -133,7 +142,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Wallets
+                  // Wallets, each with its balance; tap one to edit or delete
+                  // it (showWalletEditor).
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
                     child: Padding(
@@ -175,7 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Notifications
+                  // Daily budget
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
                     child: InkWell(
@@ -212,6 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 12),
 
+                  // Notifications: which alerts AlertsService builds.
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
                     child: Padding(
@@ -231,7 +242,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Auto-capture
+                  // Auto-capture. The Builder limits rebuilds on capture
+                  // changes to this card. It shows as off while permission is
+                  // missing, even if the user turned it on.
                   Builder(builder: (context) {
                     final capture = context.watch<CaptureService>();
                     final on = capture.isOn && !capture.needsPermission;
@@ -308,7 +321,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Icon library
+                  // Icon library: a display-only preview of the category
+                  // manager's icons, with a link to that screen.
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
                     child: Padding(
@@ -346,7 +360,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Software updates (Shorebird code push)
+                  // Software updates (Shorebird code push): installed patch,
+                  // a restart hint once a new patch is downloaded, and a
+                  // manual check.
                   Card(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
                     child: Padding(
@@ -418,6 +434,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  /// The first 24 of the category manager's icon keys, with a local copy of
+  /// their mapping below.
   static const _iconLibrary = [
     'ShoppingBag', 'Bus', 'Home', 'Zap', 'Droplets', 'Fuel',
     'Spray', 'Heart', 'Music', 'Coffee', 'Smartphone', 'GraduationCap',
@@ -460,6 +478,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
+/// Icon, title, optional subtitle and trailing widget, tappable as a whole.
 class _SettingsRow extends StatelessWidget {
   final IconData icon;
   final Color? iconColor;
@@ -493,6 +512,7 @@ class _SettingsRow extends StatelessWidget {
   }
 }
 
+/// A small custom on/off switch in the app's colours.
 class _Toggle extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
@@ -525,6 +545,7 @@ class _Toggle extends StatelessWidget {
   }
 }
 
+/// A label with a [_Toggle] on the right.
 class _ToggleRow extends StatelessWidget {
   final String label;
   final bool value;

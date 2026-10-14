@@ -12,6 +12,11 @@ import '../theme/app_theme.dart';
 import '../widgets/empty_state.dart';
 import '../format/money_input.dart';
 
+/// Recurring payments and bills: the total monthly cost, then one card per
+/// bill with its due status and Mark paid / Pause / Edit / Delete actions.
+///
+/// Due dates come from [Bill.nextDueDate], so paying a recurring bill moves
+/// it to its next cycle instead of removing it.
 class BillsScreen extends StatelessWidget {
   const BillsScreen({super.key});
 
@@ -112,6 +117,8 @@ class BillsScreen extends StatelessWidget {
     );
   }
 
+  /// Confirms, then records the payment (an expense on the bill's wallet)
+  /// and sets [Bill.lastPaidDate] to today.
   Future<void> _confirmMarkPaid(BuildContext context, TrackerViewModel vm, Bill bill, String symbol) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -176,6 +183,8 @@ class BillsScreen extends StatelessWidget {
     }
   }
 
+  /// Choices in the "Repeats" dropdown. One-off (Frequency.once) isn't
+  /// offered, so every bill created here recurs.
   static const _billFrequencies = [
     Frequency.daily,
     Frequency.weekly,
@@ -186,6 +195,9 @@ class BillsScreen extends StatelessWidget {
     Frequency.custom,
   ];
 
+  /// Add a bill (when [existing] is null) or edit one. On save a fresh
+  /// [Bill] is built with the same ID, carrying over the paid/paused state
+  /// and payment history of the one being edited.
   Future<void> _editBillDialog(BuildContext context, TrackerViewModel vm, {Bill? existing}) async {
     final nameCtrl = TextEditingController(text: existing?.name ?? '');
     final amountCtrl = TextEditingController(text: existing == null ? '' : MoneyInput.text(existing.amount));
@@ -338,6 +350,8 @@ class BillsScreen extends StatelessWidget {
   }
 }
 
+/// One bill. Its status line and colour, in priority order: paid (one-off),
+/// paused, overdue, due within 3 days (amber), otherwise upcoming.
 class _BillCard extends StatelessWidget {
   final Bill bill;
   final String symbol;

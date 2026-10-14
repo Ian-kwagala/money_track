@@ -56,6 +56,8 @@ class CaptureDraft {
     return categoryId == null ? 'Pick a category' : null;
   }
 
+  /// An independent copy, so the review sheet can edit freely and discard
+  /// the changes on cancel.
   CaptureDraft copy() => CaptureDraft(
         type: type,
         walletId: walletId,
@@ -81,18 +83,27 @@ class CaptureSuggestions {
 
   CaptureSuggestions({required this.wallets, required this.categories, this.memory = const {}});
 
+  /// Created on first use by CaptureService when a confirmed SMS has a fee.
   static const feesCategoryId = 'cat_expense_fees_and_charges';
 
+  /// Memory key for a provider's wallet, optionally per account number.
   static String walletMemoryKey(MoneyProvider provider, [String? account]) =>
       account == null ? 'wallet:${provider.name}' : 'wallet:${provider.name}:$account';
 
+  /// Memory key for a counterparty's category, normalised to lower-case
+  /// words so "MATILDA N." and "Matilda N" share one entry.
   static String? categoryMemoryKey(String? counterparty) {
     final key = _words(counterparty).join(' ');
     return key.isEmpty ? null : 'category:$key';
   }
 
+  /// The best guess at how to record [m]. Starts as a plain income/expense
+  /// on the provider's wallet ("home"), then becomes a transfer when the
+  /// money really moved between two of the user's own wallets (cash out at
+  /// an agent, a deposit from the bank, sending to their own savings...).
   CaptureDraft draftFor(ParsedMoneyMessage m, {required DateTime fallbackTime}) {
     final home = walletFor(m.provider, m.account);
+    // A wallet of the user's that the counterparty names, if any.
     final other = _ownWalletNamed(m.counterparty, exclude: home);
     final draft = CaptureDraft(
       type: m.kind.isMoneyIn ? TxType.income : TxType.expense,
@@ -135,6 +146,11 @@ class CaptureSuggestions {
   // ---------------------------------------------------------------------------
   // Wallets
   // ---------------------------------------------------------------------------
+
+  // How a provider is matched to a wallet, from most to least specific (see
+  // [walletFor]): what the user picked before, a wallet whose name contains
+  // a hint word, the seeded default wallet, then any wallet of a fitting
+  // type.
 
   static const _defaultWalletIds = {
     MoneyProvider.mtnMomo: 'wallet_mtn',
@@ -193,6 +209,7 @@ class CaptureSuggestions {
 
   static const _accountWords = {'bank', 'money', 'momo', 'nssf', 'smartlife'};
 
+  /// The seeded Cash wallet if it still exists, otherwise any cash wallet.
   String? _cashWallet() =>
       wallets.any((w) => w.id == 'wallet_cash') ? 'wallet_cash' : _firstOfType(WalletType.cash);
 
@@ -226,6 +243,10 @@ class CaptureSuggestions {
 
   static RegExp _kw(String words) => RegExp('\\b(?:$words)\\b', caseSensitive: false);
 
+  /// The category to suggest: what the user chose for this counterparty
+  /// before, else a default for income, else a keyword match on the
+  /// counterparty's name. Only returns categories that exist and match
+  /// [type]; null means the user has to pick.
   String? categoryFor(ParsedMoneyMessage m, TxType type) {
     bool usable(String? id) => id != null && categories.any((c) => c.id == id && c.type == type);
 
@@ -244,6 +265,7 @@ class CaptureSuggestions {
     return null;
   }
 
+  /// Lower-case alphanumeric words, for loose name comparisons.
   static List<String> _words(String? s) => s == null
       ? const []
       : s.toLowerCase().split(RegExp(r'[^a-z0-9]+')).where((w) => w.isNotEmpty).toList();

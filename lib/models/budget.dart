@@ -4,20 +4,32 @@ import 'frequency.dart';
 
 part 'budget.g.dart';
 
+/// A spending limit for one expense category over a repeating period
+/// (a day, a week or a month).
+///
+/// Budgets don't store how much has been spent; that's worked out from the
+/// transactions in the current [periodFor] window each time it's needed.
 @HiveType(typeId: 5)
 class Budget extends HiveObject {
   @HiveField(0)
   String id;
 
+  /// The expense [Category] this limit applies to.
   @HiveField(1)
   String categoryId;
 
+  /// The limit for one period of [frequency].
   @HiveField(2)
   double amount;
 
+  /// The first day of the month the budget was saved in. Nothing reads it
+  /// back: the current period is always computed from today's date (see
+  /// [periodFor]).
   @HiveField(3)
   DateTime periodStart;
 
+  // Stored and synced, but nothing reads these yet: there's no rollover of
+  // unspent money into the next period.
   @HiveField(4)
   bool repeatsMonthly;
 
@@ -65,17 +77,20 @@ class Budget extends HiveObject {
   }
 
   /// The [start, end) window the current cycle covers, relative to [now].
+  /// Weeks run Monday to Sunday; months are calendar months.
   (DateTime, DateTime) periodFor(DateTime now) {
     switch (frequency) {
       case Frequency.daily:
         final start = DateTime(now.year, now.month, now.day);
         return (start, start.add(const Duration(days: 1)));
       case Frequency.weekly:
+        // DateTime.weekday is 1 for Monday, so this steps back to Monday.
         final start = DateTime(now.year, now.month, now.day)
             .subtract(Duration(days: now.weekday - 1));
         return (start, start.add(const Duration(days: 7)));
       case Frequency.monthly:
       default:
+        // Month 13 rolls over to January of the next year.
         final start = DateTime(now.year, now.month, 1);
         final end = DateTime(now.year, now.month + 1, 1);
         return (start, end);

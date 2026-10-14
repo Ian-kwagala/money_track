@@ -13,8 +13,10 @@ class AnnouncementBanner extends StatelessWidget {
     final service = context.watch<AnnouncementService>();
     final items = service.visible;
     if (items.isEmpty) return const SizedBox.shrink();
+    // Only one at a time; dismissing it reveals the next.
     final a = items.first;
 
+    // The admin-chosen level sets the icon and colour.
     final (IconData icon, Color color) = switch (a.level) {
       'warning' => (Icons.warning_amber_rounded, AppColors.warning),
       'update' => (Icons.system_update_alt_outlined, AppColors.info),

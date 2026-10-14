@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'firebase_bootstrap.dart';
 
+/// One message from the admin dashboard, read from the `announcements`
+/// Firestore collection.
 class Announcement {
   const Announcement({
     required this.id,
@@ -21,6 +23,8 @@ class Announcement {
 
   /// 'info', 'warning' or 'update' (set from the admin dashboard).
   final String level;
+
+  /// After this moment the announcement stops showing; null never expires.
   final DateTime? expiresAt;
 }
 
@@ -32,6 +36,8 @@ class AnnouncementService extends ChangeNotifier {
   AnnouncementService() {
     if (!FirebaseBootstrap.isReady) return;
     _loadDismissed();
+    // Live query: the newest five active announcements. The dashboard can
+    // publish or retire one and it shows up or disappears without a restart.
     _sub = FirebaseFirestore.instance
         .collection('announcements')
         .where('active', isEqualTo: true)
@@ -41,12 +47,15 @@ class AnnouncementService extends ChangeNotifier {
         .listen(_onSnapshot, onError: (Object e) => debugPrint('Announcements unavailable: $e'));
   }
 
+  /// SharedPreferences key holding the IDs the user has closed. Kept on the
+  /// device only, so a dismissed message stays hidden after a restart.
   static const _prefsKey = 'dismissed_announcements';
 
   StreamSubscription? _sub;
   List<Announcement> _items = const [];
   Set<String> _dismissed = {};
 
+  /// Announcements to show now: not dismissed and not expired.
   List<Announcement> get visible {
     final now = DateTime.now();
     return _items
@@ -55,6 +64,7 @@ class AnnouncementService extends ChangeNotifier {
         .toList();
   }
 
+  /// Converts the Firestore documents, tolerating missing fields.
   void _onSnapshot(QuerySnapshot<Map<String, dynamic>> snap) {
     _items = snap.docs.map((d) {
       final m = d.data();
@@ -75,6 +85,7 @@ class AnnouncementService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Hides [id] immediately, then remembers it on the device.
   Future<void> dismiss(String id) async {
     _dismissed.add(id);
     notifyListeners();
