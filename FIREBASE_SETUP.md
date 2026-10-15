@@ -171,17 +171,31 @@ flutter run -d chrome
 Sign in with the account from Step 5.
 
 **Check:** You land on **Overview** and see yourself as 1 user. If you see
-*"is not an admin"*, sign out and in again (the role is read at sign-in).
+*"This account isn't an admin"*, sign out and in again (the role is read at
+sign-in).
+
+Forgot the password? Use **Forgot password?** on the sign-in page: a reset
+link is emailed to you. Once signed in, change it from the account menu at
+the bottom of the sidebar (**Change password**). The phone app uses the same
+account, so sign in there again afterwards.
 
 ### Put it online
 
+The dashboard can run on Firebase Hosting, so you open it from any browser
+without running the project. From the repo root (PowerShell or a terminal):
+
 ```sh
-cd admin && flutter build web && cd ..
+cd admin
+flutter build web --release
+cd ..
 firebase deploy --only hosting
 ```
 
-It's then live at `https://YOUR_PROJECT_ID.web.app`. Only admin accounts
-can see any data there; everyone else gets "not an admin".
+It's then live at `https://YOUR_PROJECT_ID.web.app` (for this project:
+https://moneytracker-cb825.web.app). Only admin accounts can see any data
+there; everyone else gets "This account isn't an admin". Run the same
+commands again to publish a newer version; browsers pick it up on the next
+reload. Hosting is free on the Spark plan.
 
 ## Step 7: Test online + offline on a real phone (10 min)
 

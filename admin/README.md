@@ -11,5 +11,13 @@ the APK. Setup, granting admin access and deployment are covered in
 ```sh
 cd admin
 flutter pub get
-flutter run -d chrome
+flutter run -d chrome     # run it locally
+flutter test              # widget tests (fake Firebase, no network)
 ```
+
+Published at https://moneytracker-cb825.web.app with
+`flutter build web --release` here, then `firebase deploy --only hosting`
+from the repo root.
+
+Pages use `AdminServices` (lib/services.dart) for auth and the database
+rather than the Firebase singletons, so tests can swap in fakes.
