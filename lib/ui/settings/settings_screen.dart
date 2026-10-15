@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/category.dart';
 import '../../models/wallet.dart';
 import '../../services/capture/capture_service.dart';
 import '../../services/cloud/auth_service.dart';
@@ -434,8 +435,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  /// The first 24 of the category manager's icon keys, with a local copy of
-  /// their mapping below.
+  /// The first 24 of the category manager's icon keys; [Category.materialIcon]
+  /// draws them.
   static const _iconLibrary = [
     'ShoppingBag', 'Bus', 'Home', 'Zap', 'Droplets', 'Fuel',
     'Spray', 'Heart', 'Music', 'Coffee', 'Smartphone', 'GraduationCap',
@@ -443,35 +444,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     'Briefcase', 'PawPrint', 'Gamepad2', 'Film', 'PartyPopper', 'Package2',
   ];
 
-  IconData _iconDataForName(String name) {
-    switch (name) {
-      case 'ShoppingBag': return Icons.shopping_bag_outlined;
-      case 'Bus': return Icons.directions_bus_outlined;
-      case 'Home': return Icons.home_outlined;
-      case 'Zap': return Icons.bolt_outlined;
-      case 'Droplets': return Icons.water_drop_outlined;
-      case 'Fuel': return Icons.local_gas_station_outlined;
-      case 'Spray': return Icons.cleaning_services_outlined;
-      case 'Heart': return Icons.favorite_outline;
-      case 'Music': return Icons.music_note_outlined;
-      case 'Coffee': return Icons.local_cafe_outlined;
-      case 'Smartphone': return Icons.smartphone_outlined;
-      case 'GraduationCap': return Icons.school_outlined;
-      case 'Shield': return Icons.shield_outlined;
-      case 'Laptop': return Icons.laptop_outlined;
-      case 'MapPin': return Icons.location_on_outlined;
-      case 'Plane': return Icons.flight_outlined;
-      case 'PiggyBank': return Icons.savings_outlined;
-      case 'AttachMoney': return Icons.attach_money_outlined;
-      case 'Briefcase': return Icons.work_outlined;
-      case 'PawPrint': return Icons.pets_outlined;
-      case 'Gamepad2': return Icons.sports_esports_outlined;
-      case 'Film': return Icons.movie_outlined;
-      case 'PartyPopper': return Icons.celebration_outlined;
-      case 'Package2': return Icons.inventory_2_outlined;
-      default: return Icons.category_outlined;
-    }
-  }
+  IconData _iconDataForName(String name) => Category.materialIcon(name);
 
   Widget _iconForName(String name, {required Color color}) {
     return Icon(_iconDataForName(name), size: 18, color: color);

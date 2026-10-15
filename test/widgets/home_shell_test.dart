@@ -101,6 +101,44 @@ void main() {
     expect(find.byType(QuickAddSheet), findsOneWidget);
   });
 
+  testWidgets('after Quick add saves, its Undo snackbar sits just above the bar and goes after 4 seconds',
+      (tester) async {
+    await pumpShell(tester);
+    await tester.tap(find.byIcon(Icons.add_rounded));
+    await tester.pumpAndSettle();
+    final sheet = find.byType(QuickAddSheet);
+    for (final d in '5000'.split('')) {
+      await tester.tap(find.descendant(of: sheet, matching: find.text(d)).last);
+      await tester.pump();
+    }
+    await tester.tap(find.descendant(of: sheet, matching: find.text('Food')));
+    await tester.runAsync(() async {
+      await tester.tap(find.text('Save transaction'));
+      await until(() => phone.vm.transactions.isNotEmpty);
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+    });
+    await tester.pumpAndSettle();
+
+    final snack = find.byType(SnackBar);
+    expect(find.text('Saved · UGX 5,000 · Food'), findsOneWidget);
+    expect(tester.getRect(snack).bottom, lessThanOrEqualTo(tester.getTopLeft(find.byType(AppBottomNav)).dy),
+        reason: 'above the bar and its raised Add button, not over them');
+    expect(tester.getRect(snack).bottom, greaterThan(tester.getTopLeft(find.byType(AppBottomNav)).dy - 40),
+        reason: 'right above it');
+
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(snack, findsNothing, reason: 'goes by itself even though it has Undo');
+    expect(phone.vm.transactions, hasLength(1), reason: 'and that is not an Undo');
+  });
+
+  testWidgets('pages still end where the bar starts', (tester) async {
+    await pumpShell(tester);
+    final pageBottom = tester.getBottomLeft(find.byType(IndexedStack)).dy;
+    final barTop = tester.getTopLeft(find.byType(AppBottomNav)).dy;
+    expect(pageBottom, barTop + AppBottomNav.overhang, reason: 'content runs under the strip beside Add, as before');
+  });
+
   testWidgets('Home: no spending score; saved this month and average daily spend instead', (tester) async {
     await pumpShell(tester);
     expect(find.text('Spending score'), findsNothing);

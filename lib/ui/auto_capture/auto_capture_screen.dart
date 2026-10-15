@@ -226,7 +226,8 @@ Future<void> _afterConfirm(BuildContext context, Capture c, BalanceMismatch? mis
 }
 
 /// "Saved · John" / "Ignored · John" snackbar whose Undo puts the message
-/// back in the list (and removes any transactions it created).
+/// back in the list (and removes any transactions it created). It goes by
+/// itself after 4 seconds.
 void _showUndo(BuildContext context, Capture c, String what) {
   final service = context.read<CaptureService>();
   final name = c.message.counterparty;
@@ -235,6 +236,9 @@ void _showUndo(BuildContext context, Capture c, String what) {
     ..showSnackBar(SnackBar(
       content: Text(name == null ? what : '$what · $name'),
       action: SnackBarAction(label: 'Undo', onPressed: () => service.undo(c)),
+      // Goes by itself; with an action Flutter would keep it until tapped.
+      persist: false,
+      duration: const Duration(seconds: 4),
     ));
 }
 

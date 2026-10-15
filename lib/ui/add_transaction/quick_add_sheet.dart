@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -11,12 +13,13 @@ import '../format/money_format.dart';
 import '../format/money_input.dart';
 import '../widgets/action_button.dart';
 import '../widgets/receipt_picker.dart';
+import 'category_sheets.dart';
 
 /// The bottom sheet behind the Add button: the fastest way to log an
 /// expense or income.
 ///
 /// Built around a phone-style numpad. Pick the type, key in the amount,
-/// choose a wallet and one of the first eight categories, optionally a
+/// choose a wallet and a category (or make a new one), optionally a
 /// frequency, receipt and note, then save. Transfers and back-dated entries
 /// use the full AddTransactionScreen instead.
 class QuickAddSheet extends StatefulWidget {
@@ -41,6 +44,25 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   /// The record just saved, kept for the Undo snackbar in [_close].
   TxRecord? _saved;
 
+  /// Set by tapping a frequency; after that, picking a category leaves the
+  /// frequency alone.
+  bool _frequencyChosen = false;
+
+  /// True while [_frequency] came from the picked category's usual one.
+  bool _frequencyFromCategory = false;
+  final _frequencyKeys = {for (final f in _frequencyOptions) f: GlobalKey()};
+
+  /// Message shown just above the keypad (e.g. "Enter an amount"); clears
+  /// itself after a few seconds.
+  String? _hint;
+  bool _hintOk = false;
+  int _hintId = 0;
+  Timer? _hintTimer;
+
+  /// How often each category has been used, so the grid shows the ones
+  /// this person actually uses first.
+  late final Map<String, int> _usage = _countUsage();
+
   /// Every frequency except custom, which needs a day count this sheet
   /// doesn't ask for.
   static const _frequencyOptions = [
@@ -56,8 +78,147 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
 
   @override
   void dispose() {
+    _hintTimer?.cancel();
     _noteCtrl.dispose();
     super.dispose();
+  }
+
+  Map<String, int> _countUsage() {
+    final counts = <String, int>{};
+    for (final t in context.read<TrackerViewModel>().transactions) {
+      counts[t.categoryId] = (counts[t.categoryId] ?? 0) + 1;
+    }
+    return counts;
+  }
+
+  void _tell(String message, {bool ok = false}) {
+    _hintTimer?.cancel();
+    setState(() {
+      _hint = message;
+      _hintOk = ok;
+      _hintId++;
+    });
+    _hintTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _hint = null);
+    });
+  }
+
+  void _setType(TxType type) => setState(() {
+        _type = type;
+        _categoryId = null;
+        if (_frequencyFromCategory) {
+          _frequency = Frequency.once;
+          _frequencyFromCategory = false;
+        }
+      });
+
+  /// Selects [cat]. A category someone made themselves brings its usual
+  /// frequency along, unless a frequency was already chosen by hand.
+  void _pickCategory(Category cat) {
+    final before = _frequency;
+    setState(() {
+      _categoryId = cat.id;
+      if (_frequencyChosen) return;
+      if (!cat.isBuiltIn && _frequencyOptions.contains(cat.usualFrequency)) {
+        _frequency = cat.usualFrequency;
+        _frequencyFromCategory = true;
+      } else if (_frequencyFromCategory) {
+        _frequency = Frequency.once;
+        _frequencyFromCategory = false;
+      }
+    });
+    if (_frequency != before) _showFrequency();
+  }
+
+  /// Slides the frequency row sideways so the selected one is in view. Only
+  /// that row scrolls; the form stays where it is.
+  void _showFrequency() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final chip = _frequencyKeys[_frequency]?.currentContext;
+      final box = chip?.findRenderObject();
+      if (chip == null || !chip.mounted || box == null) return;
+      Scrollable.of(chip).position.ensureVisible(
+            box,
+            alignment: 0.5,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutCubic,
+          );
+    });
+  }
+
+  /// Categories by how often they're used; at a tie, ones this person
+  /// made come before the built-in ones, then the usual order.
+  List<Category> _ranked(List<Category> categories) {
+    final order = {for (final (i, c) in categories.indexed) c.id: i};
+    return [...categories]..sort((a, b) {
+        final byUse = (_usage[b.id] ?? 0).compareTo(_usage[a.id] ?? 0);
+        if (byUse != 0) return byUse;
+        if (a.isBuiltIn != b.isBuiltIn) return a.isBuiltIn ? 1 : -1;
+        return order[a.id]!.compareTo(order[b.id]!);
+      });
+  }
+
+  /// Two rows of four: the most used categories (the selected one always
+  /// among them), then "More" when they don't all fit, then "New".
+  List<Widget> _categoryTiles(List<Category> categories) {
+    const slots = 8;
+    final ranked = _ranked(categories);
+    final more = ranked.length > slots - 1;
+    var shown = more ? ranked.take(slots - 2).toList() : ranked;
+    final selected = ranked.where((c) => c.id == _categoryId).firstOrNull;
+    if (more && selected != null && !shown.contains(selected)) {
+      shown = [...shown.take(slots - 3), selected];
+    }
+    return [
+      for (final cat in shown)
+        CategoryTile.of(cat, selected: _categoryId == cat.id, onTap: () => _pickCategory(cat)),
+      if (more)
+        CategoryTile(
+          icon: Icons.grid_view_rounded,
+          color: AppColors.primary,
+          label: 'More',
+          action: true,
+          onTap: () => _pickFromAll(categories),
+        ),
+      CategoryTile(
+        icon: Icons.add_rounded,
+        color: AppColors.primary,
+        label: 'New',
+        action: true,
+        onTap: _newCategory,
+      ),
+    ];
+  }
+
+  Future<void> _pickFromAll(List<Category> categories) async {
+    final id = await CategoryPickerSheet.show(context, categories: categories, type: _type, selectedId: _categoryId);
+    if (!mounted || id == null) return;
+    if (id == CategoryPickerSheet.newCategory) return _newCategory();
+    final cat = categories.where((c) => c.id == id).firstOrNull;
+    if (cat != null) _pickCategory(cat);
+  }
+
+  Future<void> _newCategory() async {
+    final result = await NewCategorySheet.show(
+      context,
+      type: _type,
+      initialFrequency: _frequencyChosen ? _frequency : Frequency.once,
+    );
+    if (!mounted || result == null) return;
+    final cat = result.category;
+    if (result.existed) {
+      _pickCategory(cat);
+      _tell('You already have “${cat.name}”, so it\'s picked', ok: true);
+      return;
+    }
+    setState(() {
+      _categoryId = cat.id;
+      _frequency = cat.usualFrequency;
+      _frequencyFromCategory = true;
+      _frequencyChosen = false;
+    });
+    _showFrequency();
+    _tell('“${cat.name}” added · ${cat.usualFrequency.label}', ok: true);
   }
 
   @override
@@ -113,190 +274,204 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                 ],
               ),
             ),
-            // Scrollable middle content
+            // Scrollable middle content, with messages floating at its foot
             Flexible(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.only(bottom: 8, left: 0, right: 0),
-                child: Column(
-                  children: [
-                    // Expense / Income toggle. Switching clears the category,
-                    // since the two have different category lists.
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Container(
-                        decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(24)),
-                        padding: const EdgeInsets.all(4),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => setState(() {_type = TxType.expense; _categoryId = null;}),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: _type == TxType.expense ? Colors.white : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: _type == TxType.expense ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))] : null,
+              child: Stack(
+                children: [
+                  SingleChildScrollView(
+                    // Room to scroll the last rows clear of a message.
+                    padding: EdgeInsets.only(bottom: _hint == null ? 8 : 72),
+                    child: Column(
+                      children: [
+                        // Expense / Income toggle. Switching clears the category,
+                        // since the two have different category lists.
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Container(
+                            decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(24)),
+                            padding: const EdgeInsets.all(4),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => _setType(TxType.expense),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: _type == TxType.expense ? Colors.white : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(20),
+                                        boxShadow: _type == TxType.expense ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))] : null,
+                                      ),
+                                      child: Center(child: Text('Expense', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _type == TxType.expense ? AppColors.textPrimary : AppColors.textSecondary))),
+                                    ),
                                   ),
-                                  child: Center(child: Text('Expense', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _type == TxType.expense ? AppColors.textPrimary : AppColors.textSecondary))),
                                 ),
-                              ),
-                            ),
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: () => setState(() {_type = TxType.income; _categoryId = null;}),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  decoration: BoxDecoration(
-                                    color: _type == TxType.income ? Colors.white : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(20),
-                                    boxShadow: _type == TxType.income ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))] : null,
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => _setType(TxType.income),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: _type == TxType.income ? Colors.white : Colors.transparent,
+                                        borderRadius: BorderRadius.circular(20),
+                                        boxShadow: _type == TxType.income ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))] : null,
+                                      ),
+                                      child: Center(child: Text('Income', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _type == TxType.income ? AppColors.textPrimary : AppColors.textSecondary))),
+                                    ),
                                   ),
-                                  child: Center(child: Text('Income', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _type == TxType.income ? AppColors.textPrimary : AppColors.textSecondary))),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: isSmall ? 12 : 18),
-                    const Text('Amount', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                    const SizedBox(height: 4),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          if (_type == TxType.income)
-                            const Text('+ ', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.primary)),
-                          Text(
-                            '$symbol ${MoneyInput.group(_amountDisplay)}',
-                            style: TextStyle(fontSize: isSmall ? 28 : 32, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -1),
                           ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: isSmall ? 10 : 14),
-                    // Wallet chips, scrolling sideways.
-                    SizedBox(
-                      height: 36,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemCount: vm.wallets.length,
-                        itemBuilder: (_, i) {
-                          final w = vm.wallets[i];
-                          final selected = w.id == _walletId;
-                          return GestureDetector(
-                            onTap: () => setState(() => _walletId = w.id),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: selected ? Colors.white : AppColors.bg,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: selected ? AppColors.primary : Colors.transparent, width: 1.5),
+                        ),
+                        SizedBox(height: isSmall ? 12 : 18),
+                        const Text('Amount', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                        const SizedBox(height: 4),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (_type == TxType.income)
+                                const Text('+ ', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                              Text(
+                                '$symbol ${MoneyInput.group(_amountDisplay)}',
+                                style: TextStyle(fontSize: isSmall ? 28 : 32, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -1),
                               ),
-                              child: Center(
-                                child: Text(w.name,
-                                    style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: selected ? AppColors.primary : AppColors.textPrimary)),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    SizedBox(height: isSmall ? 10 : 14),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      // Category grid: the first eight only, to keep the sheet
-                      // compact.
-                      child: GridView.count(
-                        crossAxisCount: 4,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        mainAxisSpacing: isSmall ? 6 : 10,
-                        crossAxisSpacing: 8,
-                        childAspectRatio: isSmall ? 0.85 : 0.95,
-                        children: [
-                          for (final cat in categories.take(8))
-                            _CatChip(
-                              cat: cat,
-                              selected: _categoryId == cat.id,
-                              onTap: () => setState(() => _categoryId = cat.id),
-                            ),
-                        ],
-                      ),
-                    ),
-                    SizedBox(height: isSmall ? 8 : 12),
-                    SizedBox(
-                      height: 32,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemCount: _frequencyOptions.length,
-                        itemBuilder: (_, i) {
-                          final f = _frequencyOptions[i];
-                          final selected = f == _frequency;
-                          return GestureDetector(
-                            onTap: () => setState(() => _frequency = f),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: selected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.bg,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: selected ? AppColors.primary : Colors.transparent, width: 1.2),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  f.label,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                                    color: selected ? AppColors.primary : AppColors.textSecondary,
+                            ],
+                          ),
+                        ),
+                        SizedBox(height: isSmall ? 10 : 14),
+                        // Wallet chips, scrolling sideways.
+                        SizedBox(
+                          height: 36,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            separatorBuilder: (_, _) => const SizedBox(width: 8),
+                            itemCount: vm.wallets.length,
+                            itemBuilder: (_, i) {
+                              final w = vm.wallets[i];
+                              final selected = w.id == _walletId;
+                              return GestureDetector(
+                                onTap: () => setState(() => _walletId = w.id),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: selected ? Colors.white : AppColors.bg,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: selected ? AppColors.primary : Colors.transparent, width: 1.5),
+                                  ),
+                                  child: Center(
+                                    child: Text(w.name,
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: selected ? AppColors.primary : AppColors.textPrimary)),
                                   ),
                                 ),
-                              ),
+                              );
+                            },
+                          ),
+                        ),
+                        SizedBox(height: isSmall ? 10 : 14),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          // Category grid: two rows, most used first, ending in
+                          // More and New (see [_categoryTiles]).
+                          child: GridView.count(
+                            crossAxisCount: 4,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            mainAxisSpacing: isSmall ? 6 : 10,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: isSmall ? 0.85 : 0.95,
+                            children: _categoryTiles(categories),
+                          ),
+                        ),
+                        SizedBox(height: isSmall ? 8 : 12),
+                        SizedBox(
+                          height: 32,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            separatorBuilder: (_, _) => const SizedBox(width: 8),
+                            itemCount: _frequencyOptions.length,
+                            itemBuilder: (_, i) {
+                              final f = _frequencyOptions[i];
+                              final selected = f == _frequency;
+                              return GestureDetector(
+                                key: _frequencyKeys[f],
+                                onTap: () => setState(() {
+                                  _frequency = f;
+                                  _frequencyChosen = true;
+                                  _frequencyFromCategory = false;
+                                }),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: selected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.bg,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: selected ? AppColors.primary : Colors.transparent, width: 1.2),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      f.label,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                                        color: selected ? AppColors.primary : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        SizedBox(height: isSmall ? 8 : 12),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: ReceiptPicker(
+                              path: _receiptPath,
+                              onChanged: (p) => setState(() => _receiptPath = p),
                             ),
-                          );
-                        },
-                      ),
-                    ),
-                    SizedBox(height: isSmall ? 8 : 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ReceiptPicker(
-                          path: _receiptPath,
-                          onChanged: (p) => setState(() => _receiptPath = p),
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: TextField(
-                        controller: _noteCtrl,
-                        decoration: InputDecoration(
-                          hintText: 'Add a note (optional)',
-                          hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                          prefixIcon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
-                          filled: true,
-                          fillColor: AppColors.bg,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: TextField(
+                            controller: _noteCtrl,
+                            decoration: InputDecoration(
+                              hintText: 'Add a note (optional)',
+                              hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                              prefixIcon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+                              filled: true,
+                              fillColor: AppColors.bg,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                  ],
-                ),
+                  ),
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 8,
+                    child: _Hint(
+                      message: _hint,
+                      ok: _hintOk,
+                      id: _hintId,
+                      onDismiss: () => setState(() => _hint = null),
+                    ),
+                  ),
+                ],
               ),
             ),
             // Fixed bottom: numpad + CTA with responsive sizing
@@ -363,21 +538,17 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
 
   /// True once saved; the button then shows its check and [_close] runs.
   Future<bool> _save() async {
-    final messenger = ScaffoldMessenger.of(context);
-    void tell(String msg) => messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(msg)));
     if (_amount <= 0) {
-      tell('Enter an amount');
+      _tell('Enter an amount');
       return false;
     }
     if (_categoryId == null || _categoryId!.isEmpty) {
-      tell('Pick a category');
+      _tell('Pick a category');
       return false;
     }
     final vm = context.read<TrackerViewModel>();
     if (vm.wallets.isEmpty) {
-      tell('Add a wallet first');
+      _tell('Add a wallet first');
       return false;
     }
     final tx = TxRecord(
@@ -410,43 +581,74 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
         content: Text('Saved · ${MoneyFormat.money(saved.amount, symbol: vm.settings.currencySymbol)}'
             '${category == null ? '' : ' · $category'}'),
         action: SnackBarAction(label: 'Undo', onPressed: () => vm.deleteTransaction(saved.id)),
+        // Goes by itself after 4 seconds; with an action Flutter would
+        // otherwise keep it until it's tapped.
+        persist: false,
+        duration: const Duration(seconds: 4),
       ));
   }
 }
 
-/// A category as a round icon with its name underneath; ringed when chosen.
-class _CatChip extends StatelessWidget {
-  final Category cat;
-  final bool selected;
-  final VoidCallback onTap;
-  const _CatChip({required this.cat, required this.selected, required this.onTap});
+/// A short message floating just above the keypad, e.g. what's missing
+/// before saving. Tap to dismiss; [_QuickAddSheetState] clears it after a
+/// few seconds.
+class _Hint extends StatelessWidget {
+  final String? message;
+  final bool ok;
+  final int id;
+  final VoidCallback onDismiss;
+
+  const _Hint({required this.message, required this.ok, required this.id, required this.onDismiss});
+
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Color(cat.color).withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-              border: selected ? Border.all(color: AppColors.primary, width: 2) : null,
-            ),
-            child: Icon(cat.iconData, color: Color(cat.color), size: 18),
-          ),
-          const SizedBox(height: 4),
-          Flexible(
-            child: Text(cat.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 10, fontWeight: selected ? FontWeight.w700 : FontWeight.w500, color: AppColors.textPrimary)),
-          ),
-        ],
+    final text = message;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, anim) => FadeTransition(
+        opacity: anim,
+        child: SlideTransition(
+          position: Tween(begin: const Offset(0, 0.4), end: Offset.zero).animate(anim),
+          child: child,
+        ),
       ),
+      child: text == null
+          ? const SizedBox.shrink(key: ValueKey('none'))
+          : Semantics(
+              key: ValueKey(id),
+              liveRegion: true,
+              child: Material(
+                color: AppColors.textPrimary,
+                elevation: 6,
+                shadowColor: Colors.black38,
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  onTap: onDismiss,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          ok ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                          size: 18,
+                          color: ok ? const Color(0xFF4ADE80) : AppColors.warning,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            text,
+                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
     );
   }
 }

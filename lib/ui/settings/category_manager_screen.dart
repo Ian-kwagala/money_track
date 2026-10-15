@@ -2,22 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/category.dart';
+import '../../models/frequency.dart';
 import '../../models/transaction.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../home_shell.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 
-/// Lists every category in three groups (monthly expenses, one-time
+/// Lists every category in three groups (recurring expenses, one-time
 /// expenses, income) with this month's spending, and lets the user create,
 /// edit or delete them in a bottom sheet.
 ///
-/// Heads-up on icons: this screen uses its own icon keys ('ShoppingBag',
-/// 'Bus'...), mapped by [_iconForName]. The rest of the app uses
-/// [Category.materialIcon], which knows the seeded keys ('restaurant',
-/// 'directions_bus'...). Neither map knows the other's keys, so a category
-/// created here shows a generic icon on other screens, and a default
-/// category shows a generic icon here.
+/// Icons: this screen offers its own icon keys ('ShoppingBag', 'Bus'...).
+/// [Category.materialIcon] knows those as well as the seeded keys
+/// ('restaurant', 'directions_bus'...) and Quick add's, so every category
+/// shows its icon on every screen.
 class CategoryManagerScreen extends StatefulWidget {
   const CategoryManagerScreen({super.key});
 
@@ -35,8 +34,12 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
   /// The category being edited, or null when creating a new one.
   Category? _editingCategory;
 
-  // 0 = Expense Monthly, 1 = Expense One-time, 2 = Income
+  // 0 = Expense recurring, 1 = Expense one-time, 2 = Income
   int _typeIndex = 0;
+
+  /// [_typeIndex] when the edit sheet opened. Left unchanged, the category
+  /// keeps its own frequency (e.g. weekly, set from Quick add).
+  int? _openedTypeIndex;
 
   /// Icon keys offered in the picker grid (named after the original web
   /// design's icon set).
@@ -51,60 +54,8 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     'Bone', 'Controller', 'Clapperboard', 'Gift', 'Box',
   ];
 
-  // Same mapping as the top-level _iconForName at the bottom of this file
-  // (this copy shadows it inside the State). Keep the two in step.
-  IconData _iconForName(String name) {
-    switch (name) {
-      case 'ShoppingBag': return Icons.shopping_bag_outlined;
-      case 'Bus': return Icons.directions_bus_outlined;
-      case 'Home': return Icons.home_outlined;
-      case 'Zap': return Icons.bolt_outlined;
-      case 'Droplets': return Icons.water_drop_outlined;
-      case 'Fuel': return Icons.local_gas_station_outlined;
-      case 'Spray': return Icons.cleaning_services_outlined;
-      case 'Heart': return Icons.favorite_outline;
-      case 'Music': return Icons.music_note_outlined;
-      case 'Coffee': return Icons.local_cafe_outlined;
-      case 'Smartphone': return Icons.smartphone_outlined;
-      case 'GraduationCap': return Icons.school_outlined;
-      case 'Shield': return Icons.shield_outlined;
-      case 'Laptop': return Icons.laptop_outlined;
-      case 'MapPin': return Icons.location_on_outlined;
-      case 'Plane': return Icons.flight_outlined;
-      case 'PiggyBank': return Icons.savings_outlined;
-      case 'AttachMoney': return Icons.attach_money_outlined;
-      case 'Briefcase': return Icons.work_outlined;
-      case 'PawPrint': return Icons.pets_outlined;
-      case 'Gamepad2': return Icons.sports_esports_outlined;
-      case 'Film': return Icons.movie_outlined;
-      case 'PartyPopper': return Icons.celebration_outlined;
-      case 'Package2': return Icons.inventory_2_outlined;
-      case 'Utensils': return Icons.restaurant_outlined;
-      case 'Tram': return Icons.tram_outlined;
-      case 'Building': return Icons.apartment_outlined;
-      case 'Wind': return Icons.air_outlined;
-      case 'Waves': return Icons.waves_outlined;
-      case 'Leaf': return Icons.eco_outlined;
-      case 'Stethoscope': return Icons.medical_services_outlined;
-      case 'Headphones': return Icons.headphones_outlined;
-      case 'Cake': return Icons.cake_outlined;
-      case 'Phone': return Icons.phone_outlined;
-      case 'BookOpen': return Icons.menu_book_outlined;
-      case 'BadgeCheck': return Icons.verified_outlined;
-      case 'Building2': return Icons.business_outlined;
-      case 'Map': return Icons.map_outlined;
-      case 'Rocket': return Icons.rocket_launch_outlined;
-      case 'Target': return Icons.center_focus_strong_outlined;
-      case 'Gem': return Icons.diamond_outlined;
-      case 'BriefcaseMedical': return Icons.medical_information_outlined;
-      case 'Bone': return Icons.accessibility_outlined;
-      case 'Controller': return Icons.videogame_asset_outlined;
-      case 'Clapperboard': return Icons.theater_comedy_outlined;
-      case 'Gift': return Icons.card_giftcard_outlined;
-      case 'Box': return Icons.inventory_outlined;
-      default: return Icons.category_outlined;
-    }
-  }
+  // Both this screen's icon keys and the app's resolve here.
+  IconData _iconForName(String name) => Category.materialIcon(name);
 
   /// Opens the sheet empty, ready for a new monthly expense category.
   void _openCreateSheet() {
@@ -112,6 +63,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     _nameCtrl.clear();
     _selectedIcon = 'ShoppingBag';
     _typeIndex = 0;
+    _openedTypeIndex = null;
     setState(() => _showSheet = true);
   }
 
@@ -128,6 +80,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     } else {
       _typeIndex = 0;
     }
+    _openedTypeIndex = _typeIndex;
     setState(() => _showSheet = true);
   }
 
@@ -138,7 +91,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
 
-    final expenseMonthly = vm.expenseCategories.where((c) => c.frequency != 'once').toList();
+    final expenseRecurring = vm.expenseCategories.where((c) => c.frequency != 'once').toList();
     final expenseOnce = vm.expenseCategories.where((c) => c.frequency == 'once').toList();
     final income = vm.incomeCategories;
 
@@ -147,7 +100,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
-            child: PageHeader(title: 'Categories', subtitle: '${expenseMonthly.length + expenseOnce.length + income.length} total'),
+            child: PageHeader(title: 'Categories', subtitle: '${expenseRecurring.length + expenseOnce.length + income.length} total'),
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -156,10 +109,10 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Expense Monthly section
-                  if (expenseMonthly.isNotEmpty) ...[
-                    _sectionHeader('Expense \u2014 Monthly', Icons.repeat, AppColors.danger),
+                  if (expenseRecurring.isNotEmpty) ...[
+                    _sectionHeader('Expense \u2014 Recurring', Icons.repeat, AppColors.danger),
                     const SizedBox(height: 8),
-                    _buildGrid(vm, expenseMonthly, monthStart, now, symbol),
+                    _buildGrid(vm, expenseRecurring, monthStart, now, symbol),
                     const SizedBox(height: 20),
                   ],
 
@@ -308,7 +261,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
               ),
               child: Row(
                 children: [
-                  _typeChip(0, 'Monthly', Icons.repeat, AppColors.danger),
+                  _typeChip(0, _recurringLabel, Icons.repeat, AppColors.danger),
                   _typeChip(1, 'One-time', Icons.flash_on, AppColors.warning),
                   _typeChip(2, 'Income', Icons.trending_up, AppColors.success),
                 ],
@@ -373,7 +326,10 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
                         // with frequency 'once', which nothing reads for
                         // income.
                         final TxType txType = _typeIndex == 2 ? TxType.income : TxType.expense;
-                        final String freq = _typeIndex == 0 ? 'monthly' : 'once';
+                        final editing = _editingCategory;
+                        final String freq = editing != null && _typeIndex == _openedTypeIndex
+                            ? editing.frequency
+                            : _typeIndex == 1 ? 'once' : 'monthly';
 
                         if (isEditing) {
                           final updated = Category(
@@ -420,6 +376,13 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
         ),
       ),
     );
+  }
+
+  /// "Monthly", or the category's own frequency when it has another one.
+  String get _recurringLabel {
+    final cat = _editingCategory;
+    if (cat == null || cat.type == TxType.income || cat.frequency == 'once') return 'Monthly';
+    return cat.usualFrequency.label;
   }
 
   /// One segment of the Monthly / One-time / Income selector.
@@ -491,7 +454,7 @@ class _CategoryCard extends StatelessWidget {
               Text(
                 category.type == TxType.income
                     ? 'Income'
-                    : category.frequency == 'once' ? 'One-time' : 'Monthly',
+                    : category.frequency == 'once' ? 'One-time' : category.usualFrequency.label,
                 style: TextStyle(fontSize: 8, fontWeight: FontWeight.w500, color: AppColors.mutedForeground),
               ),
               const SizedBox(height: 2),
@@ -504,58 +467,6 @@ class _CategoryCard extends StatelessWidget {
   }
 }
 
-/// Icon for one of this screen's icon keys (see [CategoryManagerScreen] for
-/// how these differ from [Category.materialIcon]'s keys). Used by
-/// [_CategoryCard]; the State class has an identical copy.
-IconData _iconForName(String name) {
-  switch (name) {
-    case 'ShoppingBag': return Icons.shopping_bag_outlined;
-    case 'Bus': return Icons.directions_bus_outlined;
-    case 'Home': return Icons.home_outlined;
-    case 'Zap': return Icons.bolt_outlined;
-    case 'Droplets': return Icons.water_drop_outlined;
-    case 'Fuel': return Icons.local_gas_station_outlined;
-    case 'Spray': return Icons.cleaning_services_outlined;
-    case 'Heart': return Icons.favorite_outline;
-    case 'Music': return Icons.music_note_outlined;
-    case 'Coffee': return Icons.local_cafe_outlined;
-    case 'Smartphone': return Icons.smartphone_outlined;
-    case 'GraduationCap': return Icons.school_outlined;
-    case 'Shield': return Icons.shield_outlined;
-    case 'Laptop': return Icons.laptop_outlined;
-    case 'MapPin': return Icons.location_on_outlined;
-    case 'Plane': return Icons.flight_outlined;
-    case 'PiggyBank': return Icons.savings_outlined;
-    case 'AttachMoney': return Icons.attach_money_outlined;
-    case 'Briefcase': return Icons.work_outlined;
-    case 'PawPrint': return Icons.pets_outlined;
-    case 'Gamepad2': return Icons.sports_esports_outlined;
-    case 'Film': return Icons.movie_outlined;
-    case 'PartyPopper': return Icons.celebration_outlined;
-    case 'Package2': return Icons.inventory_2_outlined;
-    case 'Utensils': return Icons.restaurant_outlined;
-    case 'Tram': return Icons.tram_outlined;
-    case 'Building': return Icons.apartment_outlined;
-    case 'Wind': return Icons.air_outlined;
-    case 'Waves': return Icons.waves_outlined;
-    case 'Leaf': return Icons.eco_outlined;
-    case 'Stethoscope': return Icons.medical_services_outlined;
-    case 'Headphones': return Icons.headphones_outlined;
-    case 'Cake': return Icons.cake_outlined;
-    case 'Phone': return Icons.phone_outlined;
-    case 'BookOpen': return Icons.menu_book_outlined;
-    case 'BadgeCheck': return Icons.verified_outlined;
-    case 'Building2': return Icons.business_outlined;
-    case 'Map': return Icons.map_outlined;
-    case 'Rocket': return Icons.rocket_launch_outlined;
-    case 'Target': return Icons.center_focus_strong_outlined;
-    case 'Gem': return Icons.diamond_outlined;
-    case 'BriefcaseMedical': return Icons.medical_information_outlined;
-    case 'Bone': return Icons.accessibility_outlined;
-    case 'Controller': return Icons.videogame_asset_outlined;
-    case 'Clapperboard': return Icons.theater_comedy_outlined;
-    case 'Gift': return Icons.card_giftcard_outlined;
-    case 'Box': return Icons.inventory_outlined;
-    default: return Icons.category_outlined;
-  }
-}
+/// Icon for a category's stored key (this screen's keys or the app's).
+/// Used by [_CategoryCard].
+IconData _iconForName(String name) => Category.materialIcon(name);

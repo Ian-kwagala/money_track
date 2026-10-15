@@ -98,6 +98,11 @@ void main() {
     expect(find.text('UMEME Limited'), findsNothing, reason: 'the card has gone');
     expect(find.descendant(of: find.byType(ListTile), matching: find.textContaining('UMEME Limited')), findsOneWidget,
         reason: 'listed under Recently handled');
+
+    expect(find.text('Saved · UMEME Limited'), findsOneWidget, reason: 'the Undo snackbar');
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(find.byType(SnackBar), findsNothing, reason: 'it goes by itself, Undo or not');
   });
 
   testWidgets('Confirm with no category asks for one, and picking it saves straight away', (tester) async {

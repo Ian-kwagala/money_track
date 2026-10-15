@@ -145,38 +145,40 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   /// Pages in an IndexedStack (each keeps its scroll position and state when
-  /// you switch tabs), with the bottom bar overlaid.
+  /// you switch tabs), with the bottom bar as the Scaffold's own.
   Widget _buildMobile(BuildContext context, List<Widget> pages) {
+    final media = MediaQuery.of(context);
+    final navHeight = AppBottomNav.heightOf(context);
+    final keyboardUp = media.viewInsets.bottom > navHeight;
+    // The bar is the Scaffold's bottomNavigationBar so snackbars appear just
+    // above it instead of covering it. extendBody keeps the page running
+    // under the strip beside the raised Add button, as before.
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: Stack(
-        children: [
-          // Keep page content clear of the nav bar.
-          Padding(
-            padding: EdgeInsets.only(bottom: AppBottomNav.heightOf(context)),
-            child: IndexedStack(index: _index, children: pages),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: AppBottomNav(
-              items: [
-                for (final i in _mobileTabs) AppNavItem(label: _navItems[i].label, icon: _navItems[i].icon),
-              ],
-              // Translate between bar positions (0-3) and page indices.
-              // indexOf gives -1 when a page without a tab (Alerts) is open.
-              currentIndex: _mobileTabs.indexOf(_index),
-              onTabSelected: (i) => setState(() => _index = _mobileTabs[i]),
-              action: AppNavAction(
-                label: 'Add',
-                icon: Icons.add_rounded,
-                semanticLabel: 'Add transaction',
-                onPressed: () => _openQuickAdd(context),
-              ),
-            ),
-          ),
+      extendBody: true,
+      // The Scaffold would report the bar as bottom padding; pages keep the
+      // insets they always had and stay clear of the bar by the Padding.
+      body: MediaQuery(
+        data: media.removeViewInsets(removeBottom: true),
+        child: Padding(
+          padding: EdgeInsets.only(bottom: keyboardUp ? 0 : navHeight),
+          child: IndexedStack(index: _index, children: pages),
+        ),
+      ),
+      bottomNavigationBar: AppBottomNav(
+        items: [
+          for (final i in _mobileTabs) AppNavItem(label: _navItems[i].label, icon: _navItems[i].icon),
         ],
+        // Translate between bar positions (0-3) and page indices.
+        // indexOf gives -1 when a page without a tab (Alerts) is open.
+        currentIndex: _mobileTabs.indexOf(_index),
+        onTabSelected: (i) => setState(() => _index = _mobileTabs[i]),
+        action: AppNavAction(
+          label: 'Add',
+          icon: Icons.add_rounded,
+          semanticLabel: 'Add transaction',
+          onPressed: () => _openQuickAdd(context),
+        ),
       ),
     );
   }

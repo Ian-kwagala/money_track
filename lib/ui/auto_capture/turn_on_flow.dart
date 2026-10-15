@@ -47,6 +47,9 @@ Future<void> turnOnAutoCapture(BuildContext context) async {
         action: context.mounted
             ? SnackBarAction(label: 'How to allow', onPressed: () => showAllowSmsSteps(context))
             : null,
+        // Goes by itself; with an action Flutter would keep it until tapped.
+        persist: false,
+        duration: const Duration(seconds: 4),
       ));
     case TurnOnResult.blocked:
       if (context.mounted) await showAllowSmsSteps(context);
