@@ -1,179 +1,368 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
+
+import '../services.dart';
+import '../theme.dart';
+import '../widgets/ui.dart';
 
 /// Read-only view of one user's backed-up data, for support.
 ///
-/// Opening it writes an entry to `admin_audit` first, so every look at a
-/// user's financial data is recorded. Admins cannot edit user data: the
-/// Firestore rules only grant them read access under `users/{uid}`.
+/// Opening it writes an entry to `admin_audit` first, and nothing is shown
+/// unless that succeeds, so every look at a user's financial data is
+/// recorded. Admins can't edit user data: the Firestore rules only grant
+/// them read access under `users/{uid}`.
 class UserDetailPage extends StatefulWidget {
-  const UserDetailPage({super.key, required this.uid, required this.admin});
+  const UserDetailPage({super.key, required this.uid, required this.admin, required this.onBack});
+
   final String uid;
-  final User admin;
+  final AdminAccount admin;
+  final VoidCallback onBack;
 
   @override
   State<UserDetailPage> createState() => _UserDetailPageState();
 }
 
 class _UserDetailPageState extends State<UserDetailPage> {
-  late final Future<void> _audit = FirebaseFirestore.instance.collection('admin_audit').add({
-    'adminUid': widget.admin.uid,
-    'adminEmail': widget.admin.email,
-    'action': 'view_user',
-    'targetUid': widget.uid,
-    'at': FieldValue.serverTimestamp(),
-  });
+  Future<void>? _audit;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _audit ??= AdminServices.of(context).db.collection('admin_audit').add({
+      'adminUid': widget.admin.uid,
+      'adminEmail': widget.admin.email,
+      'action': 'view_user',
+      'targetUid': widget.uid,
+      'at': FieldValue.serverTimestamp(),
+    });
+  }
 
   DocumentReference<Map<String, dynamic>> get _userDoc =>
-      FirebaseFirestore.instance.collection('users').doc(widget.uid);
+      AdminServices.of(context).db.collection('users').doc(widget.uid);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('User details')),
-      body: FutureBuilder<void>(
-        future: _audit,
-        builder: (context, auditSnap) {
-          if (auditSnap.hasError) {
-            return Center(child: Text('Access not logged, so not shown: ${auditSnap.error}'));
-          }
-          if (auditSnap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              const _AuditNotice(),
-              const SizedBox(height: 16),
-              _Profile(doc: _userDoc),
-              const SizedBox(height: 24),
-              _Records(
-                title: 'Wallets',
-                query: _userDoc.collection('wallets').limit(50),
-                line: (d) => (d['name'] as String?) ?? '',
-                trailing: (d) => _money(d['currentBalance']),
-              ),
-              _Transactions(userDoc: _userDoc),
-              _Records(
-                title: 'Savings goals',
-                query: _userDoc.collection('savings_goals').limit(50),
-                line: (d) => (d['name'] as String?) ?? '',
-                trailing: (d) => '${_money(d['currentAmount'])} / ${_money(d['targetAmount'])}',
-              ),
-              _Records(
-                title: 'Bills',
-                query: _userDoc.collection('bills').limit(50),
-                line: (d) => '${d['name'] ?? ''} · ${d['frequency'] ?? ''}',
-                trailing: (d) => _money(d['amount']),
-              ),
-              _Records(
-                title: 'Debts',
-                query: _userDoc.collection('debts').limit(50),
-                line: (d) => '${d['counterparty'] ?? ''} · ${d['direction'] == 'owedToMe' ? 'owes them' : 'they owe'}${d['isSettled'] == true ? ' (settled)' : ''}',
-                trailing: (d) => _money(d['amount']),
-              ),
-            ],
-          );
-        },
-      ),
+    final back = TextButton.icon(
+      onPressed: widget.onBack,
+      style: TextButton.styleFrom(padding: EdgeInsets.zero, foregroundColor: AdminColors.muted),
+      icon: const Icon(Icons.arrow_back_rounded, size: 18),
+      label: const Text('All users'),
     );
-  }
-}
-
-String _money(Object? v) => v is num ? NumberFormat.decimalPattern().format(v) : '-';
-
-class _AuditNotice extends StatelessWidget {
-  const _AuditNotice();
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: scheme.tertiaryContainer, borderRadius: BorderRadius.circular(8)),
-      child: const Row(children: [
-        Icon(Icons.shield_outlined),
-        SizedBox(width: 8),
-        Expanded(child: Text('Read-only. Your access to this user\'s data has been logged. Only open accounts you are helping.')),
-      ]),
-    );
-  }
-}
-
-class _Profile extends StatelessWidget {
-  const _Profile({required this.doc});
-  final DocumentReference<Map<String, dynamic>> doc;
-
-  @override
-  Widget build(BuildContext context) {
-    final date = DateFormat.yMMMd().add_jm();
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: doc.snapshots(),
-      builder: (context, snap) {
-        if (!snap.hasData) return const LinearProgressIndicator();
-        final u = snap.data!.data() ?? const {};
-        String ts(Object? v) => v is Timestamp ? date.format(v.toDate()) : '-';
-        final rows = <(String, String)>[
-          ('Name', (u['displayName'] as String?) ?? '-'),
-          ('Email', (u['email'] as String?) ?? '-'),
-          ('Phone', (u['phone'] as String?)?.isNotEmpty == true ? u['phone'] as String : '-'),
-          ('Occupation', (u['occupation'] as String?) ?? '-'),
-          ('Income type', (u['incomeType'] as String?) ?? '-'),
-          ('Currency', (u['currencyCode'] as String?) ?? '-'),
-          ('Platform', (u['platform'] as String?) ?? '-'),
-          ('Account created', ts(u['createdAt'])),
-          ('Last seen', ts(u['lastSeenAt'])),
-          ('User ID', doc.id),
-        ];
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return FutureBuilder<void>(
+      future: _audit,
+      builder: (context, audit) {
+        if (audit.hasError) {
+          return ListView(padding: pagePadding(context), children: [
+            PageHeader(title: 'User details', leading: back),
+            Notice.error('Your access couldn\'t be logged, so this user\'s data isn\'t shown. (${audit.error})'),
+          ]);
+        }
+        if (audit.connectionState != ConnectionState.done) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: _userDoc.snapshots(),
+          builder: (context, snap) {
+            final u = snap.data?.data() ?? const <String, dynamic>{};
+            final name = (u['displayName'] as String?)?.trim();
+            final email = (u['email'] as String?) ?? '';
+            final currency = u['currencyCode'] as String?;
+            return ListView(
+              padding: pagePadding(context),
               children: [
-                for (final (label, value) in rows)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(children: [
-                      SizedBox(width: 160, child: Text(label, style: Theme.of(context).textTheme.bodySmall)),
-                      Expanded(child: SelectableText(value)),
-                    ]),
+                PageHeader(
+                  leading: back,
+                  title: (name?.isNotEmpty ?? false) ? name! : (email.isNotEmpty ? email : 'User details'),
+                  subtitle: email.isEmpty ? null : '$email · joined ${formatDate(u['createdAt'])}',
+                  actions: [
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        await Clipboard.setData(ClipboardData(text: widget.uid));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context)
+                              .showSnackBar(const SnackBar(content: Text('User ID copied')));
+                        }
+                      },
+                      icon: const Icon(Icons.copy_rounded, size: 16),
+                      label: const Text('Copy user ID'),
+                    ),
+                  ],
+                ),
+                const Notice.info(
+                  'Read-only. This visit was recorded in the audit log. Only open accounts of people you\'re helping.',
+                ),
+                const SizedBox(height: 20),
+                if (!snap.hasData)
+                  const LinearProgressIndicator()
+                else
+                  _Columns(
+                    minWidth: 900,
+                    children: [
+                      _ProfilePanel(data: u, uid: widget.uid),
+                      _SummaryPanel(counts: (u['counts'] as Map<String, dynamic>?) ?? const {}),
+                    ],
                   ),
+                const SizedBox(height: 20),
+                _Wallets(userDoc: _userDoc, currency: currency),
+                const SizedBox(height: 20),
+                _Transactions(userDoc: _userDoc, currency: currency),
+                const SizedBox(height: 20),
+                _Columns(
+                  minWidth: 1100,
+                  children: [
+                    _Records(
+                      title: 'Savings goals',
+                      icon: Icons.savings_outlined,
+                      query: _userDoc.collection('savings_goals').limit(50),
+                      line: (d) => (d['name'] as String?) ?? '',
+                      value: (d) => '${formatMoney(d['currentAmount'])} / ${formatMoney(d['targetAmount'], currency)}',
+                    ),
+                    _Records(
+                      title: 'Bills',
+                      icon: Icons.receipt_outlined,
+                      query: _userDoc.collection('bills').limit(50),
+                      line: (d) => '${d['name'] ?? ''} · ${d['frequency'] ?? ''}',
+                      value: (d) => formatMoney(d['amount'], currency),
+                    ),
+                    _Records(
+                      title: 'Debts',
+                      icon: Icons.handshake_outlined,
+                      query: _userDoc.collection('debts').limit(50),
+                      line: (d) => '${d['counterparty'] ?? ''} · '
+                          '${d['direction'] == 'owedToMe' ? 'owes them' : 'they owe'}'
+                          '${d['isSettled'] == true ? ' (settled)' : ''}',
+                      value: (d) => formatMoney(d['amount'], currency),
+                    ),
+                  ],
+                ),
               ],
-            ),
-          ),
+            );
+          },
         );
       },
     );
   }
 }
 
-/// A section listing the live (non-deleted) records of one synced collection.
-class _Records extends StatelessWidget {
-  const _Records({required this.title, required this.query, required this.line, required this.trailing});
-  final String title;
-  final Query<Map<String, dynamic>> query;
-  final String Function(Map<String, dynamic> data) line;
-  final String Function(Map<String, dynamic> data) trailing;
+/// Side by side when there's room, stacked otherwise.
+class _Columns extends StatelessWidget {
+  const _Columns({required this.children, required this.minWidth});
+  final List<Widget> children;
+  final double minWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, box) {
+      if (box.maxWidth < minWidth) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, c) in children.indexed) ...[if (i > 0) const SizedBox(height: 20), c],
+          ],
+        );
+      }
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final (i, c) in children.indexed) ...[if (i > 0) const SizedBox(width: 20), Expanded(child: c)],
+          ],
+        ),
+      );
+    });
+  }
+}
+
+class _ProfilePanel extends StatelessWidget {
+  const _ProfilePanel({required this.data, required this.uid});
+  final Map<String, dynamic> data;
+  final String uid;
+
+  @override
+  Widget build(BuildContext context) {
+    String text(String key) {
+      final v = (data[key] as String?)?.trim();
+      return (v?.isNotEmpty ?? false) ? v! : '-';
+    }
+
+    final rows = <(String, String)>[
+      ('Phone', text('phone')),
+      ('Occupation', text('occupation')),
+      ('Income type', text('incomeType')),
+      ('Currency', text('currencyCode')),
+      ('Platform', text('platform')),
+      ('Last seen', '${formatAgo(data['lastSeenAt'])} (${formatDateTime(data['lastSeenAt'])})'),
+      ('User ID', uid),
+    ];
+    final name = (data['displayName'] as String?)?.trim();
+    final email = (data['email'] as String?) ?? '';
+    return Panel(
+      title: 'Profile',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              InitialsAvatar(name: (name?.isNotEmpty ?? false) ? name! : email, size: 48),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text((name?.isNotEmpty ?? false) ? name! : 'No name',
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                    Text(email, style: const TextStyle(color: AdminColors.muted, fontSize: 13)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          for (final (label, value) in rows)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 120,
+                    child: Text(label, style: const TextStyle(color: AdminColors.muted, fontSize: 13)),
+                  ),
+                  Expanded(child: Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// How much this person has backed up, from the counts their app reports.
+class _SummaryPanel extends StatelessWidget {
+  const _SummaryPanel({required this.counts});
+  final Map<String, dynamic> counts;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      ('Transactions', 'transactions', Icons.receipt_long_rounded, AdminColors.warning, AdminColors.warningSoft),
+      ('Wallets', 'wallets', Icons.account_balance_wallet_rounded, AdminColors.info, AdminColors.infoSoft),
+      ('Budgets', 'budgets', Icons.pie_chart_rounded, AdminColors.green, AdminColors.greenSoft),
+      ('Savings goals', 'savingsGoals', Icons.savings_rounded, AdminColors.violet, AdminColors.violetSoft),
+      ('Bills', 'bills', Icons.receipt_rounded, AdminColors.info, AdminColors.infoSoft),
+      ('Debts', 'debts', Icons.handshake_rounded, AdminColors.danger, AdminColors.dangerSoft),
+    ];
+    Widget tile((String, String, IconData, Color, Color) item) {
+      final (label, key, icon, color, soft) = item;
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AdminColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(9)),
+              child: Icon(icon, size: 18, color: color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(formatCount((counts[key] as num?) ?? 0),
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
+                  Text(label,
+                      overflow: TextOverflow.ellipsis, style: const TextStyle(color: AdminColors.muted, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Two per row. (No LayoutBuilder: this sits in an IntrinsicHeight.)
+    return Panel(
+      title: 'Backed-up data',
+      child: Column(
+        children: [
+          for (var i = 0; i < items.length; i += 2) ...[
+            if (i > 0) const SizedBox(height: 12),
+            Row(children: [
+              Expanded(child: tile(items[i])),
+              const SizedBox(width: 12),
+              Expanded(child: tile(items[i + 1])),
+            ]),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Live (not deleted) records' data from a synced collection.
+List<Map<String, dynamic>> _live(QuerySnapshot<Map<String, dynamic>>? snap) => (snap?.docs ?? const [])
+    .map((d) => d.data())
+    .where((m) => m['deleted'] != true && m['data'] is Map<String, dynamic>)
+    .map((m) => m['data'] as Map<String, dynamic>)
+    .toList();
+
+class _Wallets extends StatelessWidget {
+  const _Wallets({required this.userDoc, required this.currency});
+  final DocumentReference<Map<String, dynamic>> userDoc;
+  final String? currency;
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: query.snapshots(),
+      stream: userDoc.collection('wallets').limit(50).snapshots(),
       builder: (context, snap) {
-        final items = (snap.data?.docs ?? const [])
-            .map((d) => d.data())
-            .where((m) => m['deleted'] != true && m['data'] is Map<String, dynamic>)
-            .map((m) => m['data'] as Map<String, dynamic>)
-            .toList();
-        return _Section(
-          title: '$title (${items.length})',
-          loading: !snap.hasData,
-          children: [
-            for (final d in items) ListTile(dense: true, title: Text(line(d)), trailing: Text(trailing(d))),
-          ],
+        final wallets = _live(snap.data);
+        final total = wallets.fold<num>(0, (acc, w) => acc + ((w['currentBalance'] as num?) ?? 0));
+        return Panel(
+          title: 'Wallets',
+          trailing: wallets.isEmpty
+              ? null
+              : Text('Total ${formatMoney(total, currency)}',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          padding: wallets.isEmpty ? null : const EdgeInsets.all(16),
+          child: !snap.hasData
+              ? const LinearProgressIndicator()
+              : wallets.isEmpty
+                  ? const Text('No wallets', style: TextStyle(color: AdminColors.muted))
+                  : Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        for (final w in wallets)
+                          Container(
+                            width: 220,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: AdminColors.field,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AdminColors.border),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text((w['name'] as String?) ?? '',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: AdminColors.muted, fontSize: 12)),
+                                const SizedBox(height: 4),
+                                Text(formatMoney(w['currentBalance'], currency),
+                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
         );
       },
     );
@@ -181,80 +370,151 @@ class _Records extends StatelessWidget {
 }
 
 class _Transactions extends StatelessWidget {
-  const _Transactions({required this.userDoc});
+  const _Transactions({required this.userDoc, required this.currency});
   final DocumentReference<Map<String, dynamic>> userDoc;
+  final String? currency;
 
   @override
   Widget build(BuildContext context) {
-    final date = DateFormat.yMMMd();
     return FutureBuilder<List<QuerySnapshot<Map<String, dynamic>>>>(
       future: Future.wait([
         userDoc.collection('transactions').orderBy('data.dateTime', descending: true).limit(30).get(),
         userDoc.collection('categories').get(),
       ]),
       builder: (context, snap) {
-        if (!snap.hasData) return const _Section(title: 'Recent transactions', loading: true, children: []);
         final categories = {
-          for (final d in snap.data![1].docs) d.id: ((d.data()['data'] as Map<String, dynamic>?)?['name'] as String?) ?? d.id,
+          for (final d in snap.data?[1].docs ?? const <QueryDocumentSnapshot<Map<String, dynamic>>>[])
+            d.id: ((d.data()['data'] as Map<String, dynamic>?)?['name'] as String?) ?? d.id,
         };
-        final txs = snap.data![0].docs
-            .map((d) => d.data())
-            .where((m) => m['deleted'] != true && m['data'] is Map<String, dynamic>)
-            .map((m) => m['data'] as Map<String, dynamic>)
-            .toList();
-        return _Section(
-          title: 'Recent transactions (latest ${txs.length})',
-          loading: false,
-          children: [
-            for (final t in txs)
-              ListTile(
-                dense: true,
-                leading: Icon(
-                  t['type'] == 'income'
-                      ? Icons.south_west
-                      : t['type'] == 'transfer'
-                          ? Icons.swap_horiz
-                          : Icons.north_east,
-                  size: 18,
-                ),
-                title: Text([
-                  categories[t['categoryId']] ?? t['type'] ?? '',
-                  if ((t['note'] as String?)?.isNotEmpty == true) t['note'],
-                ].join(' · ')),
-                subtitle: Text(t['dateTime'] is Timestamp ? date.format((t['dateTime'] as Timestamp).toDate()) : ''),
-                trailing: Text(_money(t['amount'])),
-              ),
-          ],
+        final txs = _live(snap.data?[0]);
+        return Panel(
+          title: 'Recent transactions',
+          trailing: txs.isEmpty
+              ? null
+              : Text('Latest ${txs.length}', style: const TextStyle(color: AdminColors.muted, fontSize: 13)),
+          padding: EdgeInsets.zero,
+          child: !snap.hasData
+              ? const Padding(padding: EdgeInsets.all(20), child: LinearProgressIndicator())
+              : txs.isEmpty
+                  ? const EmptyState(icon: Icons.receipt_long_outlined, title: 'No transactions backed up')
+                  : Column(
+                      children: [
+                        for (final (i, t) in txs.indexed) ...[
+                          if (i > 0) const Divider(indent: 20, endIndent: 20),
+                          _TransactionRow(tx: t, category: categories[t['categoryId']], currency: currency),
+                        ],
+                      ],
+                    ),
         );
       },
     );
   }
 }
 
-class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.loading, required this.children});
-  final String title;
-  final bool loading;
-  final List<Widget> children;
+class _TransactionRow extends StatelessWidget {
+  const _TransactionRow({required this.tx, required this.category, required this.currency});
+  final Map<String, dynamic> tx;
+  final String? category;
+  final String? currency;
 
   @override
   Widget build(BuildContext context) {
+    final (icon, color, soft, sign) = switch (tx['type']) {
+      'income' => (Icons.south_west_rounded, AdminColors.green, AdminColors.greenSoft, '+'),
+      'transfer' => (Icons.swap_horiz_rounded, AdminColors.info, AdminColors.infoSoft, ''),
+      _ => (Icons.north_east_rounded, AdminColors.danger, AdminColors.dangerSoft, '−'),
+    };
+    final note = (tx['note'] as String?)?.trim();
+    final title = category ?? (tx['type'] == 'transfer' ? 'Transfer' : 'Uncategorised');
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+      child: Row(
         children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Card(
-            child: loading
-                ? const Padding(padding: EdgeInsets.all(16), child: LinearProgressIndicator())
-                : children.isEmpty
-                    ? const ListTile(dense: true, title: Text('None'))
-                    : Column(children: children),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(color: soft, borderRadius: BorderRadius.circular(9)),
+            child: Icon(icon, size: 17, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                if (note?.isNotEmpty ?? false)
+                  Text(note!, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AdminColors.muted, fontSize: 12)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('$sign${formatMoney(tx['amount'], currency)}',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                      color: tx['type'] == 'income' ? AdminColors.green : AdminColors.text)),
+              Text(formatDate(tx['dateTime']), style: const TextStyle(color: AdminColors.muted, fontSize: 12)),
+            ],
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A small panel listing one kind of record.
+class _Records extends StatelessWidget {
+  const _Records({required this.title, required this.icon, required this.query, required this.line, required this.value});
+  final String title;
+  final IconData icon;
+  final Query<Map<String, dynamic>> query;
+  final String Function(Map<String, dynamic> data) line;
+  final String Function(Map<String, dynamic> data) value;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: query.snapshots(),
+      builder: (context, snap) {
+        final items = _live(snap.data);
+        return Panel(
+          title: snap.hasData ? '$title (${items.length})' : title,
+          padding: EdgeInsets.zero,
+          child: !snap.hasData
+              ? const Padding(padding: EdgeInsets.all(20), child: LinearProgressIndicator())
+              : items.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(children: [
+                        Icon(icon, size: 18, color: AdminColors.muted),
+                        const SizedBox(width: 10),
+                        Text('None', style: const TextStyle(color: AdminColors.muted)),
+                      ]),
+                    )
+                  : Column(
+                      children: [
+                        for (final (i, d) in items.indexed) ...[
+                          if (i > 0) const Divider(indent: 20, endIndent: 20),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(line(d), overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(value(d), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+        );
+      },
     );
   }
 }
