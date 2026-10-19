@@ -4,11 +4,8 @@ import 'frequency.dart';
 
 part 'budget.g.dart';
 
-/// A spending limit for one expense category over a repeating period
-/// (a day, a week or a month).
-///
-/// Budgets don't store how much has been spent; that's worked out from the
-/// transactions in the current [periodFor] window each time it's needed.
+/// A spending limit for one expense category over a repeating period(a day, a week or a month) as set by the user. 
+/// Budgets don't store how much has been spent; that's worked out from the transactions in the current [periodFor] window each time it's needed.
 @HiveType(typeId: 5)
 class Budget extends HiveObject {
   @HiveField(0)
