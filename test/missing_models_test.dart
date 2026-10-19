@@ -6,9 +6,7 @@ import 'package:money_track/models/recurrence_rule.dart';
 import 'package:money_track/models/savings_goal.dart';
 import 'package:money_track/models/user.dart';
 
-// Checks that the models added from the original design ("blueprint") can be
-// built and that their defaults and computed getters behave. Several of them
-// (AlertRule, RecurrenceRule) are stored but not used by any screen yet.
+// Checks that the models added from the original design blueprint can be built and that their defaults and computed getters behave. Several of them (AlertRule, RecurrenceRule) are stored but not used by any screen yet.
 void main() {
   group('missing blueprint models', () {
     test('can construct user model with defaults', () {

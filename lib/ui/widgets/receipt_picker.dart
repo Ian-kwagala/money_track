@@ -106,6 +106,15 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
       case _Choice.view:
         await ReceiptViewer.open(context, widget.path!);
       case _Choice.remove:
+        final oldPath = widget.path;
+        if (oldPath != null && oldPath.isNotEmpty) {
+          try {
+            final f = File(oldPath);
+            if (f.existsSync()) {
+              f.deleteSync();
+            }
+          } catch (_) {}
+        }
         widget.onChanged(null);
       case _Choice.camera:
       case _Choice.gallery:

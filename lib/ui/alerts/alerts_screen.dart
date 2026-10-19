@@ -26,7 +26,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: CustomScrollView(
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: PageHeader(
@@ -56,6 +58,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

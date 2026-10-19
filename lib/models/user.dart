@@ -4,11 +4,8 @@ import 'income_profile.dart';
 
 part 'user.g.dart';
 
-/// The person using the app: profile details and income information.
-///
-/// There's one record, stored under the key `'default'` in the users box.
-/// Name, currency, dark mode and notifications also live on [AppSettings];
-/// MoneyRepository keeps the two copies in step.
+/// The person using the app: profile details and income information. There's one record, stored under the key `'default'` in the users box.
+/// Name, currency, dark mode and notifications also live on [AppSettings]; MoneyRepository keeps the two copies in step.
 @HiveType(typeId: 7)
 class User extends HiveObject {
   @HiveField(0)

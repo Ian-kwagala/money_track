@@ -13,6 +13,7 @@ import '../format/money_format.dart';
 import '../format/money_input.dart';
 import '../widgets/action_button.dart';
 import '../widgets/receipt_picker.dart';
+import 'add_transaction_screen.dart';
 import 'category_sheets.dart';
 
 /// The bottom sheet behind the Add button: the fastest way to log an
@@ -262,6 +263,23 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                 children: [
                   const Text('Quick add', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   const Spacer(),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
+                      );
+                    },
+                    icon: const Icon(Icons.open_in_new, size: 15),
+                    label: const Text('Full form', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
                   IconButton(
                     onPressed: () => Navigator.pop(context),
                     icon: Container(

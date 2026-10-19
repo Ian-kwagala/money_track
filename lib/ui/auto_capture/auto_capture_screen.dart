@@ -37,7 +37,9 @@ class AutoCaptureScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: RefreshIndicator(
+      body: SafeArea(
+        top: false,
+        child: RefreshIndicator(
         onRefresh: () => capture.refresh(),
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -120,6 +122,7 @@ class AutoCaptureScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => CheckMessageSheet.show(context, onAdd: capture.addPasted),

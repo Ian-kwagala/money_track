@@ -1,3 +1,5 @@
+import 'dart:io' as io;
+
 import 'package:flutter/foundation.dart' hide Category;
 
 import '../data/hive_boxes.dart';
@@ -303,6 +305,7 @@ class TrackerViewModel extends ChangeNotifier {
         }
         await repo.updateTransaction(t);
       } else {
+        if (t.receiptPath != null) _deleteReceiptFile(t.receiptPath);
         await repo.deleteTransaction(t.id);
       }
     }
@@ -383,13 +386,34 @@ class TrackerViewModel extends ChangeNotifier {
     _markDirty();
   }
 
+  void _deleteReceiptFile(String? path) {
+    if (path == null || path.isEmpty) return;
+    try {
+      final file = io.File(path);
+      if (file.existsSync()) {
+        file.deleteSync();
+      }
+    } catch (_) {}
+  }
+
   Future<void> updateTransaction(TxRecord tx) async {
+    final oldTx = repo.transactions.where((t) => t.id == tx.id).firstOrNull;
+    if (oldTx != null &&
+        oldTx.receiptPath != null &&
+        oldTx.receiptPath!.isNotEmpty &&
+        oldTx.receiptPath != tx.receiptPath) {
+      _deleteReceiptFile(oldTx.receiptPath);
+    }
     await repo.updateTransaction(tx);
     await repo.updateWalletBalances();
     _markDirty();
   }
 
   Future<void> deleteTransaction(String id) async {
+    final oldTx = repo.transactions.where((t) => t.id == id).firstOrNull;
+    if (oldTx?.receiptPath != null) {
+      _deleteReceiptFile(oldTx!.receiptPath);
+    }
     await repo.deleteTransaction(id);
     await repo.updateWalletBalances();
     _markDirty();
@@ -545,6 +569,7 @@ class TrackerViewModel extends ChangeNotifier {
   /// are kept), so balances fall back to the wallets' opening balances.
   Future<void> clearAll() async {
     for (final t in repo.transactions) {
+      if (t.receiptPath != null) _deleteReceiptFile(t.receiptPath);
       await repo.deleteTransaction(t.id);
     }
     await repo.updateWalletBalances();

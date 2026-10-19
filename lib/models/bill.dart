@@ -56,7 +56,7 @@ class Bill extends HiveObject {
   @HiveField(10)
   int? customDays;
 
-  /// Paused bills are excluded from due-date reminders and countdowns.
+  /// Paused bills are excluded from due date reminders and countdowns.
   @HiveField(11, defaultValue: false)
   bool isPaused;
 
@@ -82,16 +82,26 @@ class Bill extends HiveObject {
 
   bool get isRecurring => recurrenceRuleId != null && recurrenceRuleId!.isNotEmpty;
 
-  /// The next date this bill is due, computed from [lastPaidDate] (or
-  /// [dueDate] if it has never been paid) advanced by one [frequency] cycle.
+  /// The next date this bill is due, computed from [dueDate] advanced in
+  /// [frequency] cycles until it falls strictly after [lastPaidDate].
   DateTime get nextDueDate {
-    if (lastPaidDate == null) return dueDate;
-    if (frequency == Frequency.once) return dueDate;
-    return frequency.addCycle(lastPaidDate!, customDays: customDays);
+    if (lastPaidDate == null || frequency == Frequency.once) return dueDate;
+    var next = dueDate;
+    while (!next.isAfter(lastPaidDate!)) {
+      final advanced = frequency.addCycle(next, customDays: customDays);
+      if (advanced.isAtSameMomentAs(next) || advanced.isBefore(next)) break;
+      next = advanced;
+    }
+    return next;
   }
 
-  /// Whole days from now until [nextDueDate]; negative once overdue.
-  int get daysUntilDue => nextDueDate.difference(DateTime.now()).inDays;
+  /// Whole days from today until [nextDueDate]; negative once overdue.
+  int get daysUntilDue {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDay = DateTime(nextDueDate.year, nextDueDate.month, nextDueDate.day);
+    return dueDay.difference(today).inDays;
+  }
 
   /// A one-off bill that has been paid never comes due again. (Recurring
   /// bills are never "settled"; paying them just moves [nextDueDate].)

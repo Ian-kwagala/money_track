@@ -46,7 +46,7 @@ extension FrequencyX on Frequency {
       case Frequency.quarterly:
         return 'Quarterly';
       case Frequency.yearly:
-        return 'Yearly';
+        return 'Annually';
       case Frequency.random:
         return 'Random';
       case Frequency.custom:
@@ -77,13 +77,9 @@ extension FrequencyX on Frequency {
     }
   }
 
-  /// Adds one cycle of this frequency to [from]. For [custom], pass the
-  /// bill's own day count in [customDays].
-  ///
-  /// Calendar-based cycles (monthly, quarterly, yearly) keep the same day of
-  /// the month. When that day doesn't exist in the target month, DateTime
-  /// rolls the extra days forward (Jan 31 + 1 month = Mar 3). Once and random
-  /// have no next cycle, so [from] comes back unchanged.
+  /// Adds one cycle of this frequency to [from]. For [custom], pass the bill's own day count in [customDays].
+  /// Calendar-based cycles (monthly, quarterly, yearly) keep the same day of the month. When that day doesn't exist in the target month, DateTime
+  /// rolls the extra days forward (Jan 31 + 1 month = Mar 3). Once and random have no next cycle, so [from] comes back unchanged.
   DateTime addCycle(DateTime from, {int? customDays}) {
     switch (this) {
       case Frequency.daily:

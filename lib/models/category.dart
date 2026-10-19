@@ -7,9 +7,7 @@ import 'transaction.dart';
 part 'category.g.dart';
 
 /// A label for grouping transactions, such as "Food" or "Salary".
-///
-/// The app ships with a default set (see SeedData); users can add, edit
-/// and delete their own in the category manager.
+/// The app ships with a default set (see SeedData); users can add, edit and delete their own in the category manager.
 @HiveType(typeId: 3)
 class Category extends HiveObject {
   @HiveField(0)
@@ -148,7 +146,7 @@ class Category extends HiveObject {
     'shopping_bag': Icons.shopping_bag,
     'checkroom': Icons.checkroom,
     'sports_esports': Icons.sports_esports,
-    'movie': Icons.movie,
+    'Movie': Icons.movie,
     'music_note': Icons.music_note,
     'celebration': Icons.celebration,
     'school': Icons.school,

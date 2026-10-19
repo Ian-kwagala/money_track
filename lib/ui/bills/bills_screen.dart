@@ -34,7 +34,9 @@ class BillsScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: CustomScrollView(
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: PageHeader(title: 'Recurring & bills', subtitle: '${vm.bills.length} active items'),
@@ -113,6 +115,7 @@ class BillsScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

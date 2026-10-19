@@ -158,8 +158,11 @@ class _HomeShellState extends State<HomeShell> {
       extendBody: true,
       // The Scaffold would report the bar as bottom padding; pages keep the
       // insets they always had and stay clear of the bar by the Padding.
+      // Bottom padding is stripped too: the Padding below is the only bottom
+      // spacing the tab pages get, so their SafeAreas add nothing here. The
+      // same pages still get the system inset when pushed as full routes.
       body: MediaQuery(
-        data: media.removeViewInsets(removeBottom: true),
+        data: media.removeViewInsets(removeBottom: true).removePadding(removeBottom: true),
         child: Padding(
           padding: EdgeInsets.only(bottom: keyboardUp ? 0 : navHeight),
           child: IndexedStack(index: _index, children: pages),

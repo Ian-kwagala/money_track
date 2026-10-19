@@ -70,10 +70,9 @@ class SyncService extends ChangeNotifier {
     required this.repo,
     required this.auth,
     required this.connectivity,
-    @visibleForTesting FirebaseFirestore? firestore,
+    @visibleForTesting FirebaseFirestore? this._firestore,
     @visibleForTesting bool? enabled,
-  })  : _firestore = firestore,
-        _enabled = enabled ?? FirebaseBootstrap.isReady {
+  })  : _enabled = enabled ?? FirebaseBootstrap.isReady {
     status = _enabled ? SyncStatus.signedOut : SyncStatus.disabled;
   }
 

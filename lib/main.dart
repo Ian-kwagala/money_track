@@ -11,6 +11,7 @@ import 'services/cloud/connectivity_service.dart';
 import 'services/cloud/firebase_bootstrap.dart';
 import 'services/cloud/sync_service.dart';
 import 'services/shorebird_update_service.dart';
+import 'ui/account/account_settings_screen.dart';
 import 'ui/alerts/alerts_screen.dart';
 import 'ui/auth/lock_screen.dart';
 import 'ui/auto_capture/auto_capture_screen.dart';
@@ -97,6 +98,7 @@ class MoneyTrackApp extends StatelessWidget {
             ? (vm.settings.darkMode ? AppTheme.dark() : AppTheme.light())
             : AppTheme.light(),
         routes: {
+          '/account': (_) => const AccountSettingsScreen(),
           '/daily': (_) => const DailySpendScreen(),
           '/recurring': (_) => const BillsScreen(),
           '/goals': (_) => const GoalsScreen(),

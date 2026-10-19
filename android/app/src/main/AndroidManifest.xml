@@ -10,7 +10,7 @@
     <!-- SMS permissions would otherwise make the app installable only on phones with a SIM. -->
     <uses-feature android:name="android.hardware.telephony" android:required="false" />
     <application
-        android:label="Tracker"
+        android:label="MoneyTrack"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="false"

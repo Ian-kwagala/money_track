@@ -97,7 +97,9 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: CustomScrollView(
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: PageHeader(title: 'Categories', subtitle: '${expenseRecurring.length + expenseOnce.length + income.length} total'),
@@ -153,6 +155,7 @@ class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
             ),
           ),
         ],
+      ),
       ),
       bottomSheet: _showSheet ? _buildSheet(context, vm) : null,
     );

@@ -41,17 +41,24 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
 
-    // Overall card: everything spent this month (in any category, budgeted
-    // or not) against the sum of all budgets scaled to a month.
-    final spentMonth = vm.spentTotal(monthStart, now);
+    // Overall card: spent this month across budgeted categories against the sum
+    // of all category budgets scaled to a month.
+    final budgetedCategoryIds = vm.budgets.map((b) => b.categoryId).toSet();
+    double spentMonth = 0;
+    for (final cid in budgetedCategoryIds) {
+      spentMonth += vm.spentByCategory(monthStart, now, cid);
+    }
     final totalBudget = vm.monthlyBudgetTotal;
     final overallPct = totalBudget > 0 ? spentMonth / totalBudget : 0.0;
-    final remaining = (totalBudget - spentMonth).clamp(0.0, totalBudget);
+    final isOver = spentMonth > totalBudget;
+    final diff = (totalBudget - spentMonth).abs();
     final visibleBudgets = _filter == null ? vm.budgets : vm.budgets.where((b) => b.frequency == _filter).toList();
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: CustomScrollView(
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: PageHeader(
@@ -97,8 +104,16 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          Text('${MoneyFormat.money(remaining, symbol: symbol)} still available',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                          Text(
+                            isOver
+                                ? '${MoneyFormat.money(diff, symbol: symbol)} over budget'
+                                : '${MoneyFormat.money(diff, symbol: symbol)} still available',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isOver ? AppColors.danger : AppColors.primary,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -188,6 +203,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

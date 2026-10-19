@@ -85,10 +85,21 @@ class SavingsGoal extends HiveObject {
   /// The deadline has passed and the target still hasn't been reached.
   bool get isPastDeadline => !isCompleted && DateTime.now().isAfter(deadline);
 
-  /// A rough check: at least half the target is saved. It doesn't look at
-  /// how much time is left before [deadline].
+  /// Evaluates whether savings progress matches or exceeds the elapsed time towards the deadline.
+  /// Goals that are completed or ahead of their pace are on track.
   bool get isOnTrack {
-    if (targetAmount <= 0) return true;
-    return currentAmount >= (targetAmount * 0.5);
+    if (targetAmount <= 0 || isCompleted) return true;
+    final now = DateTime.now();
+    if (now.isAfter(deadline)) return false;
+
+    final totalSeconds = deadline.difference(createdAt).inSeconds;
+    if (totalSeconds <= 0) return currentAmount >= targetAmount;
+
+    final elapsedSeconds = now.difference(createdAt).inSeconds;
+    final expectedFraction = (elapsedSeconds / totalSeconds).clamp(0.0, 1.0);
+    final actualFraction = (currentAmount / targetAmount).clamp(0.0, 1.0);
+
+    // On track if saved fraction meets or exceeds expected elapsed pace (with 5% buffer)
+    return actualFraction >= (expectedFraction - 0.05);
   }
 }

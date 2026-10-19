@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/transaction.dart';
 import '../../viewmodels/tracker_view_model.dart';
+import '../add_transaction/add_transaction_screen.dart';
 import '../format/money_format.dart';
 import '../home_shell.dart';
 import '../theme/app_theme.dart';
@@ -87,12 +88,25 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: CustomScrollView(
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: PageHeader(
               title: 'Transactions',
               subtitle: '${filtered.length} shown · tap one to edit',
+              back: false,
+              extraActions: [
+                IconButton(
+                  icon: const Icon(Icons.add, color: AppColors.primary),
+                  tooltip: 'Add transaction or transfer',
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
+                  ),
+                ),
+              ],
             ),
           ),
           SliverToBoxAdapter(
@@ -196,6 +210,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               ),
             ),
         ],
+      ),
       ),
     );
   }

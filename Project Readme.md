@@ -1,21 +1,35 @@
-# money_track
-<<<<<<< HEAD
+# MoneyTrack
 
-A new Flutter project.
+Track MTN Mobile Money, Airtel, Bank, and Cash wallets in one place. Log expenses and income, set monthly budgets, create savings goals, and monitor bills. Features an auto-capture system that reads money SMS alerts from your phone, spending controls to visualize financial health, and daily/weekly/monthly analytics with charts.
 
 ## Getting Started
 
-This project is a starting point for a Flutter application.
+This project is a Flutter application built with Hive local storage, Provider MVVM state management, and optional Firebase cloud sync.
 
-A few resources to get you started if this is your first Flutter project:
+### Prerequisites
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+- Flutter SDK 3.12.2 or higher
+- Android SDK (for Android build and SMS auto-capture)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-=======
-Track MTN Mobile Money, Airtel, Bank, and Cash wallets in one place. Log expenses and income, set monthly budgets, create savings goals, and monitor bills. Features an auto-capture system that reads money SMS alerts from your phone, a spending score to visualize financial health, and daily/weekly/monthly analytics with charts.
->>>>>>> dd1854756444e577304569666a2d1aa2e7d095ef
+### Quick Start
+
+1. Install dependencies:
+   ```bash
+   flutter pub get
+   ```
+
+2. Run static analysis:
+   ```bash
+   dart analyze lib test
+   ```
+
+3. Run the test suite:
+   ```bash
+   flutter test
+   ```
+
+4. Launch the application:
+   ```bash
+   flutter run
+   ```
+

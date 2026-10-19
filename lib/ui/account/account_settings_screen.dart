@@ -203,7 +203,9 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         title: const Text('Account & Security', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
         centerTitle: false,
       ),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -555,6 +557,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

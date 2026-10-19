@@ -46,7 +46,9 @@ class DailySpendScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: CustomScrollView(
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: PageHeader(
@@ -183,6 +185,7 @@ class DailySpendScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

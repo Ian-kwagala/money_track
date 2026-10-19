@@ -34,10 +34,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
     for (var i = 5; i >= 0; i--) {
       final dt = DateTime(now.year, now.month - i, 1);
       final mStart = DateTime(dt.year, dt.month, 1);
-      // Day 0 of next month = the month's last day, at 00:00. The totals'
-      // end is inclusive, but this still leaves out anything after midnight
-      // on the last day of each month.
-      final mEnd = DateTime(dt.year, dt.month + 1, 0);
+      // Day 0 of next month = the month's last day. We include up to 23:59:59.999
+      // so all transactions throughout the entire last day are included.
+      final mEnd = DateTime(dt.year, dt.month + 1, 0, 23, 59, 59, 999);
       monthly.add({
         'm': _monthName(dt.month).substring(0, 3),
         'income': vm.incomeTotal(mStart, mEnd),
@@ -64,7 +63,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: CustomScrollView(
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: PageHeader(
@@ -218,6 +219,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

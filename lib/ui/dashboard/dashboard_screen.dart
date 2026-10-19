@@ -101,7 +101,9 @@ class DashboardScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: CustomScrollView(
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
         slivers: [
           // PageHeader
           SliverToBoxAdapter(
@@ -231,6 +233,7 @@ class DashboardScreen extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

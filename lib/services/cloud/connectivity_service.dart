@@ -20,7 +20,7 @@ class ConnectivityService extends ChangeNotifier {
 
   /// Doesn't listen to the platform; tests drive it with [setOnline].
   @visibleForTesting
-  ConnectivityService.manual({bool online = true}) : _online = online;
+  ConnectivityService.manual({bool this._online = true});
 
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<List<ConnectivityResult>>? _sub;

@@ -8,6 +8,7 @@ import '../../services/cloud/auth_service.dart';
 import '../../services/cloud/connectivity_service.dart';
 import '../../services/cloud/sync_service.dart';
 import '../../services/shorebird_update_service.dart';
+import '../account/account_settings_screen.dart';
 import '../account/cloud_account_screen.dart';
 import '../auto_capture/turn_on_flow.dart';
 import '../../viewmodels/tracker_view_model.dart';
@@ -78,7 +79,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: CustomScrollView(
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
             child: PageHeader(title: 'Settings', back: false),
@@ -89,6 +92,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Account & Security (profile details, PIN change, lock app)
+                  Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountSettingsScreen())),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: const BoxDecoration(color: AppColors.muted, shape: BoxShape.circle),
+                              child: const Icon(Icons.person_outline, color: AppColors.primary, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Account & Security', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                                  Text(
+                                    '${vm.currentUser.name} · Profile, PIN & security settings',
+                                    style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.chevron_right, color: AppColors.mutedForeground, size: 18),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
                   // Cloud backup & sync (optional account). The icon and
                   // subtitle summarise the state; tap for CloudAccountScreen.
                   Card(
@@ -432,6 +472,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -477,7 +518,7 @@ class _SettingsRow extends StatelessWidget {
               Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
               if (subtitle != null) Text(subtitle!, style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
             ])),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
       ),
