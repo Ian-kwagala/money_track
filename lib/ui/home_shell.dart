@@ -98,48 +98,53 @@ class _HomeShellState extends State<HomeShell> {
   /// Sidebar + centred content. Only the selected page is built here (no
   /// IndexedStack), so switching tabs rebuilds the page.
   Widget _buildWide(BuildContext context, List<Widget> pages) {
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: Row(
-        children: [
-          _Sidebar(
-            groups: _sidebarGroups,
-            items: _navItems,
-            activeIndex: _index,
-            onSelect: (i) => setState(() => _index = i),
-          ),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, inner) {
-                const maxContentWidth = 480.0;
-                final contentWidth =
-                    inner.maxWidth < maxContentWidth ? inner.maxWidth : maxContentWidth;
-                final sideInset = (inner.maxWidth - contentWidth) / 2;
-                return Container(
-                  color: AppColors.bg,
-                  child: Stack(
-                    children: [
-                      Align(
-                        alignment: Alignment.topCenter,
-                        child: SizedBox(
-                          width: contentWidth,
-                          child: pages[_index],
-                        ),
-                      ),
-                      // Keep the Add button next to the content column
-                      // rather than at the far edge of a wide window.
-                      Positioned(
-                        right: sideInset < 24 ? 24 : sideInset + 8,
-                        bottom: 24,
-                        child: _QuickAddFab(onTap: () => _openQuickAdd(context)),
-                      ),
-                    ],
-                  ),
-                );
-              },
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: AppColors.backgroundGradient,
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Row(
+          children: [
+            _Sidebar(
+              groups: _sidebarGroups,
+              items: _navItems,
+              activeIndex: _index,
+              onSelect: (i) => setState(() => _index = i),
             ),
-          ),
-        ],
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, inner) {
+                  const maxContentWidth = 480.0;
+                  final contentWidth =
+                      inner.maxWidth < maxContentWidth ? inner.maxWidth : maxContentWidth;
+                  final sideInset = (inner.maxWidth - contentWidth) / 2;
+                  return Container(
+                    color: Colors.transparent,
+                    child: Stack(
+                      children: [
+                        Align(
+                          alignment: Alignment.topCenter,
+                          child: SizedBox(
+                            width: contentWidth,
+                            child: pages[_index],
+                          ),
+                        ),
+                        // Keep the Add button next to the content column
+                        // rather than at the far edge of a wide window.
+                        Positioned(
+                          right: sideInset < 24 ? 24 : sideInset + 8,
+                          bottom: 24,
+                          child: _QuickAddFab(onTap: () => _openQuickAdd(context)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -153,34 +158,39 @@ class _HomeShellState extends State<HomeShell> {
     // The bar is the Scaffold's bottomNavigationBar so snackbars appear just
     // above it instead of covering it. extendBody keeps the page running
     // under the strip beside the raised Add button, as before.
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      extendBody: true,
-      // The Scaffold would report the bar as bottom padding; pages keep the
-      // insets they always had and stay clear of the bar by the Padding.
-      // Bottom padding is stripped too: the Padding below is the only bottom
-      // spacing the tab pages get, so their SafeAreas add nothing here. The
-      // same pages still get the system inset when pushed as full routes.
-      body: MediaQuery(
-        data: media.removeViewInsets(removeBottom: true).removePadding(removeBottom: true),
-        child: Padding(
-          padding: EdgeInsets.only(bottom: keyboardUp ? 0 : navHeight),
-          child: IndexedStack(index: _index, children: pages),
-        ),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: AppColors.backgroundGradient,
       ),
-      bottomNavigationBar: AppBottomNav(
-        items: [
-          for (final i in _mobileTabs) AppNavItem(label: _navItems[i].label, icon: _navItems[i].icon),
-        ],
-        // Translate between bar positions (0-3) and page indices.
-        // indexOf gives -1 when a page without a tab (Alerts) is open.
-        currentIndex: _mobileTabs.indexOf(_index),
-        onTabSelected: (i) => setState(() => _index = _mobileTabs[i]),
-        action: AppNavAction(
-          label: 'Add',
-          icon: Icons.add_rounded,
-          semanticLabel: 'Add transaction',
-          onPressed: () => _openQuickAdd(context),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        // The Scaffold would report the bar as bottom padding; pages keep the
+        // insets they always had and stay clear of the bar by the Padding.
+        // Bottom padding is stripped too: the Padding below is the only bottom
+        // spacing the tab pages get, so their SafeAreas add nothing here. The
+        // same pages still get the system inset when pushed as full routes.
+        body: MediaQuery(
+          data: media.removeViewInsets(removeBottom: true).removePadding(removeBottom: true),
+          child: Padding(
+            padding: EdgeInsets.only(bottom: keyboardUp ? 0 : navHeight),
+            child: IndexedStack(index: _index, children: pages),
+          ),
+        ),
+        bottomNavigationBar: AppBottomNav(
+          items: [
+            for (final i in _mobileTabs) AppNavItem(label: _navItems[i].label, icon: _navItems[i].icon),
+          ],
+          // Translate between bar positions (0-3) and page indices.
+          // indexOf gives -1 when a page without a tab (Alerts) is open.
+          currentIndex: _mobileTabs.indexOf(_index),
+          onTabSelected: (i) => setState(() => _index = _mobileTabs[i]),
+          action: AppNavAction(
+            label: 'Add',
+            icon: Icons.add_rounded,
+            semanticLabel: 'Add transaction',
+            onPressed: () => _openQuickAdd(context),
+          ),
         ),
       ),
     );
@@ -224,8 +234,9 @@ class _QuickAddFab extends StatelessWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: AppColors.primary,
+            gradient: AppColors.cardGradient,
             shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
             boxShadow: AppColors.shadowLift,
           ),
           child: const Icon(Icons.add, color: Colors.white, size: 28),
@@ -254,7 +265,12 @@ class _Sidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: 240,
-      color: AppColors.elevated,
+      decoration: BoxDecoration(
+        color: AppColors.cardSolid.withValues(alpha: 0.95),
+        border: const Border(
+          right: BorderSide(color: AppColors.borderLight, width: 1),
+        ),
+      ),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -268,10 +284,11 @@ class _Sidebar extends StatelessWidget {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      gradient: AppColors.cardGradient,
                       borderRadius: BorderRadius.circular(9),
+                      border: Border.all(color: AppColors.borderLight, width: 1),
                     ),
-                    child: const Icon(Icons.savings_outlined, color: Colors.white, size: 18),
+                    child: const Icon(Icons.savings_outlined, color: AppColors.primary, size: 18),
                   ),
                   const SizedBox(width: 10),
                   const Text(
@@ -317,7 +334,7 @@ class _Sidebar extends StatelessWidget {
   }
 }
 
-/// One sidebar entry; the active one is green with a filled icon.
+/// One sidebar entry; the active one has glowing sky blue styling.
 class _SidebarItem extends StatelessWidget {
   final _NavInfo info;
   final bool active;
@@ -327,15 +344,22 @@ class _SidebarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.primary : AppColors.textPrimary;
+    final color = active ? AppColors.textPrimary : AppColors.mutedForeground;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppColors.radiusMd),
-      child: Padding(
+      child: Container(
+        decoration: active
+            ? BoxDecoration(
+                color: AppColors.badgeBg.withValues(alpha: 0.6),
+                borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                border: Border.all(color: AppColors.borderLight, width: 1),
+              )
+            : null,
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         child: Row(
           children: [
-            Icon(active ? info.activeIcon : info.icon, size: 20, color: color),
+            Icon(active ? info.activeIcon : info.icon, size: 20, color: active ? AppColors.primary : color),
             const SizedBox(width: 12),
             Text(
               info.label,
@@ -388,9 +412,9 @@ class PageHeader extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.9),
-          border: Border(
-            bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.6), width: 1),
+          color: AppColors.bg.withValues(alpha: 0.75),
+          border: const Border(
+            bottom: BorderSide(color: AppColors.borderLight, width: 1),
           ),
         ),
         child: Row(
@@ -399,12 +423,20 @@ class PageHeader extends StatelessWidget {
               InkWell(
                 onTap: () => Navigator.pop(context),
                 borderRadius: BorderRadius.circular(28),
-                child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(Icons.chevron_left, size: 22, color: AppColors.textPrimary),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.cardSolid,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: AppColors.borderLight, width: 1),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.chevron_left, size: 22, color: AppColors.textPrimary),
+                  ),
                 ),
               ),
-            const SizedBox(width: 8),
+            if (back) const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -438,9 +470,10 @@ class PageHeader extends StatelessWidget {
                   child: Container(
                     width: 36,
                     height: 36,
-                    decoration: const BoxDecoration(
-                      color: AppColors.muted,
+                    decoration: BoxDecoration(
+                      color: AppColors.cardSolid,
                       shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.borderLight, width: 1),
                     ),
                     child: Icon(
                       isDark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined,

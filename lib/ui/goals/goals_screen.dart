@@ -33,37 +33,44 @@ class GoalsScreen extends StatelessWidget {
     final sortedGoals = [...vm.savingsGoals]..sort((a, b) => a.deadline.compareTo(b.deadline));
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: SafeArea(
-        top: false,
-        child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: PageHeader(title: 'Savings goals', subtitle: '${vm.savingsGoals.length} goals in progress'),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Total saved card
-                  Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Total saved', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
-                          const SizedBox(height: 6),
-                          Text(MoneyFormat.money(totalSaved, symbol: symbol), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                          Text('of ${MoneyFormat.money(totalTarget, symbol: symbol)} across all goals', style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
-                        ],
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+        child: SafeArea(
+          top: false,
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: PageHeader(title: 'Savings goals', subtitle: '${vm.savingsGoals.length} goals in progress'),
+              ),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Total saved card
+                      Card(
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                          side: const BorderSide(color: AppColors.borderLight, width: 1),
+                        ),
+                        child: Container(
+                          decoration: AppColors.cardDecoration(),
+                          padding: const EdgeInsets.all(18),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Total saved', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
+                              const SizedBox(height: 6),
+                              Text(MoneyFormat.money(totalSaved, symbol: symbol), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                              Text('of ${MoneyFormat.money(totalTarget, symbol: symbol)} across all goals', style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+                      const SizedBox(height: 12),
 
                   // Summary row
                   if (vm.savingsGoals.isNotEmpty) ...[
@@ -113,8 +120,9 @@ class GoalsScreen extends StatelessWidget {
               ),
             ),
           ),
-        ],
-      ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -304,7 +312,7 @@ class _SummaryStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(color: AppColors.card, borderRadius: BorderRadius.circular(AppColors.radiusLg), border: Border.all(color: AppColors.border)),
+      decoration: AppColors.cardDecoration(borderRadius: BorderRadius.circular(AppColors.radiusLg)),
       child: Column(
         children: [
           Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
@@ -358,117 +366,141 @@ class _GoalCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
-      child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppColors.radiusXl),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusXl),
+        side: const BorderSide(color: AppColors.borderLight, width: 1),
+      ),
+      child: Container(
+        decoration: AppColors.cardDecoration(),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppColors.radiusXl),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               children: [
-                SizedBox(
-                  width: 64,
-                  height: 64,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        value: progress,
-                        strokeWidth: 6,
-                        backgroundColor: AppColors.border,
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
-                        strokeCap: StrokeCap.round,
-                      ),
-                      Text('${(progress * 100).round()}%', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 64,
+                      height: 64,
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Container(
-                            width: 28,
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Icon(_iconForGoal(goal.icon), color: color, size: 16),
+                          CircularProgressIndicator(
+                            value: progress,
+                            strokeWidth: 8,
+                            backgroundColor: const Color(0xFF141E30),
+                            valueColor: AlwaysStoppedAnimation<Color>(color),
+                            strokeCap: StrokeCap.round,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(goal.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary))),
+                          Text('${(progress * 100).round()}%', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
                         ],
                       ),
-                      const SizedBox(height: 6),
-                      Text('${MoneyFormat.money(goal.currentAmount, symbol: symbol)} of ${MoneyFormat.money(goal.targetAmount, symbol: symbol)}',
-                          style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground)),
-                      Row(
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.calendar_today_outlined, size: 11, color: AppColors.mutedForeground),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text('${DateFormat('d MMM yyyy').format(goal.deadline)} \u00b7 $daysLeft days left', style: const TextStyle(fontSize: 10, color: AppColors.mutedForeground)),
+                          Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+                                ),
+                                child: Icon(_iconForGoal(goal.icon), color: color, size: 16),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(goal.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary))),
+                            ],
                           ),
-                          if (goal.isPaused)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: AppColors.muted, borderRadius: BorderRadius.circular(6)),
-                              child: const Text('Paused', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.mutedForeground)),
-                            ),
+                          const SizedBox(height: 6),
+                          Text('${MoneyFormat.money(goal.currentAmount, symbol: symbol)} of ${MoneyFormat.money(goal.targetAmount, symbol: symbol)}',
+                              style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground)),
+                          Row(
+                            children: [
+                              const Icon(Icons.calendar_today_outlined, size: 11, color: AppColors.mutedForeground),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text('${DateFormat('d MMM yyyy').format(goal.deadline)} \u00b7 $daysLeft days left', style: const TextStyle(fontSize: 10, color: AppColors.mutedForeground)),
+                              ),
+                              if (goal.isPaused)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: AppColors.muted, borderRadius: BorderRadius.circular(6)),
+                                  child: const Text('Paused', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.mutedForeground)),
+                                ),
+                            ],
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, size: 18, color: AppColors.mutedForeground),
-                  onSelected: (v) {
-                    switch (v) {
-                      case 'edit': onEdit(); break;
-                      case 'reduce': onReduceFunds(); break;
-                      case 'pause': onTogglePaused(); break;
-                      case 'delete': onDelete(); break;
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Edit goal')),
-                    const PopupMenuItem(value: 'reduce', child: Text('Reduce funds')),
-                    PopupMenuItem(value: 'pause', child: Text(goal.isPaused ? 'Resume goal' : 'Pause goal')),
-                    const PopupMenuItem(value: 'delete', child: Text('Delete goal')),
+                    ),
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_vert, size: 18, color: AppColors.mutedForeground),
+                      onSelected: (v) {
+                        switch (v) {
+                          case 'edit': onEdit(); break;
+                          case 'reduce': onReduceFunds(); break;
+                          case 'pause': onTogglePaused(); break;
+                          case 'delete': onDelete(); break;
+                        }
+                      },
+                      itemBuilder: (ctx) => [
+                        const PopupMenuItem(value: 'edit', child: Text('Edit goal')),
+                        const PopupMenuItem(value: 'reduce', child: Text('Reduce funds')),
+                        PopupMenuItem(value: 'pause', child: Text(goal.isPaused ? 'Resume goal' : 'Pause goal')),
+                        const PopupMenuItem(value: 'delete', child: Text('Delete goal')),
+                      ],
+                    ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF18263E), Color(0xFF0F172A)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                      border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                      boxShadow: const [
+                        BoxShadow(color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 4)),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                        onTap: onAddFunds,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add, size: 16, color: AppColors.primary),
+                              SizedBox(width: 6),
+                              Text('Add funds', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: onAddFunds,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
-                  side: BorderSide(color: AppColors.border),
-                  foregroundColor: AppColors.primary,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.add, size: 16),
-                    const SizedBox(width: 6),
-                    const Text('Add funds', style: TextStyle(fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
       ),
     );
   }

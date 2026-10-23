@@ -33,10 +33,17 @@ class AlertsBell extends StatelessWidget {
               Container(
                 width: 36,
                 height: 36,
-                decoration: const BoxDecoration(color: AppColors.muted, shape: BoxShape.circle),
+                decoration: BoxDecoration(
+                  color: AppColors.cardSolid,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.borderLight, width: 1),
+                  boxShadow: const [
+                    BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 2)),
+                  ],
+                ),
                 child: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary, size: 18),
               ),
-              // Red count badge over the top-right corner. Its border uses the
+              // Count badge over the top-right corner. Its border uses the
               // page background so it looks cut out of the bell.
               if (count > 0)
                 Positioned(
@@ -49,7 +56,7 @@ class AlertsBell extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppColors.danger,
                       borderRadius: BorderRadius.circular(9),
-                      border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 2),
+                      border: Border.all(color: AppColors.bg, width: 2),
                     ),
                     child: Text(
                       count > 99 ? '99+' : '$count',

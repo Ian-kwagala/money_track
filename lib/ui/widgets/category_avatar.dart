@@ -30,7 +30,7 @@ class CategoryAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = color ?? AppTheme.primary;
-    final bg = base.withValues(alpha: 0.16);
+    final bg = const Color(0xFF18263E);
     final fg = base;
     return Container(
       width: size,
@@ -38,6 +38,10 @@ class CategoryAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         shape: BoxShape.circle,
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 1),
+        boxShadow: const [
+          BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 2)),
+        ],
       ),
       child: Center(
         child: _buildIcon(fg),

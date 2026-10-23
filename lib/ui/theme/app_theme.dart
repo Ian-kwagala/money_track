@@ -1,92 +1,202 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// The app's design tokens: colours, shadows and corner radii, converted
-/// from the original web design (the CSS variable names are noted beside
-/// each value).
+/// The app's design tokens: colours, shadows, corner radii, gradients, and decorations.
 ///
-/// These are compile-time constants, not theme lookups. A widget that uses
-/// `AppColors.textPrimary` directly keeps that colour in dark mode too; use
-/// `Theme.of(context).colorScheme` where a widget must follow the theme.
+/// Restyled to match the dark navy and glowing sky-blue aesthetic:
+/// - Main Background: Dark navy blue (`0B101D` to `0E1726`) with a subtle top-center radial gradient glow in soft sky blue (`1A2C4E`).
+/// - Card Containers: Translucent deep blue (`141E30` with ~0.85-0.9 opacity) with diagonal gradient (`18263E` to `0F172A`).
+/// - Primary Text: Crisp white (`FFFFFF`).
+/// - Secondary / Subtitle Text: Soft muted sky-blue (`8EA2C6` / `94A3B8`).
+/// - Positive Indicators / Badges: Neon mint green text (`34D399`) inside translucent light-blue pill badges (`223555` / `1E3A5F`).
+/// - Corner Radii: 22 across cards/containers, 30 for pills/badges.
+/// - Borders: Subtle 1px outer stroke (`Colors.white.withOpacity(0.12)` or `2A3C5A`).
+/// - Shadows: Very soft blue-tinted drop shadows.
 class AppColors {
-  // Light theme (Lovable exact oklch -> hex)
-  static const bg = Color(0xFFEAF2EE);           // --background: oklch(0.978 0.008 150)
-  static const card = Colors.white;               // --card: oklch(1 0 0)
-  static const elevated = Color(0xFFEDF5F0);      // --elevated: oklch(0.965 0.012 160)
-  static const primary = Color(0xFF0B8457);       // --primary: oklch(0.56 0.12 172)
-  static const primaryForeground = Color(0xFFF8FFF9); // --primary-foreground
-  static const muted = Color(0xFFEAF2EE);         // --muted: oklch(0.955 0.01 160)
-  static const mutedForeground = Color(0xFF7A8A8E);   // --muted-foreground: oklch(0.55 0.02 190)
-  static const success = Color(0xFF16A34A);       // --success: oklch(0.62 0.15 155)
-  static const warning = Color(0xFFF59E0B);       // --warning: oklch(0.75 0.15 75)
-  static const danger = Color(0xFFDC2626);        // --danger: oklch(0.6 0.19 25)
-  static const info = Color(0xFF3B82F6);          // --info: oklch(0.6 0.13 240)
-  static const border = Color(0xFFE5E7EB);        // --border: oklch(0.9 0.012 170)
-  static const divider = Color(0xFFE5E7EB);       // alias for BorderSide usage
-  static const textPrimary = Color(0xFF1C2B2E);   // --foreground: oklch(0.22 0.03 175)
-  static const textSecondary = Color(0xFF7A8A8E); // --muted-foreground
-  static const chipUnselected = Color(0xFFF3F4F6);
-  static const accent = Color(0xFFF59E0B);       // amber
-  static const income = Color(0xFF0F9D58);       // income green
-  static const primaryDark = Color(0xFF0F5B3F);  // darker primary for gradients
+  // Main Background: Dark navy blue (0B101D to 0E1726)
+  static const bg = Color(0xFF0B101D);
+  static const bgSecondary = Color(0xFF0E1726);
+  static const bgGlow = Color(0xFF1A2C4E);
 
-  // Category colors (--cat-*)
-  static const catFood = Color(0xFFF59E0B);       // --cat-food: oklch(0.68 0.16 45)
-  static const catTransport = Color(0xFF3B82F6);  // --cat-transport: oklch(0.62 0.14 240)
-  static const catRent = Color(0xFF8B5CF6);       // --cat-rent: oklch(0.55 0.15 300)
-  static const catPower = Color(0xFFF59E0B);      // --cat-power: oklch(0.75 0.15 90)
-  static const catWater = Color(0xFF3B82F6);      // --cat-water: oklch(0.66 0.12 220)
-  static const catFuel = Color(0xFFDC2626);       // --cat-fuel: oklch(0.6 0.15 20)
-  static const catHealth = Color(0xFF16A34A);     // --cat-health: oklch(0.65 0.14 155)
-  static const catFun = Color(0xFFEC4899);        // --cat-fun: oklch(0.62 0.16 330)
-  static const catSanitary = Color(0xFF3B82F6);   // --cat-sanitary: oklch(0.68 0.1 190)
-  static const catAirtime = Color(0xFF0F9D58);    // --cat-airtime: oklch(0.7 0.14 120)
+  // Card Containers: Translucent deep blue (141E30 with 0.85-0.9 opacity)
+  static const card = Color(0xE6141E30);
+  static const cardSolid = Color(0xFF141E30);
+  static const elevated = Color(0xFF18263E);
 
-  // Shadows
+  // Gradient stops for cards: 18263E to 0F172A
+  static const cardGradientStart = Color(0xFF18263E);
+  static const cardGradientEnd = Color(0xFF0F172A);
+
+  // Primary / Glowing Accent
+  static const primary = Color(0xFF38BDF8); // Glowing sky blue
+  static const primaryForeground = Colors.white;
+  static const primaryDark = Color(0xFF0F172A);
+
+  // Muted & Secondary Text
+  static const muted = Color(0xFF1E2D4A);
+  static const mutedForeground = Color(0xFF8EA2C6); // Soft muted sky-blue
+  static const textSecondary = Color(0xFF8EA2C6);
+  static const textMuted = Color(0xFF94A3B8);
+
+  // Primary Text: Crisp white
+  static const textPrimary = Color(0xFFFFFFFF);
+
+  // Positive Indicators / Badges: Neon mint green text (34D399) inside translucent light-blue pill badges (223555 or 1E3A5F)
+  static const success = Color(0xFF34D399); // Neon mint green
+  static const income = Color(0xFF34D399);  // Neon mint green
+  static const badgeMintText = Color(0xFF34D399);
+  static const badgeBg = Color(0xFF1E3A5F);
+  static const badgeBgLight = Color(0x66223555);
+
+  // Status & Accents
+  static const warning = Color(0xFFFBBF24);
+  static const danger = Color(0xFFF87171); // Crisp coral/red
+  static const info = Color(0xFF38BDF8);
+  static const accent = Color(0xFF38BDF8);
+
+  // Borders & Dividers: Subtle 1px outer stroke
+  static const border = Color(0xFF2A3C5A);
+  static const borderLight = Color(0x1FFFFFFF); // Colors.white.withOpacity(0.12)
+  static const divider = Color(0xFF2A3C5A);
+
+  // Interactive Elements & Chips
+  static const chipUnselected = Color(0xFF141E30);
+  static const chipSelected = Color(0xFF1E3A5F);
+
+  // Visualizations & Charts
+  // Bar Charts: Dark navy bottom segment, glowing sky-blue top segment
+  static const chartNavy = Color(0xFF1E2D4A);
+  static const chartNavyDark = Color(0xFF141E30);
+  static const chartSkyBlue = Color(0xFF38BDF8);
+  static const chartSkyBlueGlow = Color(0xFF7DD3FC);
+
+  // Navigation Bar: Translucent dark navy bottom navigation bar
+  static const navBarBg = Color(0xDE0E1726);
+  static const navInactive = Color(0xFF8EA2C6); // Muted grey-blue inactive
+  static const navActive = Color(0xFFFFFFFF);   // Glowing white / sky-blue active
+
+  // Category colors adapted for dark luxury palette
+  static const catFood = Color(0xFFF59E0B);
+  static const catTransport = Color(0xFF38BDF8);
+  static const catRent = Color(0xFF818CF8);
+  static const catPower = Color(0xFFFBBF24);
+  static const catWater = Color(0xFF60A5FA);
+  static const catFuel = Color(0xFFF87171);
+  static const catHealth = Color(0xFF34D399);
+  static const catFun = Color(0xFFF472B6);
+  static const catSanitary = Color(0xFF2DD4BF);
+  static const catAirtime = Color(0xFF4ADE80);
+
+  // Radius scale
+  // Border Radius: 22 across all cards, containers, and dialogs
+  // Badges / Chips: 30
+  static const radiusSm = 10.0;
+  static const radiusMd = 14.0;
+  static const radiusLg = 18.0;
+  static const radiusXl = 22.0;
+  static const radius2xl = 22.0;
+  static const radius3xl = 30.0;
+  static const radiusPill = 30.0;
+
+  // Shadows: Very soft blue-tinted drop shadows
   static const shadowSoft = [
-    BoxShadow(color: Color(0x0F666666), blurRadius: 2, offset: Offset(0, 1)),      // 0 1px 2px 6%
-    BoxShadow(color: Color(0x2E666666), blurRadius: 24, offset: Offset(0, 8)),      // 0 8px 24px -12px 18%
+    BoxShadow(color: Color(0x1A000000), blurRadius: 16, offset: Offset(0, 8)),
   ];
   static const shadowLift = [
-    BoxShadow(color: Color(0x52666666), blurRadius: 32, offset: Offset(0, 12)),     // 0 12px 32px -12px 32%
+    BoxShadow(color: Color(0x33000000), blurRadius: 24, offset: Offset(0, 10)),
+    BoxShadow(color: Color(0x141A2C4E), blurRadius: 16, offset: Offset(0, 4)),
+  ];
+  static const shadowGlow = [
+    BoxShadow(color: Color(0x3338BDF8), blurRadius: 16, offset: Offset(0, 4)),
   ];
 
-  // Radius scale (1rem = 16dp base)
-  static const radiusSm = 10.0;
-  static const radiusMd = 13.0;
-  static const radiusLg = 16.0;
-  static const radiusXl = 20.0;
-  static const radius2xl = 26.0;
-  static const radius3xl = 32.0;
+  // Gradients
+  // Diagonal LinearGradient (from 18263E to 0F172A)
+  static const cardGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF18263E), Color(0xFF0F172A)],
+  );
 
-  // Dark theme (kept similar to existing)
-  static const darkBg = Color(0xFF12141F);
-  static const darkCard = Color(0xFF1D2030);
-  static const darkElevated = Color(0xFF272B3A);
-  static const darkPrimary = Color(0xFF0B8457);
+  // Main Background: Dark navy blue with subtle top-center radial gradient glow in soft sky blue (1A2C4E)
+  static const backgroundGradient = RadialGradient(
+    center: Alignment(0.0, -0.9),
+    radius: 1.2,
+    colors: [
+      Color(0xFF1A2C4E), // soft sky blue glow
+      Color(0xFF0E1726), // navy
+      Color(0xFF0B101D), // dark navy
+    ],
+    stops: [0.0, 0.45, 1.0],
+  );
+
+  /// Helper for consistent card decorations
+  static BoxDecoration cardDecoration({
+    BorderRadius? borderRadius,
+    Border? border,
+    Gradient? gradient,
+    List<BoxShadow>? boxShadow,
+    Color? color,
+  }) {
+    return BoxDecoration(
+      color: color ?? card,
+      gradient: gradient ?? cardGradient,
+      borderRadius: borderRadius ?? BorderRadius.circular(radiusXl),
+      border: border ?? Border.all(color: borderLight, width: 1),
+      boxShadow: boxShadow ?? shadowSoft,
+    );
+  }
+
+  /// Helper for soft pill-shaped badges (BorderRadius.circular(30)) with light translucent background fill
+  static BoxDecoration pillBadgeDecoration({
+    Color? color,
+    Border? border,
+  }) {
+    return BoxDecoration(
+      color: color ?? badgeBg,
+      borderRadius: BorderRadius.circular(radiusPill),
+      border: border ?? Border.all(color: borderLight, width: 1),
+    );
+  }
+
+  // Dark theme aliases
+  static const darkBg = bg;
+  static const darkCard = card;
+  static const darkElevated = elevated;
+  static const darkPrimary = primary;
 }
 
-/// Builds the Material light and dark themes from [AppColors]. main.dart
-/// picks one from the user's dark-mode setting.
+/// Builds the Material light and dark themes using [AppColors].
+/// Both variants apply the dark navy & glowing sky-blue aesthetic.
 class AppTheme {
-  // Shortcuts kept for older call sites.
   static const primary = AppColors.primary;
-  static const primaryDark = Color(0xFF0F5B3F);
+  static const primaryDark = AppColors.primaryDark;
   static const accent = AppColors.accent;
 
-  /// [googleFonts] is false only in tests, which can't download Manrope.
-  static ThemeData light({bool googleFonts = true}) {
+  static ThemeData light({bool googleFonts = true}) => _buildTheme(googleFonts: googleFonts);
+
+  static ThemeData dark({bool googleFonts = true}) => _buildTheme(googleFonts: googleFonts);
+
+  static ThemeData _buildTheme({bool googleFonts = true}) {
+    final baseTextTheme = ThemeData.dark().textTheme;
+    final textTheme = googleFonts ? GoogleFonts.manropeTextTheme(baseTextTheme) : baseTextTheme;
+
     return ThemeData(
       useMaterial3: true,
+      brightness: Brightness.dark,
       fontFamily: googleFonts ? GoogleFonts.manrope().fontFamily : null,
       scaffoldBackgroundColor: AppColors.bg,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.primary,
-        brightness: Brightness.light,
+      canvasColor: AppColors.bg,
+      cardColor: AppColors.cardSolid,
+      colorScheme: const ColorScheme.dark(
         primary: AppColors.primary,
         secondary: AppColors.success,
-        surface: AppColors.card,
+        surface: AppColors.cardSolid,
         error: AppColors.danger,
+        onPrimary: AppColors.primaryDark,
+        onSecondary: AppColors.primaryDark,
+        onSurface: AppColors.textPrimary,
+        onSurfaceVariant: AppColors.mutedForeground,
       ),
       appBarTheme: const AppBarTheme(
         elevation: 0,
@@ -104,119 +214,101 @@ class AppTheme {
         elevation: 0,
         color: AppColors.card,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(AppColors.radiusXl)),
+          borderRadius: BorderRadius.circular(AppColors.radiusXl),
+          side: const BorderSide(color: AppColors.borderLight, width: 1),
         ),
+        shadowColor: const Color(0x1A000000),
         margin: EdgeInsets.zero,
-        shadowColor: Colors.transparent,
       ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.cardGradientEnd,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusXl),
+          side: const BorderSide(color: AppColors.borderLight, width: 1),
+        ),
+        titleTextStyle: const TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimary,
+        ),
+        contentTextStyle: const TextStyle(
+          fontSize: 14,
+          color: AppColors.mutedForeground,
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: AppColors.cardGradientEnd,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppColors.radiusXl)),
+          side: const BorderSide(color: AppColors.borderLight, width: 1),
+        ),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: Colors.transparent,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.mutedForeground,
+        selectedItemColor: AppColors.navActive,
+        unselectedItemColor: AppColors.navInactive,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
-        selectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+        selectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.navActive),
+        unselectedLabelStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: AppColors.navInactive),
       ),
       dividerTheme: const DividerThemeData(
-        color: AppColors.border,
+        color: AppColors.divider,
         thickness: 1,
         space: 1,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.card,
+        fillColor: AppColors.cardSolid,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        hintStyle: const TextStyle(color: AppColors.mutedForeground),
+        labelStyle: const TextStyle(color: AppColors.mutedForeground),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(AppColors.radiusXl),
+          borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          borderSide: const BorderSide(color: Colors.transparent),
+          borderRadius: BorderRadius.circular(AppColors.radiusXl),
+          borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          borderRadius: BorderRadius.circular(AppColors.radiusXl),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: AppColors.primary,
+          backgroundColor: AppColors.cardGradientStart,
+          foregroundColor: AppColors.textPrimary,
           minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppColors.radiusPill),
+            side: const BorderSide(color: AppColors.borderLight, width: 1),
+          ),
+          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary,
         ),
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
-        backgroundColor: AppColors.textPrimary,
-      ),
-      textTheme: googleFonts ? GoogleFonts.manropeTextTheme() : null,
-    );
-  }
-
-  /// Dark variant. Lighter on overrides than [light]: most colours come from
-  /// the seed-generated scheme.
-  static ThemeData dark({bool googleFonts = true}) {
-    return ThemeData(
-      useMaterial3: true,
-      fontFamily: googleFonts ? GoogleFonts.manrope().fontFamily : null,
-      scaffoldBackgroundColor: AppColors.darkBg,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: AppColors.darkPrimary,
-        brightness: Brightness.dark,
-      ),
-      appBarTheme: const AppBarTheme(
-        elevation: 0,
-        centerTitle: false,
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        surfaceTintColor: Colors.transparent,
-        titleTextStyle: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      cardTheme: CardThemeData(
-        elevation: 0,
-        color: AppColors.darkCard,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(AppColors.radiusXl)),
-        ),
-        margin: EdgeInsets.zero,
-      ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
-        backgroundColor: Colors.transparent,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: const Color(0xFF7A8A8E),
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: AppColors.darkCard,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          borderSide: BorderSide.none,
+          side: const BorderSide(color: AppColors.borderLight, width: 1),
         ),
+        backgroundColor: AppColors.cardSolid,
+        contentTextStyle: const TextStyle(color: AppColors.textPrimary),
       ),
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: AppColors.darkPrimary,
-          minimumSize: const Size.fromHeight(52),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-        ),
+      textTheme: textTheme.apply(
+        bodyColor: AppColors.textPrimary,
+        displayColor: AppColors.textPrimary,
       ),
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
-      ),
-      textTheme: googleFonts ? GoogleFonts.manropeTextTheme(ThemeData.dark().textTheme) : null,
     );
   }
 }

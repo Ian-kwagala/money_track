@@ -32,7 +32,7 @@ class GoalDetailsScreen extends StatelessWidget {
             : '$daysLeft days remaining';
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(goal.name),
         actions: [
@@ -43,168 +43,178 @@ class GoalDetailsScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Goal Header Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(AppColors.radiusXl),
-                  border: Border.all(color: color.withValues(alpha: 0.3)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: color,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(Icons.flag_outlined, color: Colors.white, size: 22),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                goal.name,
-                                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Deadline: ${DateFormat('d MMMM yyyy').format(goal.deadline)}',
-                                style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: isOverdue ? AppColors.danger.withValues(alpha: 0.15) : color.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        daysText,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isOverdue ? AppColors.danger : color,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Progress Section
-              Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
-                child: Padding(
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Goal Header Card
+                Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Funding progress', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                          Text(
-                            '${goal.progressPercent.toStringAsFixed(0)}%',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color),
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.flag_outlined, color: Colors.white, size: 22),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  goal.name,
+                                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Deadline: ${DateFormat('d MMMM yyyy').format(goal.deadline)}',
+                                  style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 12),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: (goal.progressPercent / 100).clamp(0.0, 1.0),
-                          minHeight: 12,
-                          backgroundColor: AppColors.border,
-                          valueColor: AlwaysStoppedAnimation<Color>(color),
-                        ),
                       ),
                       const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _StatBox(
-                              label: 'Saved',
-                              value: MoneyFormat.money(goal.currentAmount, symbol: symbol),
-                              color: color,
-                            ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isOverdue ? AppColors.danger.withValues(alpha: 0.15) : color.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                        ),
+                        child: Text(
+                          daysText,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isOverdue ? AppColors.danger : color,
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _StatBox(
-                              label: 'Target',
-                              value: MoneyFormat.money(goal.targetAmount, symbol: symbol),
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _StatBox(
-                        label: 'Remaining',
-                        value: MoneyFormat.money(goal.remainingAmount, symbol: symbol),
-                        color: goal.remainingAmount <= 0 ? AppColors.success : AppColors.mutedForeground,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 20),
 
-              // Add funds action button
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => showGoalFundsDialog(context, goal, adding: true),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add funds to goal'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: color,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+                // Progress Section
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                    side: const BorderSide(color: AppColors.borderLight, width: 1),
                   ),
-                ),
-              ),
-              if (goal.currentAmount > 0) ...[
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () => showGoalFundsDialog(context, goal, adding: false),
-                    icon: const Icon(Icons.remove),
-                    label: const Text('Withdraw from goal'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+                  child: Container(
+                    decoration: AppColors.cardDecoration(),
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('Funding progress', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                            Text(
+                              '${goal.progressPercent.toStringAsFixed(0)}%',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: LinearProgressIndicator(
+                            value: (goal.progressPercent / 100).clamp(0.0, 1.0),
+                            minHeight: 12,
+                            backgroundColor: const Color(0xFF141E30),
+                            valueColor: AlwaysStoppedAnimation<Color>(color),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _StatBox(
+                                label: 'Saved',
+                                value: MoneyFormat.money(goal.currentAmount, symbol: symbol),
+                                color: color,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _StatBox(
+                                label: 'Target',
+                                value: MoneyFormat.money(goal.targetAmount, symbol: symbol),
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _StatBox(
+                          label: 'Remaining',
+                          value: MoneyFormat.money(goal.remainingAmount, symbol: symbol),
+                          color: goal.remainingAmount <= 0 ? AppColors.badgeMintText : AppColors.mutedForeground,
+                        ),
+                      ],
                     ),
                   ),
                 ),
+                const SizedBox(height: 24),
+
+                // Add funds action button
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => showGoalFundsDialog(context, goal, adding: true),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add funds to goal'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: color,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
+                    ),
+                  ),
+                ),
+                if (goal.currentAmount > 0) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => showGoalFundsDialog(context, goal, adding: false),
+                      icon: const Icon(Icons.remove),
+                      label: const Text('Withdraw from goal'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
+                        side: const BorderSide(color: AppColors.borderLight, width: 1),
+                      ),
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
+    );
     );
   }
 
@@ -249,8 +259,9 @@ class _StatBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: AppColors.muted,
+        color: const Color(0xFF141E30),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderLight, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

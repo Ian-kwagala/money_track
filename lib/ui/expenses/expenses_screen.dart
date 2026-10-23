@@ -87,7 +87,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     final days = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         top: false,
         child: CustomScrollView(
@@ -119,13 +119,22 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     onChanged: (v) => setState(() => _query = v),
                     decoration: InputDecoration(
                       hintText: 'Search note, category, wallet or amount',
-                      prefixIcon: const Icon(Icons.search),
+                      hintStyle: const TextStyle(color: AppColors.mutedForeground, fontSize: 13),
+                      prefixIcon: const Icon(Icons.search, color: AppColors.mutedForeground),
                       isDense: true,
                       filled: true,
-                      fillColor: AppColors.muted,
+                      fillColor: const Color(0xFF141E30),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                        borderSide: BorderSide.none,
+                        borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                        borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                        borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
                       ),
                     ),
                   ),
@@ -140,9 +149,22 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     selected: {_type},
                     onSelectionChanged: (s) => setState(() => _type = s.first),
                     showSelectedIcon: false,
-                    style: const ButtonStyle(
+                    style: ButtonStyle(
                       visualDensity: VisualDensity.compact,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      backgroundColor: WidgetStateProperty.resolveWith((states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return const Color(0xFF1E3A5F);
+                        }
+                        return const Color(0x66141E30);
+                      }),
+                      foregroundColor: WidgetStateProperty.resolveWith((states) {
+                        if (states.contains(WidgetState.selected)) {
+                          return Colors.white;
+                        }
+                        return AppColors.mutedForeground;
+                      }),
+                      side: const WidgetStatePropertyAll(BorderSide(color: AppColors.borderLight, width: 1)),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -155,6 +177,17 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                           selected: _period == p,
                           onSelected: (_) => setState(() => _period = p),
                           visualDensity: VisualDensity.compact,
+                          selectedColor: const Color(0xFF1E3A5F),
+                          backgroundColor: const Color(0x66141E30),
+                          labelStyle: TextStyle(
+                            fontSize: 11,
+                            fontWeight: _period == p ? FontWeight.w700 : FontWeight.w500,
+                            color: _period == p ? Colors.white : AppColors.mutedForeground,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                            side: const BorderSide(color: AppColors.borderLight, width: 1),
+                          ),
                         ),
                     ],
                   ),
@@ -194,9 +227,14 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
                     ),
                     const SizedBox(height: 6),
                     Card(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                        side: const BorderSide(color: AppColors.borderLight, width: 1),
+                      ),
+                      child: Container(
+                        decoration: AppColors.cardDecoration(),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         child: Column(
                           children: [
                             for (final tx in grouped[day]!) TransactionTile(tx: tx),

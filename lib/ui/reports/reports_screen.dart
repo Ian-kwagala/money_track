@@ -62,7 +62,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         top: false,
         child: CustomScrollView(
@@ -82,8 +82,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 children: [
                   // Spend by category
                   Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
-                    child: Padding(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                      side: const BorderSide(color: AppColors.borderLight, width: 1),
+                    ),
+                    child: Container(
+                      decoration: AppColors.cardDecoration(),
                       padding: const EdgeInsets.all(18),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,15 +105,15 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                   children: [
                                     PieChart(
                                       PieChartData(
-                                        sectionsSpace: 2,
-                                        centerSpaceRadius: 36,
+                                        sectionsSpace: 3,
+                                        centerSpaceRadius: 34,
                                         startDegreeOffset: -90,
                                         sections: [
                                           for (var i = 0; i < categoryTotals.take(6).length; i++)
                                             PieChartSectionData(
                                               value: categoryTotals[i].amount,
-                                              color: Color(categoryTotals[i].color),
-                                              radius: 20,
+                                              color: i % 2 == 0 ? const Color(0xFF38BDF8) : const Color(0xFF1E3A5F),
+                                              radius: 18,
                                               title: '',
                                             ),
                                         ],
@@ -134,7 +139,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                         padding: const EdgeInsets.symmetric(vertical: 3),
                                         child: Row(
                                           children: [
-                                            Container(width: 7, height: 7, decoration: BoxDecoration(color: Color(categoryTotals[i].color), shape: BoxShape.circle)),
+                                            Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: BoxDecoration(
+                                                color: i % 2 == 0 ? const Color(0xFF38BDF8) : const Color(0xFF1E3A5F),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
                                             const SizedBox(width: 8),
                                             Expanded(child: Text(categoryTotals[i].name, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
                                             Text('${(categoryTotals[i].pct * 100).round()}%',
@@ -159,15 +171,20 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
                   // Income vs Expense
                   Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
-                    child: Padding(
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                      side: const BorderSide(color: AppColors.borderLight, width: 1),
+                    ),
+                    child: Container(
+                      decoration: AppColors.cardDecoration(),
                       padding: const EdgeInsets.all(18),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text('Income vs expense', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                           const SizedBox(height: 4),
-                          Text('${monthly.isNotEmpty ? "Last ${monthly.length} months" : "No data yet"} \u00b7 Income (green) vs expense (red)', style: const TextStyle(fontSize: 10, color: AppColors.mutedForeground)),
+                          Text('${monthly.isNotEmpty ? "Last ${monthly.length} months" : "No data yet"} \u00b7 Two-tone bars (navy base, sky-blue highlight)', style: const TextStyle(fontSize: 10, color: AppColors.mutedForeground)),
                           const SizedBox(height: 16),
                           monthly.isEmpty
                               ? const SizedBox(
@@ -186,20 +203,78 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                         for (var i = 0; i < monthly.length; i++)
                                           BarChartGroupData(
                                             x: i,
-                                            barsSpace: 4,
+                                            barsSpace: 6,
                                             barRods: [
-                                              BarChartRodData(toY: (monthly[i]['income'] as double), color: AppColors.success, width: 14, borderRadius: const BorderRadius.vertical(top: Radius.circular(4))),
-                                              BarChartRodData(toY: (monthly[i]['expense'] as double), color: AppColors.danger, width: 14, borderRadius: const BorderRadius.vertical(top: Radius.circular(4))),
+                                              // Two-tone stacked vertical bars: dark navy bottom segment, glowing sky-blue top segment
+                                              BarChartRodData(
+                                                toY: (monthly[i]['income'] as double),
+                                                width: 14,
+                                                borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
+                                                rodStackItems: [
+                                                  BarChartRodStackItem(
+                                                    0,
+                                                    (monthly[i]['income'] as double) * 0.45,
+                                                    const Color(0xFF141E30), // dark navy bottom segment
+                                                  ),
+                                                  BarChartRodStackItem(
+                                                    (monthly[i]['income'] as double) * 0.45,
+                                                    (monthly[i]['income'] as double),
+                                                    const Color(0xFF38BDF8), // glowing sky-blue top segment
+                                                  ),
+                                                ],
+                                              ),
+                                              BarChartRodData(
+                                                toY: (monthly[i]['expense'] as double),
+                                                width: 14,
+                                                borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
+                                                rodStackItems: [
+                                                  BarChartRodStackItem(
+                                                    0,
+                                                    (monthly[i]['expense'] as double) * 0.5,
+                                                    const Color(0xFF1E2D4A), // dark navy bottom segment
+                                                  ),
+                                                  BarChartRodStackItem(
+                                                    (monthly[i]['expense'] as double) * 0.5,
+                                                    (monthly[i]['expense'] as double),
+                                                    const Color(0xFF60A5FA), // sky-blue top segment
+                                                  ),
+                                                ],
+                                              ),
                                             ],
                                           ),
                                       ],
-                                      gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: barAxis.interval, getDrawingHorizontalLine: (v) => FlLine(color: AppColors.border, strokeWidth: 1)),
+                                      gridData: FlGridData(
+                                        show: true,
+                                        drawVerticalLine: false,
+                                        horizontalInterval: barAxis.interval,
+                                        getDrawingHorizontalLine: (v) => const FlLine(color: Color(0xFF2A3C5A), strokeWidth: 1),
+                                      ),
                                       titlesData: FlTitlesData(
-                                        leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 50, interval: barAxis.interval, getTitlesWidget: (v, _) => Text(MoneyFormat.compact(v, symbol: symbol), style: const TextStyle(fontSize: 9, color: AppColors.mutedForeground)))),
-                                        bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, getTitlesWidget: (v, _) {
-                                          final i = v.toInt();
-                                          return i >= 0 && i < monthly.length ? Text(monthly[i]['m'] as String, style: const TextStyle(fontSize: 9, color: AppColors.mutedForeground)) : const Text('');
-                                        })),
+                                        leftTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            reservedSize: 50,
+                                            interval: barAxis.interval,
+                                            getTitlesWidget: (v, _) => Text(
+                                              MoneyFormat.compact(v, symbol: symbol),
+                                              style: const TextStyle(fontSize: 9, color: AppColors.mutedForeground),
+                                            ),
+                                          ),
+                                        ),
+                                        bottomTitles: AxisTitles(
+                                          sideTitles: SideTitles(
+                                            showTitles: true,
+                                            getTitlesWidget: (v, _) {
+                                              final i = v.toInt();
+                                              return i >= 0 && i < monthly.length
+                                                  ? Text(
+                                                      monthly[i]['m'] as String,
+                                                      style: const TextStyle(fontSize: 9, color: AppColors.mutedForeground, fontWeight: FontWeight.w600),
+                                                    )
+                                                  : const Text('');
+                                            },
+                                          ),
+                                        ),
                                         topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                         rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                       ),
