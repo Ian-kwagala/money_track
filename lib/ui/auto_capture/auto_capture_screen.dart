@@ -36,100 +36,113 @@ class AutoCaptureScreen extends StatelessWidget {
     final handled = capture.recentlyHandled;
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: SafeArea(
-        top: false,
-        child: RefreshIndicator(
-        onRefresh: () => capture.refresh(),
-        child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(
-              child: PageHeader(
-                title: 'Auto-capture',
-                subtitle: '${pending.length} to review',
-                action: capture.isOn ? const _MoreMenu() : null,
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const _Banner(
-                      icon: Icons.lock_outline,
-                      color: AppColors.primary,
-                      text: 'Read from your MTN, Airtel and bank SMS on this phone. Nothing is saved until you confirm it.',
-                    ),
-                    const SizedBox(height: 12),
-                    if (!capture.isSupported)
-                      const _Banner(
-                        icon: Icons.info_outline,
-                        color: AppColors.info,
-                        text: 'Reading SMS only works on Android. Copy a money SMS and tap Check a message to add it.',
-                      )
-                    else if (!capture.isOn)
-                      const _TurnOnCard()
-                    else if (capture.needsPermission)
-                      _Banner(
-                        icon: Icons.warning_amber_rounded,
-                        color: AppColors.warning,
-                        text: 'SMS permission is off, so new messages aren\'t being read.',
-                        actionLabel: 'Allow',
-                        onAction: () => capture.access == SmsAccess.blocked
-                            ? showAllowSmsSteps(context)
-                            : turnOnAutoCapture(context),
-                      ),
-                    if (pending.length > 1) ...[
-                      const SizedBox(height: 4),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton.icon(
-                          onPressed: () => _confirmAll(context),
-                          icon: const Icon(Icons.done_all, size: 18),
-                          label: Text('Confirm all (${pending.length})'),
-                        ),
-                      ),
-                    ],
-                    _CaptureList(
-                      pending: pending,
-                      itemBuilder: (c) => _CaptureCard(
-                        capture: c,
-                        onConfirm: () => _confirm(context, c),
-                        onEdit: () => _review(context, c),
-                        onIgnore: () => _ignore(context, c),
-                      ),
-                    ),
-                    if (pending.isEmpty && (capture.isOn || !capture.isSupported)) ...[
-                      const SizedBox(height: 24),
-                      const EmptyState(
-                        icon: Icons.task_alt,
-                        title: 'All caught up',
-                        message: 'New MTN, Airtel and bank transactions will appear here for you to confirm.',
-                      ),
-                    ],
-                    if (handled.isNotEmpty) ...[
-                      const SizedBox(height: 20),
-                      const Text('Recently handled',
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
-                      const SizedBox(height: 6),
-                      for (final c in handled) _HandledTile(capture: c),
-                    ],
-                  ],
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+        child: SafeArea(
+          top: false,
+          child: RefreshIndicator(
+            onRefresh: () => capture.refresh(),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: PageHeader(
+                    title: 'Auto-capture',
+                    subtitle: '${pending.length} to review',
+                    action: capture.isOn ? const _MoreMenu() : null,
+                  ),
                 ),
-              ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const _Banner(
+                          icon: Icons.lock_outline,
+                          color: AppColors.primary,
+                          text: 'Read from your MTN, Airtel and bank SMS on this phone. Nothing is saved until you confirm it.',
+                        ),
+                        const SizedBox(height: 12),
+                        if (!capture.isSupported)
+                          const _Banner(
+                            icon: Icons.info_outline,
+                            color: AppColors.info,
+                            text: 'Reading SMS only works on Android. Copy a money SMS and tap Check a message to add it.',
+                          )
+                        else if (!capture.isOn)
+                          const _TurnOnCard()
+                        else if (capture.needsPermission)
+                          _Banner(
+                            icon: Icons.warning_amber_rounded,
+                            color: AppColors.warning,
+                            text: 'SMS permission is off, so new messages aren\'t being read.',
+                            actionLabel: 'Allow',
+                            onAction: () => capture.access == SmsAccess.blocked
+                                ? showAllowSmsSteps(context)
+                                : turnOnAutoCapture(context),
+                          ),
+                        if (pending.length > 1) ...[
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: () => _confirmAll(context),
+                              icon: const Icon(Icons.done_all, size: 18, color: AppColors.skyBlue),
+                              label: Text('Confirm all (${pending.length})', style: const TextStyle(color: AppColors.skyBlue, fontWeight: FontWeight.w600)),
+                            ),
+                          ),
+                        ],
+                        _CaptureList(
+                          pending: pending,
+                          itemBuilder: (c) => _CaptureCard(
+                            capture: c,
+                            onConfirm: () => _confirm(context, c),
+                            onEdit: () => _review(context, c),
+                            onIgnore: () => _ignore(context, c),
+                          ),
+                        ),
+                        if (pending.isEmpty && (capture.isOn || !capture.isSupported)) ...[
+                          const SizedBox(height: 24),
+                          const EmptyState(
+                            icon: Icons.task_alt,
+                            title: 'All caught up',
+                            message: 'New MTN, Airtel and bank transactions will appear here for you to confirm.',
+                          ),
+                        ],
+                        if (handled.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          const Text('Recently handled',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                          const SizedBox(height: 6),
+                          for (final c in handled) _HandledTile(capture: c),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => CheckMessageSheet.show(context, onAdd: capture.addPasted),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.content_paste_search),
-        label: const Text('Check a message'),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: AppColors.cardGradient,
+          borderRadius: BorderRadius.circular(AppColors.radiusPill),
+          border: Border.all(color: AppColors.borderLight, width: 1),
+          boxShadow: AppColors.subtleShadow,
+        ),
+        child: FloatingActionButton.extended(
+          elevation: 0,
+          highlightElevation: 0,
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          onPressed: () => CheckMessageSheet.show(context, onAdd: capture.addPasted),
+          icon: const Icon(Icons.content_paste_search, size: 20, color: AppColors.skyBlue),
+          label: const Text('Check a message', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+        ),
       ),
     );
   }
@@ -319,96 +332,107 @@ class _CaptureCard extends StatelessWidget {
     final providerWallet = m.kind.isMoneyIn && d.type == TxType.transfer ? d.toWalletId : d.walletId;
 
     return Material(
-      color: AppColors.card,
-      borderRadius: BorderRadius.circular(AppColors.radiusLg),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(AppColors.radiusLg),
-        onTap: onEdit,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text('${m.kind.label} · ${captureMoney(m.amount, symbol)}',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: m.kind.isMoneyIn ? AppColors.income : AppColors.textPrimary)),
-                  ),
-                  Text(when, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(m.counterparty ?? m.provider.label,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-              const SizedBox(height: 2),
-              Text('$source · ${walletName(providerWallet)}',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  if (d.type == TxType.transfer)
-                    _Chip(
-                      icon: Icons.swap_horiz,
-                      label: '${walletName(d.walletId)} → ${walletName(d.toWalletId)}',
-                      color: AppColors.info,
-                    )
-                  else if (category != null)
-                    _Chip(
-                      icon: category.iconData,
-                      label: category.name,
-                      color: Color(category.color),
-                      onTap: onEdit,
-                    )
-                  else
-                    _Chip(
-                      icon: Icons.category_outlined,
-                      label: 'Choose category',
-                      color: AppColors.warning,
-                      onTap: onEdit,
+      color: Colors.transparent,
+      child: Container(
+        decoration: AppColors.cardDecoration(),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(AppColors.radiusCard),
+          onTap: onEdit,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text('${m.kind.label} · ${captureMoney(m.amount, symbol)}',
+                          style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: m.kind.isMoneyIn ? AppColors.badgeMintText : AppColors.textPrimary)),
                     ),
-                  if (d.fee > 0)
-                    _Chip(icon: Icons.receipt_long, label: '+ fee ${captureMoney(d.fee, symbol)}', color: AppColors.mutedForeground),
-                  if (m.pending) const _Chip(icon: Icons.schedule, label: 'Pending', color: AppColors.mutedForeground),
-                  if (duplicate != null)
-                    const _Chip(icon: Icons.content_copy_outlined, label: 'Already recorded?', color: AppColors.warning),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: ActionButton(
-                      label: 'Confirm',
-                      doneLabel: 'Saved',
-                      icon: Icons.check,
-                      height: 40,
-                      onPressed: onConfirm,
+                    Text(when, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(m.counterparty ?? m.provider.label,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                const SizedBox(height: 2),
+                Text('$source · ${walletName(providerWallet)}',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    if (d.type == TxType.transfer)
+                      _Chip(
+                        icon: Icons.swap_horiz,
+                        label: '${walletName(d.walletId)} → ${walletName(d.toWalletId)}',
+                        color: AppColors.skyBlue,
+                      )
+                    else if (category != null)
+                      _Chip(
+                        icon: category.iconData,
+                        label: category.name,
+                        color: Color(category.color),
+                        onTap: onEdit,
+                      )
+                    else
+                      _Chip(
+                        icon: Icons.category_outlined,
+                        label: 'Choose category',
+                        color: AppColors.warning,
+                        onTap: onEdit,
+                      ),
+                    if (d.fee > 0)
+                      _Chip(icon: Icons.receipt_long, label: '+ fee ${captureMoney(d.fee, symbol)}', color: AppColors.textSecondary),
+                    if (m.pending) const _Chip(icon: Icons.schedule, label: 'Pending', color: AppColors.textSecondary),
+                    if (duplicate != null)
+                      const _Chip(icon: Icons.content_copy_outlined, label: 'Already recorded?', color: AppColors.warning),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ActionButton(
+                        label: 'Confirm',
+                        doneLabel: 'Saved',
+                        icon: Icons.check,
+                        height: 40,
+                        onPressed: onConfirm,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: onEdit,
-                      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 40), padding: const EdgeInsets.symmetric(horizontal: 12)),
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Edit'),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onEdit,
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 40),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          side: const BorderSide(color: AppColors.borderLight, width: 1),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
+                          foregroundColor: AppColors.textPrimary,
+                        ),
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        label: const Text('Edit'),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  TextButton(
-                    onPressed: onIgnore,
-                    style: TextButton.styleFrom(minimumSize: const Size(0, 40), foregroundColor: AppColors.mutedForeground),
-                    child: const Text('Ignore'),
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 4),
+                    TextButton(
+                      onPressed: onIgnore,
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 40),
+                        foregroundColor: AppColors.textSecondary,
+                      ),
+                      child: const Text('Ignore'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -594,66 +618,73 @@ class _CategoryPicker extends StatelessWidget {
     final who = m.counterparty == null ? '' : (m.kind.isMoneyIn ? ' from ${m.counterparty}' : ' to ${m.counterparty}');
     // Material (not a coloured Container) so the categories' ripples show.
     return SafeArea(
-      child: Material(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Pick a category to confirm',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-            const SizedBox(height: 4),
-            Text('${m.kind.label} ${captureMoney(m.amount, symbol)}$who',
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-            if (m.counterparty != null)
-              Text('Next time, ${m.counterparty} gets this category automatically.',
-                  style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
-            const SizedBox(height: 16),
-            GridView.count(
-              crossAxisCount: 4,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 8,
-              childAspectRatio: 0.9,
-              children: [
-                for (final cat in vm.categoriesOf(type))
-                  InkWell(
-                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                    onTap: () => Navigator.pop(context, cat.id),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(color: Color(cat.color).withValues(alpha: 0.15), shape: BoxShape.circle),
-                          child: Icon(cat.iconData, color: Color(cat.color), size: 20),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(cat.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Center(
-              child: TextButton.icon(
-                onPressed: () => Navigator.pop(context, moreOptions),
-                icon: const Icon(Icons.edit_outlined, size: 16),
-                label: const Text('Edit other details'),
-              ),
-            ),
-          ],
+      child: Container(
+        decoration: AppColors.cardDecoration(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Pick a category to confirm',
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              Text('${m.kind.label} ${captureMoney(m.amount, symbol)}$who',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              if (m.counterparty != null) ...[
+                const SizedBox(height: 2),
+                Text('Next time, ${m.counterparty} gets this category automatically.',
+                    style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              ],
+              const SizedBox(height: 16),
+              GridView.count(
+                crossAxisCount: 4,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 8,
+                childAspectRatio: 0.9,
+                children: [
+                  for (final cat in vm.categoriesOf(type))
+                    InkWell(
+                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                      onTap: () => Navigator.pop(context, cat.id),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: AppColors.cardBgSolid,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.borderLight, width: 1),
+                            ),
+                            child: Icon(cat.iconData, color: Color(cat.color), size: 20),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(cat.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => Navigator.pop(context, moreOptions),
+                  icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.skyBlue),
+                  label: const Text('Edit other details', style: TextStyle(color: AppColors.skyBlue, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -671,27 +702,38 @@ class _Chip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMint = color == AppColors.success || color == AppColors.income;
     final chip = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppColors.radiusSm),
+        color: isMint ? AppColors.badgeBg : AppColors.cardBgSolid,
+        borderRadius: BorderRadius.circular(AppColors.radiusPill),
+        border: Border.all(
+          color: isMint ? AppColors.badgeBorder : AppColors.borderLight,
+          width: 1,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
+          Icon(icon, size: 14, color: isMint ? AppColors.badgeMintText : color),
+          const SizedBox(width: 5),
           Flexible(
-            child: Text(label,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isMint ? AppColors.badgeMintText : AppColors.textPrimary,
+              ),
+            ),
           ),
         ],
       ),
     );
     if (onTap == null) return chip;
-    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(AppColors.radiusSm), child: chip);
+    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(AppColors.radiusPill), child: chip);
   }
 }
 
@@ -709,14 +751,23 @@ class _HandledTile extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       dense: true,
-      leading: Icon(confirmed ? Icons.check_circle_outline : Icons.remove_circle_outline,
-          color: confirmed ? AppColors.success : AppColors.mutedForeground),
-      title: Text('${m.kind.label} · ${captureMoney(m.amount, symbol)}${m.counterparty == null ? '' : ' · ${m.counterparty}'}',
-          overflow: TextOverflow.ellipsis),
-      subtitle: Text(confirmed ? 'Confirmed' : 'Ignored'),
+      leading: Icon(
+        confirmed ? Icons.check_circle_outline : Icons.remove_circle_outline,
+        color: confirmed ? AppColors.badgeMintText : AppColors.textSecondary,
+      ),
+      title: Text(
+        '${m.kind.label} · ${captureMoney(m.amount, symbol)}${m.counterparty == null ? '' : ' · ${m.counterparty}'}',
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+      ),
+      subtitle: Text(
+        confirmed ? 'Confirmed' : 'Ignored',
+        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
       trailing: TextButton(
         onPressed: () => context.read<CaptureService>().undo(capture),
-        child: const Text('Undo'),
+        style: TextButton.styleFrom(foregroundColor: AppColors.skyBlue),
+        child: const Text('Undo', style: TextStyle(fontWeight: FontWeight.w600)),
       ),
     );
   }
@@ -730,30 +781,43 @@ class _TurnOnCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(AppColors.radiusLg),
-        border: Border.all(color: AppColors.border),
-      ),
+      decoration: AppColors.cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.sms_outlined, color: AppColors.primary),
-              SizedBox(width: 8),
-              Text('Fill in transactions from SMS',
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.cardBgSolid,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.borderLight, width: 1),
+                ),
+                child: const Icon(Icons.sms_outlined, color: AppColors.skyBlue, size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Text('Fill in transactions from SMS',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           const Text(
             'Turn on auto-capture and MoneyTrack lists every MTN, Airtel and bank transaction from your SMS — '
             'including the last 30 days — ready for you to confirm.',
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
           ),
-          const SizedBox(height: 12),
-          FilledButton(onPressed: () => turnOnAutoCapture(context), child: const Text('Turn on')),
+          const SizedBox(height: 14),
+          ActionButton(
+            label: 'Turn on',
+            icon: Icons.check,
+            height: 40,
+            onPressed: () async {
+              await turnOnAutoCapture(context);
+              return true;
+            },
+          ),
         ],
       ),
     );
@@ -802,15 +866,22 @@ class _Banner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        color: AppColors.cardBgSolid,
+        borderRadius: BorderRadius.circular(AppColors.radiusCard),
+        border: Border.all(color: AppColors.borderLight, width: 1),
+        boxShadow: AppColors.subtleShadow,
       ),
       child: Row(
         children: [
-          Icon(icon, color: color, size: 20),
+          Icon(icon, color: color == AppColors.primary ? AppColors.skyBlue : color, size: 20),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary))),
-          if (actionLabel != null) TextButton(onPressed: onAction, child: Text(actionLabel!)),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.35))),
+          if (actionLabel != null)
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(foregroundColor: AppColors.skyBlue),
+              child: Text(actionLabel!, style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
         ],
       ),
     );

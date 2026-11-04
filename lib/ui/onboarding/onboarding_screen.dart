@@ -202,136 +202,140 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Progress indicator: one segment per step, filled up to the
-            // current one.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Row(
-                children: [
-                  if (_currentStep > 0)
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-                      onPressed: _back,
-                    )
-                  else
-                    const SizedBox(width: 48),
-                  Expanded(
-                    child: Row(
-                      children: List.generate(_totalSteps, (i) {
-                        final isActive = i == _currentStep;
-                        final isDone = i < _currentStep;
-                        return Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: isDone || isActive ? AppColors.primary : AppColors.divider,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-                  const SizedBox(width: 48),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Text(
-                'Step ${_currentStep + 1} of $_totalSteps',
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
-              ),
-            ),
-            Expanded(
-              // Swiping is disabled so every step change goes through
-              // [_next]'s validation.
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _WelcomeStep(onNext: _next),
-                  _SecurityStep(
-                    pinCtrl: _pinCtrl,
-                    pinConfirmCtrl: _pinConfirmCtrl,
-                    enableLock: _enableLock,
-                    obscurePin: _obscurePin,
-                    onEnableLock: (v) => setState(() => _enableLock = v),
-                    onObscure: () => setState(() => _obscurePin = !_obscurePin),
-                  ),
-                  _PersonalStep(
-                    nameCtrl: _nameCtrl,
-                    phoneCtrl: _phoneCtrl,
-                    emailCtrl: _emailCtrl,
-                  ),
-                  _IncomeStep(
-                    incomeSource: _incomeSource,
-                    occupationCtrl: _occupationCtrl,
-                    monthlyIncomeCtrl: _monthlyIncomeCtrl,
-                    onChanged: (v) => setState(() => _incomeSource = v),
-                    dateOfBirth: _dateOfBirth,
-                    onDateOfBirth: (v) => setState(() => _dateOfBirth = v),
-                    incomeFrequency: _incomeFrequency,
-                    onIncomeFrequency: (v) => setState(() => _incomeFrequency = v),
-                    isVariable: _isVariable,
-                    onIsVariable: (v) => setState(() => _isVariable = v),
-                  ),
-                  _WalletStep(
-                    walletSelected: _walletSelected,
-                    walletBalanceCtrls: _walletBalanceCtrls,
-                    walletDetailCtrls: _walletDetailCtrls,
-                    onChanged: () => setState(() {}),
-                  ),
-                  _PreferencesStep(
-                    currency: _currency,
-                    onCurrency: (v) => setState(() => _currency = v),
-                    darkMode: _darkMode,
-                    onDarkMode: (v) => setState(() => _darkMode = v),
-                    notifications: _notifications,
-                    onNotifications: (v) => setState(() => _notifications = v),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Row(
-                children: [
-                  if (_currentStep > 0)
-                    Expanded(
-                      child: OutlinedButton(
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Progress indicator: one segment per step, filled up to the
+              // current one.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Row(
+                  children: [
+                    if (_currentStep > 0)
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
                         onPressed: _back,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          side: const BorderSide(color: AppColors.divider),
-                        ),
-                        child: const Text('Back', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                      )
+                    else
+                      const SizedBox(width: 48),
+                    Expanded(
+                      child: Row(
+                        children: List.generate(_totalSteps, (i) {
+                          final isActive = i == _currentStep;
+                          final isDone = i < _currentStep;
+                          return Expanded(
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 3),
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: isDone || isActive ? AppColors.primary : AppColors.borderLight,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          );
+                        }),
                       ),
                     ),
-                  if (_currentStep > 0) const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton(
-                      onPressed: _next,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primaryDark,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: Text(_currentStep == _lastStep ? 'Create account' : 'Continue',
-                          style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
-                    ),
-                  ),
-                ],
+                    const SizedBox(width: 48),
+                  ],
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Text(
+                  'Step ${_currentStep + 1} of $_totalSteps',
+                  style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground, fontWeight: FontWeight.w500),
+                ),
+              ),
+              Expanded(
+                // Swiping is disabled so every step change goes through
+                // [_next]'s validation.
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [
+                    _WelcomeStep(onNext: _next),
+                    _SecurityStep(
+                      pinCtrl: _pinCtrl,
+                      pinConfirmCtrl: _pinConfirmCtrl,
+                      enableLock: _enableLock,
+                      obscurePin: _obscurePin,
+                      onEnableLock: (v) => setState(() => _enableLock = v),
+                      onObscure: () => setState(() => _obscurePin = !_obscurePin),
+                    ),
+                    _PersonalStep(
+                      nameCtrl: _nameCtrl,
+                      phoneCtrl: _phoneCtrl,
+                      emailCtrl: _emailCtrl,
+                    ),
+                    _IncomeStep(
+                      incomeSource: _incomeSource,
+                      occupationCtrl: _occupationCtrl,
+                      monthlyIncomeCtrl: _monthlyIncomeCtrl,
+                      onChanged: (v) => setState(() => _incomeSource = v),
+                      dateOfBirth: _dateOfBirth,
+                      onDateOfBirth: (v) => setState(() => _dateOfBirth = v),
+                      incomeFrequency: _incomeFrequency,
+                      onIncomeFrequency: (v) => setState(() => _incomeFrequency = v),
+                      isVariable: _isVariable,
+                      onIsVariable: (v) => setState(() => _isVariable = v),
+                    ),
+                    _WalletStep(
+                      walletSelected: _walletSelected,
+                      walletBalanceCtrls: _walletBalanceCtrls,
+                      walletDetailCtrls: _walletDetailCtrls,
+                      onChanged: () => setState(() {}),
+                    ),
+                    _PreferencesStep(
+                      currency: _currency,
+                      onCurrency: (v) => setState(() => _currency = v),
+                      darkMode: _darkMode,
+                      onDarkMode: (v) => setState(() => _darkMode = v),
+                      notifications: _notifications,
+                      onNotifications: (v) => setState(() => _notifications = v),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                child: Row(
+                  children: [
+                    if (_currentStep > 0)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _back,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
+                            side: const BorderSide(color: AppColors.borderLight),
+                          ),
+                          child: const Text('Back', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    if (_currentStep > 0) const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton(
+                        onPressed: _next,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: const Color(0xFF0B101D),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
+                        ),
+                        child: Text(_currentStep == _lastStep ? 'Create account' : 'Continue',
+                            style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF0B101D))),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -354,9 +358,10 @@ class _WelcomeStep extends StatelessWidget {
             width: 90,
             height: 90,
             decoration: BoxDecoration(
-              color: Colors.white,
+              gradient: AppColors.cardGradient,
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 20, offset: const Offset(0, 8))],
+              border: Border.all(color: Colors.white.withOpacity(0.12)),
+              boxShadow: AppColors.shadowSoft,
             ),
             child: ClipOval(child: Image.asset('assets/app_icon.png', fit: BoxFit.cover, errorBuilder: (_, _, _) => const Icon(Icons.account_balance_wallet, size: 40, color: AppColors.primary))),
           ),
@@ -364,18 +369,23 @@ class _WelcomeStep extends StatelessWidget {
           const Text('Welcome to\nMoneyTrack', textAlign: TextAlign.center, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.textPrimary, height: 1.2)),
           const SizedBox(height: 12),
           const Text('Your personal expense tracker for MTN, Airtel and bank — built for Uganda.',
-              textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.5)),
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: AppColors.mutedForeground, height: 1.5)),
           const SizedBox(height: 28),
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            child: Padding(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppColors.radiusXl),
+              side: const BorderSide(color: AppColors.borderLight, width: 1),
+            ),
+            child: Container(
+              decoration: AppColors.cardDecoration(),
               padding: const EdgeInsets.all(18),
-              child: Column(
+              child: const Column(
                 children: [
                   _WelcomeFeature(icon: Icons.lock_outline, title: 'Secure & private', desc: 'Set a PIN to protect your data. Nothing leaves your phone without confirmation.'),
-                  const Divider(height: 24, color: AppColors.divider),
+                  Divider(height: 24, color: AppColors.borderLight),
                   _WelcomeFeature(icon: Icons.account_balance_wallet_outlined, title: 'All wallets in one', desc: 'MTN Mobile Money, Airtel, Bank and Cash — track every shilling.'),
-                  const Divider(height: 24, color: AppColors.divider),
+                  Divider(height: 24, color: AppColors.borderLight),
                   _WelcomeFeature(icon: Icons.auto_awesome_outlined, title: 'Auto-capture', desc: 'Reads money SMS so you don’t type every transaction.'),
                 ],
               ),
@@ -383,7 +393,7 @@ class _WelcomeStep extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           const Text('By continuing, you agree to our Terms and Privacy Policy.',
-              textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
         ],
       ),
     );
@@ -401,13 +411,22 @@ class _WelcomeFeature extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(width: 36, height: 36, decoration: const BoxDecoration(color: AppColors.bg, shape: BoxShape.circle), child: Icon(icon, size: 18, color: AppColors.primary)),
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFF141E30),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+          ),
+          child: Icon(icon, size: 18, color: AppColors.primary),
+        ),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(height: 2),
-            Text(desc, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
+            Text(desc, style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground, height: 1.4)),
           ]),
         ),
       ],
@@ -490,11 +509,15 @@ class _PersonalStep extends StatelessWidget {
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(12), border: Border.all(color: const Color(0xFFDBEAFE))),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(AppColors.radiusSm + 2),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.30)),
+            ),
             child: Row(children: [
-              const Icon(Icons.info_outline, size: 16, color: Color(0xFF2563EB)),
+              const Icon(Icons.info_outline, size: 16, color: AppColors.primary),
               const SizedBox(width: 8),
-              const Expanded(child: Text('We use your phone to link mobile money alerts for auto-capture. Never shared.', style: TextStyle(fontSize: 11, color: Color(0xFF2563EB)))),
+              const Expanded(child: Text('We use your phone to link mobile money alerts for auto-capture. Never shared.', style: TextStyle(fontSize: 11, color: AppColors.primary))),
             ]),
           ),
         ],
@@ -797,9 +820,9 @@ class _IncomeCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardSolid,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: selected ? AppColors.primary : AppColors.divider, width: selected ? 1.5 : 1),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.borderLight, width: selected ? 1.5 : 1),
         ),
         child: Row(
           children: [

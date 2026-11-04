@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../viewmodels/tracker_view_model.dart';
+import '../theme/app_theme.dart';
+import '../widgets/action_button.dart';
 
 /// The first screen: an animated logo shown while local storage opens.
 ///
@@ -58,56 +60,39 @@ class _SplashScreenState extends State<SplashScreen>
     final vm = context.watch<TrackerViewModel>();
 
     return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          const Image(
-            image: AssetImage('assets/splash/loading_bg.png'),
-            fit: BoxFit.cover,
-          ),
-          const DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0x33212121),
-                  Color(0x00000000),
-                  Color(0x66212121),
-                ],
-              ),
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ScaleTransition(
-                  scale: Tween(begin: 0.7, end: 1.0).animate(_logoScale),
-                  child: FadeTransition(
-                    opacity: _logoOpacity,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.25),
-                            blurRadius: 40,
-                            offset: const Offset(0, 14),
-                          ),
-                        ],
-                      ),
-                      padding: const EdgeInsets.all(18),
-                      child: Image.asset(
-                        'assets/app_icon.png',
-                        width: 116,
-                        height: 116,
-                        fit: BoxFit.contain,
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: AppColors.backgroundGradient,
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ScaleTransition(
+                    scale: Tween(begin: 0.7, end: 1.0).animate(_logoScale),
+                    child: FadeTransition(
+                      opacity: _logoOpacity,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.cardBgSolid,
+                          border: Border.all(color: AppColors.borderLight),
+                          boxShadow: AppColors.shadowLift,
+                        ),
+                        padding: const EdgeInsets.all(18),
+                        child: Image.asset(
+                          'assets/app_icon.png',
+                          width: 116,
+                          height: 116,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                   ),
-                ),
                 const SizedBox(height: 34),
                 FadeTransition(
                   opacity: _fadeIn,
@@ -127,7 +112,7 @@ class _SplashScreenState extends State<SplashScreen>
                   child: const Text(
                     'Track your money beautifully',
                     style: TextStyle(
-                      color: Colors.white70,
+                      color: AppColors.textSecondary,
                       fontSize: 16,
                       letterSpacing: 0.4,
                     ),
@@ -140,25 +125,25 @@ class _SplashScreenState extends State<SplashScreen>
                     child: Text(
                       vm.initError ?? 'An error occurred loading your data.',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+                      style: const TextStyle(color: AppColors.danger, fontSize: 13),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: () => vm.init(),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFFFC107),
-                      foregroundColor: Colors.black,
-                    ),
+                  ActionButton(
+                    label: 'Retry',
+                    icon: Icons.refresh,
+                    height: 44,
+                    onPressed: () async {
+                      vm.init();
+                      return true;
+                    },
                   ),
                 ] else ...[
-                  const _LoadingIndicator(color: Color(0xFFFFC107)),
+                  const _LoadingIndicator(color: AppColors.skyBlue),
                   const SizedBox(height: 20),
                   const Text(
                     'Loading your data...',
-                    style: TextStyle(color: Colors.white54, fontSize: 13),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   ),
                 ],
               ],
@@ -166,7 +151,8 @@ class _SplashScreenState extends State<SplashScreen>
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
 

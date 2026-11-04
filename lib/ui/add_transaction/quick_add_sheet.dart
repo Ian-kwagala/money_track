@@ -244,9 +244,8 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
           maxHeight: screenH * 0.92,
           minHeight: screenH * 0.5,
         ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: AppColors.cardDecoration(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -255,7 +254,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               margin: const EdgeInsets.only(top: 10),
               width: 36,
               height: 4,
-              decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(color: AppColors.borderLight, borderRadius: BorderRadius.circular(2)),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
@@ -285,7 +284,11 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                     icon: Container(
                       width: 28,
                       height: 28,
-                      decoration: const BoxDecoration(color: AppColors.bg, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF141E30),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+                      ),
                       child: const Icon(Icons.close, size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -306,7 +309,11 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Container(
-                            decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(24)),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF141E30),
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: AppColors.borderLight, width: 1),
+                            ),
                             padding: const EdgeInsets.all(4),
                             child: Row(
                               children: [
@@ -316,11 +323,25 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(vertical: 10),
                                       decoration: BoxDecoration(
-                                        color: _type == TxType.expense ? Colors.white : Colors.transparent,
+                                        gradient: _type == TxType.expense ? AppColors.cardGradient : null,
                                         borderRadius: BorderRadius.circular(20),
-                                        boxShadow: _type == TxType.expense ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))] : null,
+                                        border: _type == TxType.expense
+                                            ? Border.all(color: Colors.white.withOpacity(0.12), width: 1)
+                                            : null,
+                                        boxShadow: _type == TxType.expense
+                                            ? const [BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, 2))]
+                                            : null,
                                       ),
-                                      child: Center(child: Text('Expense', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _type == TxType.expense ? AppColors.textPrimary : AppColors.textSecondary))),
+                                      child: Center(
+                                        child: Text(
+                                          'Expense',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: _type == TxType.expense ? AppColors.textPrimary : AppColors.mutedForeground,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -330,11 +351,25 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(vertical: 10),
                                       decoration: BoxDecoration(
-                                        color: _type == TxType.income ? Colors.white : Colors.transparent,
+                                        gradient: _type == TxType.income ? AppColors.cardGradient : null,
                                         borderRadius: BorderRadius.circular(20),
-                                        boxShadow: _type == TxType.income ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))] : null,
+                                        border: _type == TxType.income
+                                            ? Border.all(color: Colors.white.withOpacity(0.12), width: 1)
+                                            : null,
+                                        boxShadow: _type == TxType.income
+                                            ? const [BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, 2))]
+                                            : null,
                                       ),
-                                      child: Center(child: Text('Income', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _type == TxType.income ? AppColors.textPrimary : AppColors.textSecondary))),
+                                      child: Center(
+                                        child: Text(
+                                          'Income',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            color: _type == TxType.income ? AppColors.textPrimary : AppColors.mutedForeground,
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -343,7 +378,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                           ),
                         ),
                         SizedBox(height: isSmall ? 12 : 18),
-                        const Text('Amount', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                        const Text('Amount', style: TextStyle(fontSize: 13, color: AppColors.mutedForeground)),
                         const SizedBox(height: 4),
                         FittedBox(
                           fit: BoxFit.scaleDown,
@@ -351,7 +386,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               if (_type == TxType.income)
-                                const Text('+ ', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                                const Text('+ ', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.badgeMintText)),
                               Text(
                                 '$symbol ${MoneyInput.group(_amountDisplay)}',
                                 style: TextStyle(fontSize: isSmall ? 28 : 32, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -1),
@@ -376,16 +411,22 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: selected ? Colors.white : AppColors.bg,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: selected ? AppColors.primary : Colors.transparent, width: 1.5),
+                                    color: selected ? const Color(0xFF1E3A5F) : const Color(0xFF141E30),
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(
+                                      color: selected ? AppColors.primary : AppColors.borderLight,
+                                      width: selected ? 1.5 : 1,
+                                    ),
                                   ),
                                   child: Center(
-                                    child: Text(w.name,
-                                        style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w600,
-                                            color: selected ? AppColors.primary : AppColors.textPrimary)),
+                                    child: Text(
+                                      w.name,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: selected ? AppColors.primary : AppColors.mutedForeground,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               );
@@ -428,9 +469,12 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: selected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.bg,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(color: selected ? AppColors.primary : Colors.transparent, width: 1.2),
+                                    color: selected ? const Color(0xFF1E3A5F) : const Color(0xFF141E30),
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(
+                                      color: selected ? AppColors.primary : AppColors.borderLight,
+                                      width: selected ? 1.2 : 1,
+                                    ),
                                   ),
                                   child: Center(
                                     child: Text(
@@ -438,7 +482,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                                        color: selected ? AppColors.primary : AppColors.textSecondary,
+                                        color: selected ? AppColors.primary : AppColors.mutedForeground,
                                       ),
                                     ),
                                   ),
@@ -465,11 +509,22 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                             controller: _noteCtrl,
                             decoration: InputDecoration(
                               hintText: 'Add a note (optional)',
-                              hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                              prefixIcon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
+                              hintStyle: const TextStyle(color: AppColors.mutedForeground, fontSize: 13),
+                              prefixIcon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.mutedForeground),
                               filled: true,
-                              fillColor: AppColors.bg,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                              fillColor: const Color(0xFF141E30),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                              ),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             ),
                           ),
@@ -496,8 +551,8 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
             Container(
               padding: EdgeInsets.fromLTRB(16, 8, 16, viewInsets + 12),
               decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: AppColors.divider, width: 0.5)),
+                color: Color(0xFF0F172A),
+                border: Border(top: BorderSide(color: AppColors.borderLight, width: 1)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -685,10 +740,13 @@ class _Numpad extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
           child: Material(
-            color: AppColors.bg,
-            borderRadius: BorderRadius.circular(12),
+            color: const Color(0xFF141E30),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+              side: BorderSide(color: Colors.white.withOpacity(0.08), width: 1),
+            ),
             child: InkWell(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               onTap: () {
                 HapticFeedback.selectionClick();
                 (tap ?? () => onKey(label))();
@@ -697,7 +755,7 @@ class _Numpad extends StatelessWidget {
                 height: isSmall ? 42 : 48,
                 child: Center(
                   child: icon != null
-                      ? Icon(icon, color: AppColors.textSecondary, size: 18)
+                      ? Icon(icon, color: AppColors.mutedForeground, size: 18)
                       : Text(label, style: TextStyle(fontSize: isSmall ? 16 : 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 ),
               ),

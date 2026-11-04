@@ -62,9 +62,8 @@ class _DailyBudgetSheetState extends State<_DailyBudgetSheet> {
 
     return SafeArea(
       child: Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: AppColors.cardDecoration(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         ),
         child: Padding(
           padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
@@ -73,10 +72,14 @@ class _DailyBudgetSheetState extends State<_DailyBudgetSheet> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
-                child: const Icon(Icons.today_outlined, color: AppColors.primary, size: 20),
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.cardBgSolid,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.borderLight, width: 1),
+                ),
+                child: const Icon(Icons.today_outlined, color: AppColors.skyBlue, size: 22),
               ),
               const SizedBox(height: 12),
               const Text('Set a daily spending target', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
@@ -93,9 +96,21 @@ class _DailyBudgetSheetState extends State<_DailyBudgetSheet> {
                 inputFormatters: MoneyInput.formatters,
                 decoration: InputDecoration(
                   labelText: 'Daily budget ($symbol)',
+                  labelStyle: const TextStyle(color: AppColors.textSecondary),
                   filled: true,
-                  fillColor: AppColors.bg,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  fillColor: AppColors.cardBgSolid,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                    borderSide: const BorderSide(color: AppColors.skyBlue, width: 1.5),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -111,21 +126,30 @@ class _DailyBudgetSheetState extends State<_DailyBudgetSheet> {
                     await vm.updateSettings(s);
                     if (context.mounted) Navigator.pop(context);
                   },
-                  child: const Text('Save'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                  child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
               ),
               const SizedBox(height: 4),
-              TextButton(
-                onPressed: () async {
-                  // Skipping still needs a value so the prompt doesn't fire on every
-                  // launch; fall back to the suggested amount already in the field.
-                  final v = double.tryParse(_ctrl.text.replaceAll(',', '')) ?? 20000.0;
-                  final s = vm.settings;
-                  s.dailyBudget = v;
-                  await vm.updateSettings(s);
-                  if (context.mounted) Navigator.pop(context);
-                },
-                child: const Text('Use suggested amount', style: TextStyle(color: AppColors.mutedForeground, fontWeight: FontWeight.w600)),
+              Center(
+                child: TextButton(
+                  onPressed: () async {
+                    // Skipping still needs a value so the prompt doesn't fire on every
+                    // launch; fall back to the suggested amount already in the field.
+                    final v = double.tryParse(_ctrl.text.replaceAll(',', '')) ?? 20000.0;
+                    final s = vm.settings;
+                    s.dailyBudget = v;
+                    await vm.updateSettings(s);
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
+                  child: const Text('Use suggested amount', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
               ),
             ],
           ),

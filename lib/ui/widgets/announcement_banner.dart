@@ -28,9 +28,10 @@ class AnnouncementBanner extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          border: Border.all(color: color.withValues(alpha: 0.35)),
+          color: AppColors.cardBgSolid,
+          borderRadius: BorderRadius.circular(AppColors.radiusCard),
+          border: Border.all(color: color.withValues(alpha: 0.35), width: 1),
+          boxShadow: AppColors.subtleShadow,
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,7 +46,7 @@ class AnnouncementBanner extends StatelessWidget {
                     Text(a.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                   if (a.body.isNotEmpty) ...[
                     const SizedBox(height: 2),
-                    Text(a.body, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, height: 1.4)),
+                    Text(a.body, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
                   ],
                 ],
               ),
@@ -53,7 +54,7 @@ class AnnouncementBanner extends StatelessWidget {
             IconButton(
               tooltip: 'Dismiss',
               visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.close, size: 18, color: AppColors.mutedForeground),
+              icon: const Icon(Icons.close, size: 18, color: AppColors.textSecondary),
               onPressed: () => service.dismiss(a.id),
             ),
           ],

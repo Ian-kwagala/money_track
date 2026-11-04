@@ -18,8 +18,11 @@ class CaptureReviewBanner extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Material(
-        color: AppColors.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        color: const Color(0xFF141E30),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          side: BorderSide(color: AppColors.primary.withValues(alpha: 0.35), width: 1),
+        ),
         child: InkWell(
           borderRadius: BorderRadius.circular(AppColors.radiusMd),
           onTap: () => Navigator.pushNamed(context, '/capture'),
@@ -37,7 +40,7 @@ class CaptureReviewBanner extends StatelessWidget {
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       const SizedBox(height: 2),
                       const Text('From your MTN, Airtel and bank SMS',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          style: TextStyle(fontSize: 12, color: AppColors.mutedForeground)),
                     ],
                   ),
                 ),

@@ -25,10 +25,18 @@ Future<void> showWalletEditor(BuildContext context, {Wallet? wallet}) async {
         labelText: label,
         hintText: hint,
         filled: true,
-        fillColor: AppColors.muted,
+        fillColor: const Color(0xFF141E30),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
       );
 

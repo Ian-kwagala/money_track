@@ -192,14 +192,13 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
     // The provider's own wallet slot is empty, e.g. no NSSF wallet exists
     // yet; offer to create one.
     final providerSideEmpty = _d.type == TxType.transfer && _m.kind.isMoneyIn ? _d.toWalletId == null : _d.walletId == null;
-    final kindColor = _m.kind.isMoneyIn ? AppColors.income : AppColors.danger;
+    final kindColor = _m.kind.isMoneyIn ? AppColors.badgeMintText : AppColors.danger;
 
     return SafeArea(
       child: Container(
         constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.92),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: AppColors.cardDecoration(
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
         ),
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
@@ -314,6 +313,13 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
                         avatar: Icon(c.iconData, size: 16, color: Color(c.color)),
                         label: Text(c.name),
                         selected: _d.categoryId == c.id,
+                        selectedColor: AppColors.chipSelected,
+                        backgroundColor: AppColors.cardBgSolid,
+                        side: BorderSide(
+                          color: _d.categoryId == c.id ? AppColors.skyBlue : AppColors.borderLight,
+                          width: 1,
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
                         onSelected: (_) => setState(() => _d.categoryId = c.id),
                       ),
                   ],
@@ -345,7 +351,11 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppColors.elevated, borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+                decoration: BoxDecoration(
+                  color: AppColors.cardBgSolid,
+                  borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                  border: Border.all(color: AppColors.borderLight, width: 1),
+                ),
                 child: Text(widget.capture.record.body, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, height: 1.4)),
               ),
               const SizedBox(height: 20),
@@ -369,7 +379,12 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: _busy ? null : _ignore,
-                      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(0, 48),
+                        side: const BorderSide(color: AppColors.borderLight, width: 1),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
+                        foregroundColor: AppColors.textSecondary,
+                      ),
                       child: const Text('Ignore'),
                     ),
                   ),
@@ -395,15 +410,24 @@ class _CaptureReviewSheetState extends State<CaptureReviewSheet> {
   }
 }
 
-/// Tinted so fields stand out on the white sheet (the app theme fills
-/// fields with white and hides their border).
+/// Tinted so fields stand out on the sheet.
 InputDecoration _field(String label) => InputDecoration(
       labelText: label,
+      labelStyle: const TextStyle(color: AppColors.textSecondary),
       filled: true,
-      fillColor: AppColors.bg,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: BorderSide.none),
-      enabledBorder:
-          OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: BorderSide.none),
+      fillColor: AppColors.cardBgSolid,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        borderSide: const BorderSide(color: AppColors.skyBlue, width: 1.5),
+      ),
     );
 
 /// Outlined button showing the current date or time; tapping opens a picker.
@@ -422,9 +446,10 @@ class _PickerButton extends StatelessWidget {
         minimumSize: const Size(0, 48),
         alignment: Alignment.centerLeft,
         foregroundColor: AppColors.textPrimary,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+        side: const BorderSide(color: AppColors.borderLight, width: 1),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
       ),
-      icon: Icon(icon, size: 18),
+      icon: Icon(icon, size: 18, color: AppColors.skyBlue),
       label: Text(label, overflow: TextOverflow.ellipsis),
     );
   }
@@ -479,8 +504,9 @@ class _Notice extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: AppColors.cardBgSolid,
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
+        border: Border.all(color: color.withValues(alpha: 0.35), width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

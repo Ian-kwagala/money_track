@@ -215,7 +215,6 @@ class GoalDetailsScreen extends StatelessWidget {
         ),
       ),
     );
-    );
   }
 
   /// Deletes the goal after confirming, then goes back to the goals list.

@@ -118,93 +118,122 @@ class _LockScreenState extends State<LockScreen> {
     final name = vm.settings.profileName;
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            // Tighter spacing and smaller keys on short screens, so the
-            // numpad fits without scrolling.
-            final isSmall = constraints.maxHeight < 700;
-            return Column(
-              children: [
-                SizedBox(height: isSmall ? 20 : 40),
-                Container(
-                  width: 72,
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, 6))],
-                  ),
-                  child: const Icon(Icons.lock_outline, color: AppColors.primary, size: 32),
-                ),
-                SizedBox(height: isSmall ? 12 : 20),
-                Text('Hi $name 👋', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                const SizedBox(height: 6),
-                const Text('Enter your PIN to view your data', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                SizedBox(height: isSmall ? 16 : 28),
-                // PIN dots (supports 4 to 6 digits cleanly)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(6, (i) {
-                    final filled = i < _pin.length;
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 6),
-                      width: 14,
-                      height: 14,
-                      decoration: BoxDecoration(
-                        color: filled ? AppColors.primary : Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: filled ? AppColors.primary : AppColors.divider, width: 1.5),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 10),
-                if (_error != null)
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Tighter spacing and smaller keys on short screens, so the
+              // numpad fits without scrolling.
+              final isSmall = constraints.maxHeight < 700;
+              return Column(
+                children: [
+                  SizedBox(height: isSmall ? 20 : 40),
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 24),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(8)),
-                    child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.danger, fontSize: 12, fontWeight: FontWeight.w500)),
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.cardGradient,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withOpacity(0.12)),
+                      boxShadow: AppColors.shadowSoft,
+                    ),
+                    child: const Icon(Icons.lock_outline, color: AppColors.primary, size: 32),
                   ),
-                const Spacer(),
-                // Numpad
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: _LockNumpad(
-                    onKey: _onKey,
-                    isSmall: isSmall,
-                    enabled: _cooldownSeconds == 0 && !_loading,
+                  SizedBox(height: isSmall ? 12 : 20),
+                  Text('Hi $name 👋', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                  const SizedBox(height: 6),
+                  const Text('Enter your PIN to view your data', style: TextStyle(fontSize: 13, color: AppColors.mutedForeground)),
+                  SizedBox(height: isSmall ? 16 : 28),
+                  // PIN dots (supports 4 to 6 digits cleanly)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(6, (i) {
+                      final filled = i < _pin.length;
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: filled ? AppColors.primary : Colors.transparent,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: filled ? AppColors.primary : AppColors.borderLight, width: 1.5),
+                        ),
+                      );
+                    }),
                   ),
-                ),
-                SizedBox(height: isSmall ? 12 : 16),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _pin.length >= 4 && !_loading && _cooldownSeconds == 0 ? _verify : null,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primaryDark,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: _loading
-                          ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                          : const Text('Unlock', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                  const SizedBox(height: 10),
+                  if (_error != null)
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(color: AppColors.danger.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(AppColors.radiusSm)),
+                      child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.danger, fontSize: 12, fontWeight: FontWeight.w500)),
+                    ),
+                  const Spacer(),
+                  // Numpad
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: _LockNumpad(
+                      onKey: _onKey,
+                      isSmall: isSmall,
+                      enabled: _cooldownSeconds == 0 && !_loading,
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => _showForgotDialog(context),
-                  child: const Text('Forgot PIN?', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                ),
-                const SizedBox(height: 12),
-              ],
-            );
-          },
+                  SizedBox(height: isSmall ? 12 : 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF18263E), Color(0xFF0F172A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                          border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                          boxShadow: const [
+                            BoxShadow(color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 4)),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                            onTap: _pin.length >= 4 && !_loading && _cooldownSeconds == 0 ? _verify : null,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              child: Center(
+                                child: _loading
+                                    ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
+                                    : Text(
+                                        'Unlock',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 15,
+                                          color: _pin.length >= 4 ? AppColors.primary : AppColors.mutedForeground,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: () => _showForgotDialog(context),
+                    child: const Text('Forgot PIN?', style: TextStyle(color: AppColors.mutedForeground, fontSize: 13)),
+                  ),
+                  const SizedBox(height: 12),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -250,13 +279,16 @@ class _LockNumpad extends StatelessWidget {
             child: Container(
               height: isSmall ? 56 : 64,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF141E30),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.divider),
+                border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, 2)),
+                ],
               ),
               child: Center(
                 child: icon != null
-                    ? Icon(icon, color: AppColors.textPrimary, size: 20)
+                    ? Icon(icon, color: icon == Icons.check ? AppColors.badgeMintText : AppColors.mutedForeground, size: 20)
                     : Text(label, style: TextStyle(fontSize: isSmall ? 20 : 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
               ),
             ),

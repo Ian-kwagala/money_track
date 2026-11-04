@@ -196,62 +196,79 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     final user = vm.currentUser;
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: AppColors.bg,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => Navigator.pop(context)),
         title: const Text('Account & Security', style: TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
         centerTitle: false,
       ),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header profile
-            Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
-                      child: const Icon(Icons.person, color: AppColors.primary, size: 28),
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header profile
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                    side: const BorderSide(color: AppColors.borderLight, width: 1),
+                  ),
+                  child: Container(
+                    decoration: AppColors.cardDecoration(),
+                    padding: const EdgeInsets.all(18),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF141E30),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+                          ),
+                          child: const Icon(Icons.person, color: AppColors.primary, size: 28),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                            Text(user.name.isEmpty ? 'Ian' : user.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                            const SizedBox(height: 2),
+                            Text(user.phone.isEmpty ? 'No phone' : user.phone, style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground)),
+                            if (user.email.isNotEmpty) Text(user.email, style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground)),
+                          ]),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: AppColors.pillBadgeDecoration(),
+                          child: Text(user.incomeSource == 'informal' ? 'Informal' : 'Salary', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text(user.name.isEmpty ? 'Ian' : user.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                        const SizedBox(height: 2),
-                        Text(user.phone.isEmpty ? 'No phone' : user.phone, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                        if (user.email.isNotEmpty) Text(user.email, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                      ]),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(20)),
-                      child: Text(user.incomeSource == 'informal' ? 'Informal' : 'Salary', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
             const SizedBox(height: 16),
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Padding(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                side: const BorderSide(color: AppColors.borderLight, width: 1),
+              ),
+              child: Container(
+                decoration: AppColors.cardDecoration(),
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('Account details', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                     const SizedBox(height: 4),
-                    const Text('Update your personal information and income source.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    const Text('Update your personal information and income source.', style: TextStyle(fontSize: 12, color: AppColors.mutedForeground)),
                     const SizedBox(height: 16),
                     const Text('Username *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                     const SizedBox(height: 6),
@@ -259,10 +276,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       controller: _nameCtrl,
                       decoration: InputDecoration(
                         hintText: 'Username',
+                        hintStyle: const TextStyle(color: AppColors.mutedForeground),
                         filled: true,
-                        fillColor: AppColors.bg,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        prefixIcon: const Icon(Icons.person_outline, size: 18, color: AppColors.textSecondary),
+                        fillColor: const Color(0xFF141E30),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                        prefixIcon: const Icon(Icons.person_outline, size: 18, color: AppColors.mutedForeground),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -273,10 +293,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
                         hintText: '+256 700 000000',
+                        hintStyle: const TextStyle(color: AppColors.mutedForeground),
                         filled: true,
-                        fillColor: AppColors.bg,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        prefixIcon: const Icon(Icons.phone_outlined, size: 18, color: AppColors.textSecondary),
+                        fillColor: const Color(0xFF141E30),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                        prefixIcon: const Icon(Icons.phone_outlined, size: 18, color: AppColors.mutedForeground),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -287,33 +310,42 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
                         hintText: 'email@example.com',
+                        hintStyle: const TextStyle(color: AppColors.mutedForeground),
                         filled: true,
-                        fillColor: AppColors.bg,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        prefixIcon: const Icon(Icons.email_outlined, size: 18, color: AppColors.textSecondary),
+                        fillColor: const Color(0xFF141E30),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                        prefixIcon: const Icon(Icons.email_outlined, size: 18, color: AppColors.mutedForeground),
                       ),
                     ),
                     const SizedBox(height: 12),
                     const Text('Source of income', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                     const SizedBox(height: 6),
                     Container(
-                      decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF141E30),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.borderLight, width: 1),
+                      ),
+                      padding: const EdgeInsets.all(4),
                       child: Row(
                         children: [
                           Expanded(
                             child: GestureDetector(
                               onTap: () => setState(() => _incomeSource = 'salary'),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
                                 decoration: BoxDecoration(
-                                  color: _incomeSource == 'salary' ? Colors.white : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: _incomeSource == 'salary' ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))] : null,
+                                  gradient: _incomeSource == 'salary' ? AppColors.cardGradient : null,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: _incomeSource == 'salary' ? Border.all(color: Colors.white.withOpacity(0.12), width: 1) : null,
+                                  boxShadow: _incomeSource == 'salary' ? const [BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 2))] : null,
                                 ),
                                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                  Icon(Icons.work_outline, size: 16, color: _incomeSource == 'salary' ? AppColors.primary : AppColors.textSecondary),
+                                  Icon(Icons.work_outline, size: 16, color: _incomeSource == 'salary' ? AppColors.primary : AppColors.mutedForeground),
                                   const SizedBox(width: 6),
-                                  Text('Salary', style: TextStyle(fontWeight: FontWeight.w600, color: _incomeSource == 'salary' ? AppColors.primary : AppColors.textSecondary)),
+                                  Text('Salary', style: TextStyle(fontWeight: FontWeight.w600, color: _incomeSource == 'salary' ? AppColors.primary : AppColors.mutedForeground)),
                                 ]),
                               ),
                             ),
@@ -322,16 +354,17 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                             child: GestureDetector(
                               onTap: () => setState(() => _incomeSource = 'informal'),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
                                 decoration: BoxDecoration(
-                                  color: _incomeSource == 'informal' ? Colors.white : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: _incomeSource == 'informal' ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))] : null,
+                                  gradient: _incomeSource == 'informal' ? AppColors.cardGradient : null,
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: _incomeSource == 'informal' ? Border.all(color: Colors.white.withOpacity(0.12), width: 1) : null,
+                                  boxShadow: _incomeSource == 'informal' ? const [BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 2))] : null,
                                 ),
                                 child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                                  Icon(Icons.handyman_outlined, size: 16, color: _incomeSource == 'informal' ? AppColors.primary : AppColors.textSecondary),
+                                  Icon(Icons.handyman_outlined, size: 16, color: _incomeSource == 'informal' ? AppColors.primary : AppColors.mutedForeground),
                                   const SizedBox(width: 6),
-                                  Text('Informal', style: TextStyle(fontWeight: FontWeight.w600, color: _incomeSource == 'informal' ? AppColors.primary : AppColors.textSecondary)),
+                                  Text('Informal', style: TextStyle(fontWeight: FontWeight.w600, color: _incomeSource == 'informal' ? AppColors.primary : AppColors.mutedForeground)),
                                 ]),
                               ),
                             ),
@@ -346,9 +379,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       controller: _occupationCtrl,
                       decoration: InputDecoration(
                         hintText: _incomeSource == 'salary' ? 'e.g. Teacher' : 'e.g. Shop owner',
+                        hintStyle: const TextStyle(color: AppColors.mutedForeground),
                         filled: true,
-                        fillColor: AppColors.bg,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        fillColor: const Color(0xFF141E30),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -360,9 +396,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       inputFormatters: MoneyInput.formatters,
                       decoration: InputDecoration(
                         hintText: 'e.g. 2,500,000',
+                        hintStyle: const TextStyle(color: AppColors.mutedForeground),
                         filled: true,
-                        fillColor: AppColors.bg,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        fillColor: const Color(0xFF141E30),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -372,8 +411,10 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       initialValue: _incomeFrequency,
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: AppColors.bg,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        fillColor: const Color(0xFF141E30),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       ),
                       items: [for (final f in IncomeFrequency.values) DropdownMenuItem(value: f, child: Text(f.label))],
@@ -384,7 +425,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        const Expanded(child: Text('My income varies month to month', style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                        const Expanded(child: Text('My income varies month to month', style: TextStyle(fontSize: 12, color: AppColors.mutedForeground))),
                         Switch(value: _isVariable, onChanged: (v) => setState(() => _isVariable = v), activeThumbColor: AppColors.primary),
                       ],
                     ),
@@ -394,7 +435,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     const Text('Used to know when to ask if you’ve been paid again.', style: TextStyle(fontSize: 10, color: AppColors.mutedForeground)),
                     const SizedBox(height: 6),
                     InkWell(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(14),
                       onTap: () async {
                         final picked = await showDatePicker(
                           context: context,
@@ -407,10 +448,14 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                        decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF141E30),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.borderLight, width: 1),
+                        ),
                         child: Row(
                           children: [
-                            const Icon(Icons.event_outlined, size: 16, color: AppColors.textSecondary),
+                            const Icon(Icons.event_outlined, size: 16, color: AppColors.mutedForeground),
                             const SizedBox(width: 8),
                             Text(
                               _lastPayDate == null ? 'Not set' : DateFormat('d MMM yyyy').format(_lastPayDate!),
@@ -421,12 +466,33 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _saving ? null : _save,
-                        style: FilledButton.styleFrom(backgroundColor: AppColors.primaryDark, padding: const EdgeInsets.symmetric(vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
-                        child: _saving ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Save changes', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF18263E), Color(0xFF0F172A)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                        border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                        boxShadow: const [
+                          BoxShadow(color: Color(0x1A000000), blurRadius: 10, offset: Offset(0, 4)),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                          onTap: _saving ? null : _save,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            child: Center(
+                              child: _saving
+                                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
+                                  : const Text('Save changes', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14, color: AppColors.textPrimary)),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -435,21 +501,43 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
             const SizedBox(height: 16),
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Padding(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                side: const BorderSide(color: AppColors.borderLight, width: 1),
+              ),
+              child: Container(
+                decoration: AppColors.cardDecoration(),
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text('Security', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                     const SizedBox(height: 4),
-                    const Text('Protect your financial data with a PIN required on every sign in.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                    const Text('Protect your financial data with a PIN required on every sign in.', style: TextStyle(fontSize: 12, color: AppColors.mutedForeground)),
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        Container(width: 36, height: 36, decoration: const BoxDecoration(color: AppColors.bg, shape: BoxShape.circle), child: const Icon(Icons.lock_outline, color: AppColors.primary, size: 18)),
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF141E30),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+                          ),
+                          child: const Icon(Icons.lock_outline, color: AppColors.primary, size: 18),
+                        ),
                         const SizedBox(width: 12),
-                        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('App lock', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary)), Text('Require PIN on every open', style: TextStyle(fontSize: 11, color: AppColors.textSecondary))])),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('App lock', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                              Text('Require PIN on every open', style: TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
+                            ],
+                          ),
+                        ),
                         // Turning the lock on without a PIN asks for one first.
                         Switch(
                           value: s.appLockEnabled,
@@ -470,17 +558,26 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: _changePin,
-                        icon: const Icon(Icons.key_outlined, size: 16),
+                        icon: const Icon(Icons.key_outlined, size: 16, color: AppColors.primary),
                         label: Text(s.appLockEnabled && vm.hasPin ? 'Change PIN' : 'Set PIN'),
-                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), side: const BorderSide(color: AppColors.divider)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
+                          side: const BorderSide(color: AppColors.borderLight),
+                          foregroundColor: AppColors.textPrimary,
+                        ),
                       ),
                     ),
                     if (s.appLockEnabled) ...[
                       const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(10), border: Border.all(color: const Color(0xFFDBEAFE))),
-                        child: const Row(children: [Icon(Icons.info_outline, size: 14, color: Color(0xFF2563EB)), SizedBox(width: 6), Expanded(child: Text('Your data will be locked and require PIN on every launch.', style: TextStyle(fontSize: 11, color: Color(0xFF2563EB))))]),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF141E30),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.30)),
+                        ),
+                        child: const Row(children: [Icon(Icons.info_outline, size: 14, color: AppColors.primary), SizedBox(width: 6), Expanded(child: Text('Your data will be locked and require PIN on every launch.', style: TextStyle(fontSize: 11, color: AppColors.primary)))]),
                       ),
                     ],
                   ],
@@ -489,8 +586,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
             const SizedBox(height: 16),
             Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              child: Padding(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                side: const BorderSide(color: AppColors.borderLight, width: 1),
+              ),
+              child: Container(
+                decoration: AppColors.cardDecoration(),
                 padding: const EdgeInsets.all(18),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -504,10 +606,19 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 6),
                           child: Row(children: [
-                            Container(width: 32, height: 32, decoration: BoxDecoration(color: Color(w.color).withValues(alpha: 0.15), shape: BoxShape.circle), child: Icon(w.type.icon, color: Color(w.color), size: 16)),
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: Color(w.color).withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+                              ),
+                              child: Icon(w.type.icon, color: Color(w.color), size: 16),
+                            ),
                             const SizedBox(width: 12),
-                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(w.name, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)), Text(MoneyFormat.signed(w.currentBalance, symbol: vm.settings.currencySymbol), style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))])),
-                            const Icon(Icons.chevron_right, color: AppColors.textSecondary, size: 16),
+                            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(w.name, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)), Text(MoneyFormat.signed(w.currentBalance, symbol: vm.settings.currencySymbol), style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground))])),
+                            const Icon(Icons.chevron_right, color: AppColors.mutedForeground, size: 16),
                           ]),
                         ),
                       ),
@@ -516,7 +627,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       width: double.infinity,
                       child: OutlinedButton(
                         onPressed: () => showWalletEditor(context),
-                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), side: const BorderSide(color: AppColors.divider)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
+                          side: const BorderSide(color: AppColors.borderLight),
+                        ),
                         child: const Text('+ Add wallet', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
                       ),
                     ),
@@ -526,13 +641,34 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
             const SizedBox(height: 16),
             Card(
-              color: const Color(0xFFFEF2F2),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              elevation: 0,
+              color: AppColors.danger.withValues(alpha: 0.12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusXl),
+                side: BorderSide(color: AppColors.danger.withValues(alpha: 0.3), width: 1),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    Row(children: [Container(width: 36, height: 36, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle), child: const Icon(Icons.logout, color: AppColors.danger, size: 18)), const SizedBox(width: 12), const Expanded(child: Text('Lock now', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary))), FilledButton(onPressed: () { vm.lock(); Navigator.pop(context); }, style: FilledButton.styleFrom(backgroundColor: AppColors.danger, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))), child: const Text('Lock', style: TextStyle(color: Colors.white)))]),
+                    Row(children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(color: const Color(0xFF141E30), shape: BoxShape.circle, border: Border.all(color: Colors.white.withOpacity(0.08), width: 1)),
+                        child: const Icon(Icons.logout, color: AppColors.danger, size: 18),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(child: Text('Lock now', style: TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary))),
+                      FilledButton(
+                        onPressed: () { vm.lock(); Navigator.pop(context); },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.danger,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
+                        ),
+                        child: const Text('Lock', style: TextStyle(color: Colors.white)),
+                      ),
+                    ]),
                     const SizedBox(height: 12),
                     // "Clear all data" runs vm.clearAll, which deletes every
                     // transaction only. Wallets, budgets, goals, bills, debts
@@ -547,7 +683,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                             if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Data cleared')));
                           }
                         },
-                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), side: const BorderSide(color: AppColors.danger)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
+                          side: const BorderSide(color: AppColors.danger),
+                        ),
                         child: const Text('Clear all data', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600)),
                       ),
                     ),
@@ -557,6 +697,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             ),
           ],
         ),
+      ),
       ),
       ),
     );

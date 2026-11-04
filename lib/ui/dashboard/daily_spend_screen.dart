@@ -93,7 +93,7 @@ class DailySpendScreen extends StatelessWidget {
                                         strokeWidth: 14,
                                         backgroundColor: const Color(0xFF141E30),
                                         valueColor: AlwaysStoppedAnimation<Color>(
-                                          todayPct >= 1 ? AppColors.danger : AppColors.primary,
+                                          color,
                                         ),
                                         strokeCap: StrokeCap.round,
                                       ),

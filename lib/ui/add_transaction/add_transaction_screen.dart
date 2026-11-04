@@ -104,6 +104,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final isTransfer = _type == TxType.transfer;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(
             '${widget.edit != null ? 'Edit' : 'Add'} ${isTransfer ? 'transfer' : _type == TxType.income ? 'income' : 'expense'}'),
@@ -114,61 +115,68 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         actions: [
           if (widget.edit != null)
             IconButton(
-              icon: const Icon(Icons.delete_outline),
+              icon: const Icon(Icons.delete_outline, color: AppColors.danger),
               tooltip: 'Delete transaction',
               onPressed: _delete,
             ),
         ],
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SegmentedButton<TxType>(
-                segments: const [
-                  ButtonSegment(value: TxType.expense, label: Text('Expense')),
-                  ButtonSegment(value: TxType.income, label: Text('Income')),
-                  ButtonSegment(value: TxType.transfer, label: Text('Transfer')),
-                ],
-                selected: {_type},
-                onSelectionChanged: (s) => setState(() {
-                  _type = s.first;
-                  _categoryId = null;
-                }),
-                showSelectedIcon: false,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    symbol,
-                    style: theme.textTheme.headlineSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: _amountCtrl,
-                      keyboardType: MoneyInput.keyboardType,
-                      inputFormatters: MoneyInput.formatters,
-                      autofocus: widget.edit == null,
-                      style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
-                      decoration: const InputDecoration(
-                        hintText: '0.00',
-                        border: InputBorder.none,
-                        filled: false,
+      body: Container(
+        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
+        child: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SegmentedButton<TxType>(
+                  segments: const [
+                    ButtonSegment(value: TxType.expense, label: Text('Expense')),
+                    ButtonSegment(value: TxType.income, label: Text('Income')),
+                    ButtonSegment(value: TxType.transfer, label: Text('Transfer')),
+                  ],
+                  selected: {_type},
+                  onSelectionChanged: (s) => setState(() {
+                    _type = s.first;
+                    _categoryId = null;
+                  }),
+                  showSelectedIcon: false,
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      symbol,
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: AppColors.mutedForeground,
+                        fontWeight: FontWeight.w700,
                       ),
-                      onChanged: (_) => setState(() {}),
                     ),
-                  ),
-                ],
-              ),
-              const Divider(height: 32),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _amountCtrl,
+                        keyboardType: MoneyInput.keyboardType,
+                        inputFormatters: MoneyInput.formatters,
+                        autofocus: widget.edit == null,
+                        style: theme.textTheme.displaySmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                        decoration: const InputDecoration(
+                          hintText: '0.00',
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          filled: false,
+                        ),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 32, color: AppColors.borderLight),
 
               if (!isTransfer) ...[
                 const _Label('CATEGORY'),
@@ -203,9 +211,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                     ? Color(cat.color)
                                     : Color(cat.color).withValues(alpha: 0.15),
                                 shape: BoxShape.circle,
-                                border: selected
-                                    ? Border.all(color: Color(cat.color), width: 2)
-                                    : null,
+                                border: Border.all(
+                                  color: selected ? Color(cat.color) : Colors.white.withOpacity(0.08),
+                                  width: selected ? 2 : 1,
+                                ),
                               ),
                               child: Icon(
                                 cat.iconData,
@@ -221,6 +230,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                                color: selected ? AppColors.textPrimary : AppColors.mutedForeground,
                               ),
                             ),
                           ],
@@ -282,13 +292,15 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: _pickDateTime,
-                  icon: const Icon(Icons.calendar_month_outlined),
+                  icon: const Icon(Icons.calendar_month_outlined, color: AppColors.primary),
                   label: Text(_fmtDateTime(_dateTime)),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(AppColors.radiusPill),
                     ),
+                    side: const BorderSide(color: AppColors.borderLight, width: 1),
+                    foregroundColor: AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -337,6 +349,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -461,7 +474,12 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.8,
+        color: AppColors.mutedForeground,
+      ),
     );
   }
 }
@@ -489,6 +507,18 @@ class _WalletChips extends StatelessWidget {
             avatar: Icon(w.type.icon, size: 18),
             label: Text(w.name),
             selected: w.id == selectedId,
+            shape: StadiumBorder(
+              side: BorderSide(
+                color: w.id == selectedId ? AppColors.primary : AppColors.borderLight,
+                width: 1,
+              ),
+            ),
+            backgroundColor: const Color(0xFF141E30),
+            selectedColor: const Color(0xFF1E3A5F),
+            labelStyle: TextStyle(
+              color: w.id == selectedId ? AppColors.primary : AppColors.mutedForeground,
+              fontWeight: w.id == selectedId ? FontWeight.w700 : FontWeight.w500,
+            ),
             onSelected: (_) => onSelect(w.id),
           ),
       ],

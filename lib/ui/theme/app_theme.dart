@@ -31,6 +31,11 @@ class AppColors {
   static const primary = Color(0xFF38BDF8); // Glowing sky blue
   static const primaryForeground = Colors.white;
   static const primaryDark = Color(0xFF0F172A);
+  static const skyBlue = Color(0xFF38BDF8);
+  static const cardBgSolid = Color(0xFF141E30);
+  static const mintGreen = Color(0xFF34D399);
+  static const badgeBorder = Color(0x3338BDF8);
+  static const radiusCard = 22.0;
 
   // Muted & Secondary Text
   static const muted = Color(0xFF1E2D4A);
@@ -102,6 +107,7 @@ class AppColors {
   static const shadowSoft = [
     BoxShadow(color: Color(0x1A000000), blurRadius: 16, offset: Offset(0, 8)),
   ];
+  static const subtleShadow = shadowSoft;
   static const shadowLift = [
     BoxShadow(color: Color(0x33000000), blurRadius: 24, offset: Offset(0, 10)),
     BoxShadow(color: Color(0x141A2C4E), blurRadius: 16, offset: Offset(0, 4)),
