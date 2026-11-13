@@ -38,6 +38,36 @@ class TrackerViewModel extends ChangeNotifier {
   /// or error state until then.
   bool initialized = false;
 
+  /// Tracks active data loading or refreshing in the background.
+  bool _isLoading = false;
+
+  /// Whether the app is actively loading or refreshing data in the foreground.
+  /// Used by skeleton loaders to display animated placeholders.
+  bool get isLoading => _isLoading;
+
+  /// Sets the loading state and updates listeners.
+  void setLoading(bool loading) {
+    if (_isLoading != loading) {
+      _isLoading = loading;
+      notifyListeners();
+    }
+  }
+
+  /// Refreshes local storage and cloud sync while temporarily
+  /// engaging the skeleton loading state for smooth visual feedback.
+  Future<void> refreshData() async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      // Re-read storage and refresh listeners.
+      await Future<void>.delayed(const Duration(milliseconds: 350));
+      refreshFromStorage();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   /// Whether the user has entered their PIN this session. Not persisted, so
   /// the app is locked again after every restart.
   bool _isUnlocked = false;
@@ -257,7 +287,48 @@ class TrackerViewModel extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   // Wallets
   // ---------------------------------------------------------------------------
-  List<Wallet> get wallets => repo.wallets;
+  /// Wallets ordered with the most-used and most recently used ones first,
+  /// falling back to the original storage order on ties.
+  List<Wallet> get wallets => _rankWallets(repo.wallets);
+
+  List<Wallet> _rankWallets(List<Wallet> raw) {
+    if (raw.length <= 1) return raw;
+    final counts = <String, int>{};
+    final lastUsed = <String, DateTime>{};
+    for (final t in repo.transactions) {
+      if (t.walletId.isNotEmpty) {
+        counts[t.walletId] = (counts[t.walletId] ?? 0) + 1;
+        final prev = lastUsed[t.walletId];
+        if (prev == null || t.dateTime.isAfter(prev)) {
+          lastUsed[t.walletId] = t.dateTime;
+        }
+      }
+      final toId = t.toWalletId;
+      if (toId != null && toId.isNotEmpty) {
+        counts[toId] = (counts[toId] ?? 0) + 1;
+        final prev = lastUsed[toId];
+        if (prev == null || t.dateTime.isAfter(prev)) {
+          lastUsed[toId] = t.dateTime;
+        }
+      }
+    }
+    final order = {for (final (i, w) in raw.indexed) w.id: i};
+    return [...raw]..sort((a, b) {
+        final byCount = (counts[b.id] ?? 0).compareTo(counts[a.id] ?? 0);
+        if (byCount != 0) return byCount;
+        final dateA = lastUsed[a.id];
+        final dateB = lastUsed[b.id];
+        if (dateA != null && dateB != null) {
+          final byRecent = dateB.compareTo(dateA);
+          if (byRecent != 0) return byRecent;
+        } else if (dateB != null) {
+          return 1;
+        } else if (dateA != null) {
+          return -1;
+        }
+        return order[a.id]!.compareTo(order[b.id]!);
+      });
+  }
 
   Wallet walletById(String id) => repo.walletById(id);
 
@@ -345,15 +416,51 @@ class TrackerViewModel extends ChangeNotifier {
   // ---------------------------------------------------------------------------
   // Categories
   // ---------------------------------------------------------------------------
-  List<Category> get expenseCategories => repo.expenseCategories;
+  /// Expense categories ordered by usage count and recency, with user-created
+  /// categories before unused built-in ones.
+  List<Category> get expenseCategories => _rankCategories(repo.expenseCategories);
 
-  List<Category> get incomeCategories => repo.incomeCategories;
+  /// Income categories ordered by usage count and recency, with user-created
+  /// categories before unused built-in ones.
+  List<Category> get incomeCategories => _rankCategories(repo.incomeCategories);
 
-  List<Category> get categories => repo.categories;
+  List<Category> get categories => _rankCategories(repo.categories);
 
-  /// Categories for one kind of transaction (income or expense).
+  /// Categories for one kind of transaction (income or expense), ranked by
+  /// usage count and recency.
   List<Category> categoriesOf(TxType type) =>
-      repo.categories.where((c) => c.type == type).toList();
+      _rankCategories(repo.categories.where((c) => c.type == type).toList());
+
+  List<Category> _rankCategories(List<Category> raw) {
+    if (raw.length <= 1) return raw;
+    final counts = <String, int>{};
+    final lastUsed = <String, DateTime>{};
+    for (final t in repo.transactions) {
+      if (t.categoryId.isEmpty) continue;
+      counts[t.categoryId] = (counts[t.categoryId] ?? 0) + 1;
+      final prev = lastUsed[t.categoryId];
+      if (prev == null || t.dateTime.isAfter(prev)) {
+        lastUsed[t.categoryId] = t.dateTime;
+      }
+    }
+    final order = {for (final (i, c) in raw.indexed) c.id: i};
+    return [...raw]..sort((a, b) {
+        final byCount = (counts[b.id] ?? 0).compareTo(counts[a.id] ?? 0);
+        if (byCount != 0) return byCount;
+        final dateA = lastUsed[a.id];
+        final dateB = lastUsed[b.id];
+        if (dateA != null && dateB != null) {
+          final byRecent = dateB.compareTo(dateA);
+          if (byRecent != 0) return byRecent;
+        } else if (dateB != null) {
+          return 1;
+        } else if (dateA != null) {
+          return -1;
+        }
+        if (a.isBuiltIn != b.isBuiltIn) return a.isBuiltIn ? 1 : -1;
+        return order[a.id]!.compareTo(order[b.id]!);
+      });
+  }
 
   Category? categoryById(String id) => repo.categoryById(id);
 

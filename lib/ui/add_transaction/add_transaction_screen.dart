@@ -17,11 +17,16 @@ import '../widgets/receipt_picker.dart';
 ///
 /// Also the edit screen: pass [edit] to load an existing record. Saving then
 /// overwrites it under the same ID, and a delete button appears.
+/// Pass [draft] (for example when switching from Quick Add to the full form)
+/// to pre-fill a new transaction without entering edit mode.
 class AddTransactionScreen extends StatefulWidget {
   /// The record to edit, or null to add a new one.
   final TxRecord? edit;
 
-  const AddTransactionScreen({super.key, this.edit});
+  /// Optional pre-filled values for a new transaction (e.g. from QuickAddSheet).
+  final TxRecord? draft;
+
+  const AddTransactionScreen({super.key, this.edit, this.draft});
 
   @override
   State<AddTransactionScreen> createState() => _AddTransactionScreenState();
@@ -52,18 +57,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   @override
   void initState() {
     super.initState();
-    final edit = widget.edit;
-    _amountCtrl =
-        TextEditingController(text: edit == null ? '' : _fmtAmount(edit.amount));
-    if (edit != null) {
-      _type = edit.type;
-      _categoryId = edit.categoryId.isEmpty ? null : edit.categoryId;
-      _walletId = edit.walletId;
-      _toWalletId = edit.toWalletId;
-      _dateTime = edit.dateTime;
-      _noteCtrl.text = edit.note;
-      _receiptPath = edit.receiptPath;
-      _frequency = edit.frequency;
+    final source = widget.edit ?? widget.draft;
+    _amountCtrl = TextEditingController(
+      text: source == null || source.amount <= 0 ? '' : _fmtAmount(source.amount),
+    );
+    if (source != null) {
+      _type = source.type;
+      _categoryId = source.categoryId.isEmpty ? null : source.categoryId;
+      _walletId = source.walletId;
+      _toWalletId = source.toWalletId;
+      _dateTime = source.dateTime;
+      _noteCtrl.text = source.note;
+      _receiptPath = source.receiptPath;
+      _frequency = source.frequency;
     }
   }
 
@@ -103,8 +109,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     final isTransfer = _type == TxType.transfer;
 
+    // Default to the top-ranked (most used / most recent) category when none is selected.
+    if (!isTransfer && _categoryId == null && categories.isNotEmpty) {
+      _categoryId = categories.first.id;
+    }
+
     return Scaffold(
-      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(
             '${widget.edit != null ? 'Edit' : 'Add'} ${isTransfer ? 'transfer' : _type == TxType.income ? 'income' : 'expense'}'),
@@ -115,68 +125,61 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
         actions: [
           if (widget.edit != null)
             IconButton(
-              icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+              icon: const Icon(Icons.delete_outline),
               tooltip: 'Delete transaction',
               onPressed: _delete,
             ),
         ],
       ),
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SegmentedButton<TxType>(
-                  segments: const [
-                    ButtonSegment(value: TxType.expense, label: Text('Expense')),
-                    ButtonSegment(value: TxType.income, label: Text('Income')),
-                    ButtonSegment(value: TxType.transfer, label: Text('Transfer')),
-                  ],
-                  selected: {_type},
-                  onSelectionChanged: (s) => setState(() {
-                    _type = s.first;
-                    _categoryId = null;
-                  }),
-                  showSelectedIcon: false,
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      symbol,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: AppColors.mutedForeground,
-                        fontWeight: FontWeight.w700,
-                      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SegmentedButton<TxType>(
+                segments: const [
+                  ButtonSegment(value: TxType.expense, label: Text('Expense')),
+                  ButtonSegment(value: TxType.income, label: Text('Income')),
+                  ButtonSegment(value: TxType.transfer, label: Text('Transfer')),
+                ],
+                selected: {_type},
+                onSelectionChanged: (s) => setState(() {
+                  _type = s.first;
+                  _categoryId = null;
+                }),
+                showSelectedIcon: false,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    symbol,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: _amountCtrl,
-                        keyboardType: MoneyInput.keyboardType,
-                        inputFormatters: MoneyInput.formatters,
-                        autofocus: widget.edit == null,
-                        style: theme.textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
-                        decoration: const InputDecoration(
-                          hintText: '0.00',
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          filled: false,
-                        ),
-                        onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _amountCtrl,
+                      keyboardType: MoneyInput.keyboardType,
+                      inputFormatters: MoneyInput.formatters,
+                      autofocus: widget.edit == null,
+                      style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w800),
+                      decoration: const InputDecoration(
+                        hintText: '0.00',
+                        border: InputBorder.none,
+                        filled: false,
                       ),
+                      onChanged: (_) => setState(() {}),
                     ),
-                  ],
-                ),
-                const Divider(height: 32, color: AppColors.borderLight),
+                  ),
+                ],
+              ),
+              const Divider(height: 32),
 
               if (!isTransfer) ...[
                 const _Label('CATEGORY'),
@@ -211,10 +214,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                                     ? Color(cat.color)
                                     : Color(cat.color).withValues(alpha: 0.15),
                                 shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: selected ? Color(cat.color) : Colors.white.withOpacity(0.08),
-                                  width: selected ? 2 : 1,
-                                ),
+                                border: selected
+                                    ? Border.all(color: Color(cat.color), width: 2)
+                                    : null,
                               ),
                               child: Icon(
                                 cat.iconData,
@@ -230,7 +232,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                                color: selected ? AppColors.textPrimary : AppColors.mutedForeground,
                               ),
                             ),
                           ],
@@ -292,15 +293,13 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: _pickDateTime,
-                  icon: const Icon(Icons.calendar_month_outlined, color: AppColors.primary),
+                  icon: const Icon(Icons.calendar_month_outlined),
                   label: Text(_fmtDateTime(_dateTime)),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    side: const BorderSide(color: AppColors.borderLight, width: 1),
-                    foregroundColor: AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -349,7 +348,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             ],
           ),
         ),
-      ),
       ),
     );
   }
@@ -474,12 +472,7 @@ class _Label extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.8,
-        color: AppColors.mutedForeground,
-      ),
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.5),
     );
   }
 }
@@ -507,18 +500,6 @@ class _WalletChips extends StatelessWidget {
             avatar: Icon(w.type.icon, size: 18),
             label: Text(w.name),
             selected: w.id == selectedId,
-            shape: StadiumBorder(
-              side: BorderSide(
-                color: w.id == selectedId ? AppColors.primary : AppColors.borderLight,
-                width: 1,
-              ),
-            ),
-            backgroundColor: const Color(0xFF141E30),
-            selectedColor: const Color(0xFF1E3A5F),
-            labelStyle: TextStyle(
-              color: w.id == selectedId ? AppColors.primary : AppColors.mutedForeground,
-              fontWeight: w.id == selectedId ? FontWeight.w700 : FontWeight.w500,
-            ),
             onSelected: (_) => onSelect(w.id),
           ),
       ],

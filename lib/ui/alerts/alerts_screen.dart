@@ -25,43 +25,40 @@ class _AlertsScreenState extends State<AlertsScreen> {
     final alerts = service.active(vm);
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
-        child: SafeArea(
-          top: false,
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: PageHeader(
-                  title: 'Alerts',
-                  subtitle: '${alerts.length} unread',
-                  // A tab on wide screens (no back); opened from Home on phones.
-                  back: ModalRoute.of(context)?.canPop ?? false,
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (alerts.isEmpty)
-                        const EmptyState(
-                          icon: Icons.notifications_none_rounded,
-                          title: 'No alerts yet',
-                          message: 'Set a budget or add a bill and you\'ll be\nnotified right here when something needs attention.',
-                        )
-                      else
-                        ...alerts.map((a) => _AlertCard(alert: a, onDismiss: () => service.dismiss(a.id))),
-                      const SizedBox(height: 100),
-                    ],
-                  ),
-                ),
-              ),
-            ],
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: PageHeader(
+              title: 'Alerts',
+              subtitle: '${alerts.length} unread',
+              // A tab on wide screens (no back); opened from Home on phones.
+              back: ModalRoute.of(context)?.canPop ?? false,
+            ),
           ),
-        ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (alerts.isEmpty)
+                    const EmptyState(
+                      icon: Icons.notifications_none_rounded,
+                      title: 'No alerts yet',
+                      message: 'Set a budget or add a bill and you\'ll be\nnotified right here when something needs attention.',
+                    )
+                  else
+                    ...alerts.map((a) => _AlertCard(alert: a, onDismiss: () => service.dismiss(a.id))),
+                  const SizedBox(height: 100),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
       ),
     );
   }
@@ -86,13 +83,8 @@ class _AlertCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
-      child: Container(
-        decoration: AppColors.cardDecoration(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,11 +94,7 @@ class _AlertCard extends StatelessWidget {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: BoxDecoration(
-                    color: alert.iconBg,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
-                  ),
+                  decoration: BoxDecoration(color: alert.iconBg, shape: BoxShape.circle),
                   child: Icon(alert.icon, color: alert.iconColor, size: 20),
                 ),
                 const SizedBox(width: 12),
@@ -124,8 +112,8 @@ class _AlertCard extends StatelessWidget {
                 onPressed: onDismiss,
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
-                  side: const BorderSide(color: AppColors.borderLight, width: 1),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+                  side: BorderSide(color: AppColors.border),
                   foregroundColor: AppColors.mutedForeground,
                 ),
                 child: const Text('Dismiss', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11)),

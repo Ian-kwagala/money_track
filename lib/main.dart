@@ -24,8 +24,8 @@ import 'ui/home_shell.dart';
 import 'ui/onboarding/onboarding_screen.dart';
 import 'ui/reports/reports_screen.dart';
 import 'ui/settings/category_manager_screen.dart';
-import 'ui/splash/splash_screen.dart';
 import 'ui/theme/app_theme.dart';
+import 'ui/widgets/skeleton/skeleton_loading.dart';
 import 'viewmodels/tracker_view_model.dart';
 
 /// App entry point. Builds the long-lived services, wires them together and
@@ -94,6 +94,10 @@ class MoneyTrackApp extends StatelessWidget {
       builder: (context, vm, _) => MaterialApp(
         title: 'MoneyTrack',
         debugShowCheckedModeBanner: false,
+        // Pin English locale so Android text shaping never picks CJK fallback
+        // glyphs for ambiguous punctuation or missing font weights.
+        locale: const Locale('en', 'US'),
+        supportedLocales: const [Locale('en', 'US')],
         theme: vm.initialized
             ? (vm.settings.darkMode ? AppTheme.dark() : AppTheme.light())
             : AppTheme.light(),
@@ -138,7 +142,9 @@ class _RootRouter extends StatelessWidget {
   // animates the change.
   Widget _resolveChild(TrackerViewModel vm) {
     if (!vm.initialized) {
-      return const SplashScreen(key: ValueKey('splash'));
+      // Shows an engaging skeleton layout while local storage opens,
+      // avoiding a plain screen or blank spinner.
+      return const SkeletonLoadingScreen(key: ValueKey('skeleton'));
     }
     if (vm.needsOnboarding) {
       return const OnboardingScreen(key: ValueKey('onboarding'));

@@ -33,29 +33,27 @@ class DebtsScreen extends StatelessWidget {
       });
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
-        child: SafeArea(
-          top: false,
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: PageHeader(title: 'Debts', subtitle: '${open.length} open'),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: PageHeader(title: 'Debts', subtitle: '${open.length} open'),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Row(
-                        children: [
-                          Expanded(child: _TotalCard(label: 'You owe', amount: iOwe, symbol: symbol, color: AppColors.danger)),
-                          const SizedBox(width: 12),
-                          Expanded(child: _TotalCard(label: 'Owed to you', amount: owedToMe, symbol: symbol, color: AppColors.badgeMintText)),
-                        ],
-                      ),
+                      Expanded(child: _TotalCard(label: 'You owe', amount: iOwe, symbol: symbol, color: AppColors.danger)),
+                      const SizedBox(width: 12),
+                      Expanded(child: _TotalCard(label: 'Owed to you', amount: owedToMe, symbol: symbol, color: AppColors.success)),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   if (vm.debts.isEmpty)
                     Column(
@@ -100,9 +98,8 @@ class DebtsScreen extends StatelessWidget {
               ),
             ),
           ),
-            ],
-          ),
-        ),
+        ],
+      ),
       ),
     );
   }
@@ -366,13 +363,8 @@ class _TotalCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
-      child: Container(
-        decoration: AppColors.cardDecoration(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,7 +399,7 @@ class _DebtCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final iOwe = debt.direction == DebtDirection.owedByMe;
-    final accent = iOwe ? AppColors.danger : AppColors.badgeMintText;
+    final accent = iOwe ? AppColors.danger : AppColors.success;
     final now = DateTime.now();
     // Overdue from the day after the due date (compared with today's midnight).
     final overdue = !debt.isSettled && debt.dueDate != null && debt.dueDate!.isBefore(DateTime(now.year, now.month, now.day));
@@ -416,7 +408,7 @@ class _DebtCard extends StatelessWidget {
     final Color statusColor;
     if (debt.isSettled) {
       status = 'Settled';
-      statusColor = AppColors.badgeMintText;
+      statusColor = AppColors.success;
     } else if (debt.dueDate == null) {
       status = 'No due date';
       statusColor = AppColors.mutedForeground;
@@ -432,92 +424,81 @@ class _DebtCard extends StatelessWidget {
       opacity: debt.isSettled ? 0.6 : 1,
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),
-        elevation: 0,
-        shape: RoundedRectangleBorder(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+        child: InkWell(
+          onTap: onEdit,
           borderRadius: BorderRadius.circular(AppColors.radiusXl),
-          side: const BorderSide(color: AppColors.borderLight, width: 1),
-        ),
-        child: Container(
-          decoration: AppColors.cardDecoration(),
-          child: InkWell(
-            onTap: onEdit,
-            borderRadius: BorderRadius.circular(AppColors.radiusXl),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
-                    ),
-                    child: Icon(iOwe ? Icons.call_made : Icons.call_received, color: accent, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(debt.counterparty,
-                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                            ),
-                            Text(MoneyFormat.money(debt.amount, symbol: symbol),
-                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: debt.isSettled ? AppColors.textPrimary : accent)),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          iOwe ? 'You owe' : 'Owes you',
-                          style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
-                        ),
-                        if (debt.description != null && debt.description!.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(debt.description!, style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(color: accent.withValues(alpha: 0.12), shape: BoxShape.circle),
+                  child: Icon(iOwe ? Icons.call_made : Icons.call_received, color: accent, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(debt.counterparty,
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          ),
+                          Text(MoneyFormat.money(debt.amount, symbol: symbol),
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: debt.isSettled ? AppColors.textPrimary : accent)),
                         ],
-                        const SizedBox(height: 4),
-                        Text(status, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor)),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            if (!debt.isSettled)
-                              TextButton(
-                                onPressed: onPay,
-                                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                                child: Text(iOwe ? 'Record repayment' : 'Record payment received',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                              ),
-                            const Spacer(),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.mutedForeground),
-                              onPressed: onEdit,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              visualDensity: VisualDensity.compact,
-                              tooltip: 'Edit debt',
-                            ),
-                            const SizedBox(width: 12),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.mutedForeground),
-                              onPressed: onDelete,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              visualDensity: VisualDensity.compact,
-                              tooltip: 'Delete debt',
-                            ),
-                          ],
-                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        iOwe ? 'You owe' : 'Owes you',
+                        style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                      ),
+                      if (debt.description != null && debt.description!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(debt.description!, style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
                       ],
-                    ),
+                      const SizedBox(height: 4),
+                      Text(status, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor)),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          if (!debt.isSettled)
+                            TextButton(
+                              onPressed: onPay,
+                              style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 28), tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                              child: Text(iOwe ? 'Record repayment' : 'Record payment received',
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                            ),
+                          const Spacer(),
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.mutedForeground),
+                            onPressed: onEdit,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            visualDensity: VisualDensity.compact,
+                            tooltip: 'Edit debt',
+                          ),
+                          const SizedBox(width: 12),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.mutedForeground),
+                            onPressed: onDelete,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            visualDensity: VisualDensity.compact,
+                            tooltip: 'Delete debt',
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

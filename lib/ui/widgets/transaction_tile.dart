@@ -52,14 +52,14 @@ class TransactionTile extends StatelessWidget {
           : (tx.type == TxType.income ? AppColors.income : AppTheme.primary);
     }
 
-    // Positive / income is neon mint green with "+"; expenses use crisp white with "-";
-    // transfers between own wallets are soft muted sky-blue.
+    // Money in is green with "+"; money out uses the normal text colour with
+    // "-"; transfers between the user's own wallets are neutral and unsigned.
     final amountColor = tx.isOneSided
-        ? (tx.isOneSidedIn ? AppColors.badgeMintText : AppColors.textPrimary)
+        ? (tx.isOneSidedIn ? AppColors.income : Theme.of(context).colorScheme.onSurface)
         : switch (tx.type) {
-            TxType.income => AppColors.badgeMintText,
-            TxType.expense => AppColors.textPrimary,
-            TxType.transfer => AppColors.mutedForeground,
+            TxType.income => AppColors.income,
+            TxType.expense => Theme.of(context).colorScheme.onSurface,
+            TxType.transfer => Theme.of(context).colorScheme.onSurfaceVariant,
           };
     final amountSign = tx.isOneSided
         ? (tx.isOneSidedIn ? '+' : '-')
@@ -105,15 +105,14 @@ class TransactionTile extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.textPrimary,
                     ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12.5,
-                      color: AppColors.mutedForeground,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],

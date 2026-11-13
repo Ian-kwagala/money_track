@@ -55,7 +55,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     final visibleBudgets = _filter == null ? vm.budgets : vm.budgets.where((b) => b.frequency == _filter).toList();
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         top: false,
         child: CustomScrollView(
@@ -75,13 +75,8 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                 children: [
                   // Overall budget card
                   Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusXl),
-                      side: const BorderSide(color: AppColors.borderLight, width: 1),
-                    ),
-                    child: Container(
-                      decoration: AppColors.cardDecoration(),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+                    child: Padding(
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,7 +97,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                             child: LinearProgressIndicator(
                               value: overallPct.clamp(0.0, 1.0),
                               minHeight: 8,
-                              backgroundColor: const Color(0xFF141E30),
+                              backgroundColor: AppColors.border,
                               valueColor: AlwaysStoppedAnimation<Color>(
                                 overallPct >= 1 ? AppColors.danger : overallPct >= 0.8 ? AppColors.warning : AppColors.primary,
                               ),
@@ -116,7 +111,7 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
-                              color: isOver ? AppColors.danger : AppColors.badgeMintText,
+                              color: isOver ? AppColors.danger : AppColors.primary,
                             ),
                           ),
                         ],
@@ -425,17 +420,12 @@ class _BudgetTile extends StatelessWidget {
     final color = pct >= 1 ? AppColors.danger : pct >= 0.8 ? AppColors.warning : AppColors.primary;
 
     return Card(
-      elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
       child: InkWell(
         onTap: onEdit,
         borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        child: Container(
-          decoration: AppColors.cardDecoration(),
+        child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
@@ -445,9 +435,8 @@ class _BudgetTile extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF18263E),
+                      color: Color(category.color).withValues(alpha: 0.15),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 1),
                     ),
                     child: Icon(category.iconData, color: Color(category.color), size: 20),
                   ),
@@ -488,19 +477,14 @@ class _BudgetTile extends StatelessWidget {
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(6),
-                child: LinearProgressIndicator(
-                  value: pct.clamp(0.0, 1.0),
-                  minHeight: 8,
-                  backgroundColor: const Color(0xFF141E30),
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                ),
+                child: LinearProgressIndicator(value: pct.clamp(0.0, 1.0), minHeight: 8, backgroundColor: AppColors.border, valueColor: AlwaysStoppedAnimation<Color>(color)),
               ),
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   overBudget ? '${MoneyFormat.money(spent - budget.amount, symbol: symbol)} over budget' : '${MoneyFormat.money(remaining, symbol: symbol)} remaining',
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: overBudget ? AppColors.danger : AppColors.badgeMintText),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: overBudget ? AppColors.danger : Color(category.color)),
                 ),
               ),
             ],
@@ -525,20 +509,16 @@ class _FrequencyTab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFF1E3A5F) : const Color(0x66141E30),
-          borderRadius: BorderRadius.circular(AppColors.radiusPill),
-          border: Border.all(
-            color: selected ? AppColors.primary : AppColors.borderLight,
-            width: 1,
-          ),
-          boxShadow: selected ? AppColors.shadowSoft : null,
+          color: selected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.card,
+          borderRadius: BorderRadius.circular(AppColors.radius2xl),
+          border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: 1),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 12,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
-            color: selected ? AppColors.textPrimary : AppColors.mutedForeground,
+            color: selected ? AppColors.primary : AppColors.textSecondary,
           ),
         ),
       ),

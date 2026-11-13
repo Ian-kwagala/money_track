@@ -47,13 +47,8 @@ class _BalanceTrendCardState extends State<BalanceTrendCard> {
     final labelEvery = switch (_range) { TrendRange.week => 1, TrendRange.month => 5, TrendRange.year => 2 };
 
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
-      child: Container(
-        decoration: AppColors.cardDecoration(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+      child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -83,7 +78,7 @@ class _BalanceTrendCardState extends State<BalanceTrendCard> {
                     show: true,
                     drawVerticalLine: false,
                     horizontalInterval: axis.interval,
-                    getDrawingHorizontalLine: (_) => const FlLine(color: Color(0xFF2A3C5A), strokeWidth: 1),
+                    getDrawingHorizontalLine: (_) => const FlLine(color: AppColors.border, strokeWidth: 1),
                   ),
                   titlesData: FlTitlesData(
                     leftTitles: AxisTitles(
@@ -120,13 +115,13 @@ class _BalanceTrendCardState extends State<BalanceTrendCard> {
                   borderData: FlBorderData(show: false),
                   lineTouchData: LineTouchData(
                     touchTooltipData: LineTouchTooltipData(
-                      getTooltipColor: (_) => AppColors.cardSolid,
+                      getTooltipColor: (_) => AppColors.textPrimary,
                       fitInsideHorizontally: true,
                       getTooltipItems: (spots) => [
                         for (final s in spots)
                           LineTooltipItem(
                             '${_tooltipDate(points[s.x.round()], _range)}\n',
-                            const TextStyle(color: AppColors.mutedForeground, fontSize: 10),
+                            const TextStyle(color: Colors.white70, fontSize: 10),
                             children: [
                               TextSpan(
                                 text: MoneyFormat.signed(s.y, symbol: symbol),
@@ -155,7 +150,7 @@ class _BalanceTrendCardState extends State<BalanceTrendCard> {
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [AppColors.primary.withValues(alpha: 0.30), AppColors.primary.withValues(alpha: 0.0)],
+                          colors: [AppColors.primary.withValues(alpha: 0.22), AppColors.primary.withValues(alpha: 0.02)],
                         ),
                       ),
                     ),
@@ -176,7 +171,7 @@ class _BalanceTrendCardState extends State<BalanceTrendCard> {
                 color: nothingYet || change == 0
                     ? AppColors.mutedForeground
                     : change > 0
-                        ? AppColors.badgeMintText
+                        ? AppColors.success
                         : AppColors.danger,
               ),
             ),
@@ -204,11 +199,7 @@ class _RangePicker extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: const Color(0xFF141E30),
-        borderRadius: BorderRadius.circular(AppColors.radiusPill),
-        border: Border.all(color: AppColors.borderLight, width: 1),
-      ),
+      decoration: BoxDecoration(color: AppColors.muted, borderRadius: BorderRadius.circular(AppColors.radius2xl)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -218,14 +209,13 @@ class _RangePicker extends StatelessWidget {
               button: true,
               child: InkWell(
                 onTap: () => onChanged(r),
-                borderRadius: BorderRadius.circular(AppColors.radiusPill),
+                borderRadius: BorderRadius.circular(AppColors.radius2xl),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
-                    color: r == value ? const Color(0xFF1E3A5F) : Colors.transparent,
-                    borderRadius: BorderRadius.circular(AppColors.radiusPill),
-                    border: r == value ? Border.all(color: AppColors.borderLight, width: 1) : null,
+                    color: r == value ? AppColors.card : Colors.transparent,
+                    borderRadius: BorderRadius.circular(AppColors.radius2xl),
                     boxShadow: r == value ? AppColors.shadowSoft : null,
                   ),
                   child: Text(

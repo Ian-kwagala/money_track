@@ -25,14 +25,25 @@ class MoneyMessageParser {
   /// Messages from ordinary phone numbers are always ignored, so a person
   /// can't fake a "RECEIVED UGX…" text into someone's records.
   /// [receivedAt] is used when the message itself carries no date.
+  /// Matches CJK / Chinese characters that can appear when multipart SMS
+  /// segments are mis-decoded as UCS-2 on Android.
+  static final _cjkChars = RegExp(
+    r'[\u2E80-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]+',
+  );
+
+  /// Removes any CJK characters and collapses extra whitespace.
+  static String stripCjk(String input) =>
+      input.replaceAll(_cjkChars, ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+
   ParsedMoneyMessage? parse(String body, {String? sender, DateTime? receivedAt}) {
-    // Collapse line breaks and repeated spaces so every rule sees one line.
-    final text = body.replaceAll(RegExp(r'\s+'), ' ').trim();
+    // Strip any corrupted CJK characters and collapse whitespace into one line.
+    final text = stripCjk(body);
+    final cleanSender = sender == null ? null : stripCjk(sender);
     if (text.isEmpty) return null;
-    if (sender != null && isPersonalNumber(sender)) return null;
+    if (cleanSender != null && isPersonalNumber(cleanSender)) return null;
     if (_notACompletedTransaction.hasMatch(text)) return null;
 
-    final provider = providerForSender(sender) ?? _providerFromText(text);
+    final provider = providerForSender(cleanSender) ?? _providerFromText(text);
     if (provider == null) return null;
     final kind = _kindOf(text);
     if (kind == null) return null;
@@ -356,7 +367,7 @@ class MoneyMessageParser {
 
   /// "MATILDA NAKAGOLO" → "Matilda Nakagolo"; mixed-case names are kept.
   static String tidyName(String name) {
-    final trimmed = name.replaceAll(RegExp(r'\s+'), ' ').replaceAll(RegExp(r'[\s,;:-]+$'), '').trim();
+    final trimmed = stripCjk(name).replaceAll(RegExp(r'[\s,;:-]+$'), '').trim();
     if (RegExp('[a-z]').hasMatch(trimmed)) return trimmed;
     return trimmed.split(' ').map((word) {
       if (_acronyms.contains(word) || RegExp(r'\d').hasMatch(word) || word.length < 2) return word;

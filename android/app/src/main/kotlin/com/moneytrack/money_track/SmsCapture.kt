@@ -46,6 +46,11 @@ object SmsCapture {
     private val currency = Regex("(?i)\\b(UGX|USHS?|SHS)\\b")
     private val movement = Regex("(?i)(received|sent|paid|withdrawn|transferred|deposit|credited|debited|trxn|transaction)")
     private val notMoney = Regex("(?i)\\b(OTP|verification code|failed|declined)\\b")
+    // Strips CJK ideographs that can appear when multipart GSM 7-bit SMS segments are mis-decoded as UCS-2.
+    private val cjkChars = Regex("[\\u2E80-\\u9FFF\\u3400-\\u4DBF\\uF900-\\uFAFF\\uFE30-\\uFE4F\\uFF00-\\uFFEF]+")
+
+    private fun stripCjk(text: String): String =
+        text.replace(cjkChars, " ").replace(Regex("\\s+"), " ").trim()
 
     // Inbox queries run on [io]; method-channel replies must go back on the
     // main thread, hence [main].
@@ -80,8 +85,10 @@ object SmsCapture {
      */
     @Synchronized
     fun enqueue(context: Context, sender: String, body: String, receivedAt: Long) {
+        val cleanSender = stripCjk(sender)
+        val cleanBody = stripCjk(body)
         val queue = JSONArray(prefs(context).getString(KEY_QUEUE, "[]"))
-        queue.put(JSONObject().put("sender", sender).put("body", body).put("receivedAt", receivedAt))
+        queue.put(JSONObject().put("sender", cleanSender).put("body", cleanBody).put("receivedAt", receivedAt))
         while (queue.length() > MAX_QUEUED) queue.remove(0)
         prefs(context).edit().putString(KEY_QUEUE, queue.toString()).commit()
     }
@@ -109,9 +116,9 @@ object SmsCapture {
         )?.use { c ->
             // Newest first so the cap keeps the most recent; reversed below.
             while (out.size < MAX_INBOX && c.moveToNext()) {
-                val sender = c.getString(0) ?: continue
-                val body = c.getString(1) ?: continue
-                if (isPersonalNumber(sender)) continue
+                val sender = stripCjk(c.getString(0) ?: continue)
+                val body = stripCjk(c.getString(1) ?: continue)
+                if (sender.isEmpty() || body.isEmpty() || isPersonalNumber(sender)) continue
                 out.add(mapOf("sender" to sender, "body" to body, "receivedAt" to c.getLong(2)))
             }
         }

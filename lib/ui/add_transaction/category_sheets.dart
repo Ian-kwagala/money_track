@@ -56,13 +56,13 @@ class CategoryTile extends StatelessWidget {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: action ? const Color(0xFF141E30) : color.withValues(alpha: 0.15),
+                  color: action ? AppColors.bg : color.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                   border: selected
                       ? Border.all(color: AppColors.primary, width: 2)
                       : action
                           ? Border.all(color: AppColors.primary.withValues(alpha: 0.35))
-                          : Border.all(color: Colors.white.withOpacity(0.08), width: 1),
+                          : null,
                 ),
                 child: Icon(icon, color: action ? AppColors.primary : color, size: action ? 20 : 18),
               ),
@@ -115,10 +115,9 @@ class CategoryPickerSheet extends StatelessWidget {
       top: false,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxHeight: maxH),
-        child: Container(
-          decoration: AppColors.cardDecoration(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-          ),
+        child: Material(
+          color: AppColors.cardSolid,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -136,7 +135,7 @@ class CategoryPickerSheet extends StatelessWidget {
                     IconButton(
                       tooltip: 'Close',
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, size: 20, color: AppColors.mutedForeground),
+                      icon: const Icon(Icons.close, size: 20, color: AppColors.textSecondary),
                     ),
                   ],
                 ),
@@ -308,10 +307,9 @@ class _NewCategorySheetState extends State<NewCategorySheet> {
         top: false,
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: media.size.height * 0.9),
-          child: Container(
-            decoration: AppColors.cardDecoration(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-            ),
+          child: Material(
+            color: AppColors.cardSolid,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -325,11 +323,7 @@ class _NewCategorySheetState extends State<NewCategorySheet> {
                         duration: const Duration(milliseconds: 200),
                         width: 48,
                         height: 48,
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
-                        ),
+                        decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle),
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 180),
                           transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
@@ -348,7 +342,7 @@ class _NewCategorySheetState extends State<NewCategorySheet> {
                             ),
                             Text(
                               _income ? 'Where the money comes from' : 'What the money was spent on',
-                              style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
                             ),
                           ],
                         ),
@@ -356,7 +350,7 @@ class _NewCategorySheetState extends State<NewCategorySheet> {
                       IconButton(
                         tooltip: 'Close',
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, size: 20, color: AppColors.mutedForeground),
+                        icon: const Icon(Icons.close, size: 20, color: AppColors.textSecondary),
                       ),
                     ],
                   ),
@@ -377,22 +371,11 @@ class _NewCategorySheetState extends State<NewCategorySheet> {
                           decoration: InputDecoration(
                             labelText: 'Name',
                             hintText: _income ? 'e.g. Rent income, Tips' : 'e.g. Salon, Boda boda, Church offering',
-                            hintStyle: const TextStyle(color: AppColors.mutedForeground),
                             errorText: _error,
                             filled: true,
-                            fillColor: const Color(0xFF141E30),
+                            fillColor: AppColors.bg,
                             border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                            ),
+                                borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                           ),
                         ),
                         const SizedBox(height: 18),
@@ -506,9 +489,9 @@ class _FrequencyPill extends StatelessWidget {
       button: true,
       selected: selected,
       child: Material(
-        color: selected ? const Color(0xFF1E3A5F) : const Color(0xFF141E30),
+        color: selected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.bg,
         shape: StadiumBorder(
-            side: BorderSide(color: selected ? AppColors.primary : AppColors.borderLight, width: 1.2)),
+            side: BorderSide(color: selected ? AppColors.primary : Colors.transparent, width: 1.2)),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onTap,
@@ -519,7 +502,7 @@ class _FrequencyPill extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                color: selected ? AppColors.primary : AppColors.mutedForeground,
+                color: selected ? AppColors.primary : AppColors.textSecondary,
               ),
             ),
           ),
@@ -543,15 +526,15 @@ class _IconChoice extends StatelessWidget {
       button: true,
       selected: selected,
       child: Material(
-        color: selected ? color.withValues(alpha: 0.15) : const Color(0xFF141E30),
+        color: selected ? color.withValues(alpha: 0.15) : AppColors.bg,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: selected ? color : Colors.white.withOpacity(0.08), width: 1.2),
+          side: BorderSide(color: selected ? color : Colors.transparent, width: 1.6),
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: onTap,
-          child: Icon(icon, size: 20, color: selected ? color : AppColors.mutedForeground),
+          child: Icon(icon, size: 20, color: selected ? color : AppColors.textSecondary),
         ),
       ),
     );

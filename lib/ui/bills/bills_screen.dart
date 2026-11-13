@@ -33,7 +33,7 @@ class BillsScreen extends StatelessWidget {
       });
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         top: false,
         child: CustomScrollView(
@@ -49,13 +49,8 @@ class BillsScreen extends StatelessWidget {
                 children: [
                   // Total monthly card
                   Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppColors.radiusXl),
-                      side: const BorderSide(color: AppColors.borderLight, width: 1),
-                    ),
-                    child: Container(
-                      decoration: AppColors.cardDecoration(),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+                    child: Padding(
                       padding: const EdgeInsets.all(18),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,17 +400,12 @@ class _BillCard extends StatelessWidget {
     }
 
     return Card(
-      elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
       child: InkWell(
         onTap: onEdit,
         borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        child: Container(
-          decoration: AppColors.cardDecoration(),
+        child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -424,9 +414,8 @@ class _BillCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF18263E),
+                  color: AppColors.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 1),
                 ),
                 child: const Icon(Icons.receipt_long_outlined, color: AppColors.primary, size: 20),
               ),

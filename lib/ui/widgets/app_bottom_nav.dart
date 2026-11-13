@@ -95,8 +95,8 @@ class AppBottomNav extends StatelessWidget {
               decoration: BoxDecoration(
                 color: colors.bar,
                 border: Border(top: BorderSide(color: colors.border)),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x2A000000), blurRadius: 16, offset: Offset(0, -4)),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, -2)),
                 ],
               ),
               child: Padding(
@@ -238,31 +238,19 @@ class _ActionButtonState extends State<_ActionButton> {
           decoration: BoxDecoration(
             color: c.bar,
             shape: BoxShape.circle,
-            boxShadow: const [
-              BoxShadow(color: Color(0x33000000), blurRadius: 16, offset: Offset(0, 4)),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.10), blurRadius: 10, offset: const Offset(0, 2))],
           ),
           child: Material(
-            color: Colors.transparent,
+            color: c.button,
             shape: const CircleBorder(),
-            child: Ink(
-              decoration: BoxDecoration(
-                gradient: AppColors.cardGradient,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
-                boxShadow: const [
-                  BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, 4)),
-                ],
-              ),
-              child: InkWell(
-                customBorder: const CircleBorder(),
-                onHighlightChanged: (down) => setState(() => _pressed = down),
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  widget.action.onPressed();
-                },
-                child: Icon(widget.action.icon, size: 26, color: Colors.white),
-              ),
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onHighlightChanged: (down) => setState(() => _pressed = down),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                widget.action.onPressed();
+              },
+              child: Icon(widget.action.icon, size: 28, color: c.buttonIcon),
             ),
           ),
         ),
@@ -280,9 +268,8 @@ TextStyle _labelStyle(Color color, {required bool bold}) => TextStyle(
       color: color,
     );
 
-/// Navigation colors matching the dark translucent theme:
-/// Translucent dark navy bottom navigation bar with muted grey-blue inactive icons
-/// and glowing white/sky-blue active item highlights.
+/// Light: white bar, near-black button. Dark: the colours swap, so the
+/// button still stands out.
 class _NavColors {
   final Color bar;
   final Color border;
@@ -301,13 +288,16 @@ class _NavColors {
   });
 
   factory _NavColors.of(BuildContext context) {
-    return const _NavColors(
-      bar: AppColors.navBarBg,
-      border: AppColors.borderLight,
-      selected: AppColors.primary,
-      unselected: AppColors.navInactive,
-      button: AppColors.cardSolid,
-      buttonIcon: Colors.white,
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final bar = dark ? AppColors.darkCard : Colors.white;
+    final strong = dark ? Colors.white : AppColors.textPrimary;
+    return _NavColors(
+      bar: bar,
+      border: dark ? Colors.white.withValues(alpha: 0.08) : AppColors.border,
+      selected: strong,
+      unselected: AppColors.mutedForeground,
+      button: strong,
+      buttonIcon: bar,
     );
   }
 }

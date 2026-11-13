@@ -96,8 +96,9 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
     return SafeArea(
       child: Container(
         constraints: BoxConstraints(maxHeight: media.size.height * 0.9),
-        decoration: AppColors.cardDecoration(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        decoration: const BoxDecoration(
+          color: AppColors.cardSolid,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -120,11 +121,7 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
                     icon: Container(
                       width: 28,
                       height: 28,
-                      decoration: BoxDecoration(
-                        color: AppColors.cardBgSolid,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.borderLight, width: 1),
-                      ),
+                      decoration: const BoxDecoration(color: AppColors.bg, shape: BoxShape.circle),
                       child: const Icon(Icons.close, size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -145,18 +142,16 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
                       controller: _nameCtrl,
                       decoration: InputDecoration(
                         filled: true,
-                        fillColor: AppColors.cardBgSolid,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: const BorderSide(color: AppColors.skyBlue, width: 1.5)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        fillColor: AppColors.bg,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                     ),
                     const SizedBox(height: 14),
                     const Text('Date of birth', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                     const SizedBox(height: 6),
                     InkWell(
-                      borderRadius: BorderRadius.circular(AppColors.radiusMd),
+                      borderRadius: BorderRadius.circular(10),
                       onTap: () async {
                         final now = DateTime.now();
                         final picked = await showDatePicker(
@@ -170,15 +165,11 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
                       },
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: AppColors.cardBgSolid,
-                          borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                          border: Border.all(color: AppColors.borderLight, width: 1),
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                        decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(10)),
                         child: Row(
                           children: [
-                            const Icon(Icons.cake_outlined, size: 16, color: AppColors.skyBlue),
+                            const Icon(Icons.cake_outlined, size: 16, color: AppColors.textSecondary),
                             const SizedBox(width: 8),
                             Text(
                               _dateOfBirth == null ? 'Not set' : '${DateFormat('d MMM yyyy').format(_dateOfBirth!)} · age $_age',
@@ -195,13 +186,10 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
                       controller: _occupationCtrl,
                       decoration: InputDecoration(
                         hintText: 'e.g. Teacher, Shop owner',
-                        hintStyle: const TextStyle(color: AppColors.textSecondary),
                         filled: true,
-                        fillColor: AppColors.cardBgSolid,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: const BorderSide(color: AppColors.skyBlue, width: 1.5)),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        fillColor: AppColors.bg,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                     ),
                     if (vm.wallets.isNotEmpty) ...[
@@ -224,15 +212,11 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
                                   textAlign: TextAlign.right,
                                   decoration: InputDecoration(
                                     hintText: '0',
-                                    hintStyle: const TextStyle(color: AppColors.textSecondary),
                                     prefixText: '$symbol ',
-                                    prefixStyle: const TextStyle(color: AppColors.textSecondary),
                                     filled: true,
-                                    fillColor: AppColors.cardBgSolid,
+                                    fillColor: AppColors.bg,
                                     isDense: true,
-                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
-                                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: const BorderSide(color: AppColors.borderLight, width: 1)),
-                                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd), borderSide: const BorderSide(color: AppColors.skyBlue, width: 1.5)),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                                   ),
                                 ),
@@ -248,10 +232,10 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
               ),
             ),
             Container(
-              padding: EdgeInsets.fromLTRB(20, 10, 20, media.viewInsets.bottom + 16),
+              padding: EdgeInsets.fromLTRB(20, 8, 20, media.viewInsets.bottom + 16),
               decoration: const BoxDecoration(
                 color: AppColors.cardSolid,
-                border: Border(top: BorderSide(color: AppColors.borderLight, width: 1)),
+                border: Border(top: BorderSide(color: AppColors.borderLight, width: 0.5)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -260,22 +244,15 @@ class _ProfileCompletionSheetState extends State<ProfileCompletionSheet> {
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: _saving ? null : _save,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
-                        minimumSize: const Size(double.infinity, 48),
-                      ),
                       child: _saving
                           ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                          : const Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
+                          : const Text('Save'),
                     ),
                   ),
                   const SizedBox(height: 4),
                   TextButton(
                     onPressed: () => Navigator.pop(context),
-                    style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
-                    child: const Text('Skip for now', style: TextStyle(fontWeight: FontWeight.w600)),
+                    child: const Text('Skip for now', style: TextStyle(color: AppColors.mutedForeground, fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),

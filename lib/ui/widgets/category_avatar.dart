@@ -30,7 +30,7 @@ class CategoryAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final base = color ?? AppTheme.primary;
-    final bg = const Color(0xFF18263E);
+    final bg = base.withValues(alpha: 0.16);
     final fg = base;
     return Container(
       width: size,
@@ -38,10 +38,6 @@ class CategoryAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 1),
-        boxShadow: const [
-          BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 2)),
-        ],
       ),
       child: Center(
         child: _buildIcon(fg),
@@ -49,24 +45,32 @@ class CategoryAvatar extends StatelessWidget {
     );
   }
 
-  /// Resolves [icon] in order: wallet icon keys, then emoji, then category
-  /// icon keys, then [fallback]. The emoji check needs two or more code
-  /// points starting above U+2000, so a single-code-point emoji such as
-  /// "🍕" falls through to [fallback].
+  /// Resolves [icon] in order: wallet icon keys, then category icon keys,
+  /// then valid non-CJK emoji, then [fallback].
   Widget _buildIcon(Color fg) {
     final known = _iconMap[icon];
     if (known != null) {
       return Icon(known, color: fg, size: size * 0.5);
     }
-    if (icon.runes.length > 1 && icon.runes.first > 0x2000) {
-      return Text(icon, style: TextStyle(fontSize: size * 0.5));
-    }
     final catIcon = Category.materialIcon(icon);
     if (catIcon != Icons.category_outlined) {
       return Icon(catIcon, color: fg, size: size * 0.5);
     }
+    // Only render as text if the string is a genuine supplemental emoji
+    // (code point >= 0x1F300) and contains no CJK characters.
+    if (icon.isNotEmpty &&
+        icon.runes.first >= 0x1F300 &&
+        !_cjkPattern.hasMatch(icon)) {
+      return Text(icon, style: TextStyle(fontSize: size * 0.5));
+    }
     return Icon(fallback ?? Icons.category_outlined, color: fg, size: size * 0.5);
   }
+
+  /// Matches CJK ideographs and fullwidth forms so corrupted icon keys never
+  /// render as Chinese text.
+  static final _cjkPattern = RegExp(
+    r'[\u2E80-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]',
+  );
 
   /// The legacy wallet icon keys stored in [Wallet.icon].
   static const _iconMap = <String, IconData>{

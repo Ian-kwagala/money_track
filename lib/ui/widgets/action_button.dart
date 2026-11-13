@@ -98,16 +98,17 @@ class _ActionButtonState extends State<ActionButton> {
   @override
   Widget build(BuildContext context) {
     final enabled = widget.onPressed != null;
-    final base = widget.color ?? const Color(0xFF18263E);
-    // Colour priority: success mint, then disabled grey, then dimmed, then
-    // the normal dark navy container colour.
+    final base = widget.color ?? AppColors.primary;
+    // Colour priority: success green, then disabled grey, then dimmed, then
+    // the normal colour. It animates between them (TweenAnimationBuilder
+    // below).
     final Color background;
     if (_phase == _Phase.done) {
       background = AppColors.success;
     } else if (!enabled) {
-      background = const Color(0x66141E30);
+      background = AppColors.mutedForeground.withValues(alpha: 0.35);
     } else if (widget.dimmed) {
-      background = const Color(0x9918263E);
+      background = base.withValues(alpha: 0.45);
     } else {
       background = base;
     }
@@ -157,32 +158,14 @@ class _ActionButtonState extends State<ActionButton> {
           tween: ColorTween(end: background),
           duration: const Duration(milliseconds: 220),
           builder: (context, color, child) => Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(AppColors.radiusPill),
-            elevation: _held ? 0 : 2,
-            shadowColor: const Color(0x2A000000),
-            child: Ink(
-              decoration: BoxDecoration(
-                color: color,
-                gradient: (enabled && _phase != _Phase.done && widget.color == null)
-                    ? AppColors.cardGradient
-                    : null,
-                borderRadius: BorderRadius.circular(AppColors.radiusPill),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  width: 1,
-                ),
-                boxShadow: enabled
-                    ? const [
-                        BoxShadow(color: Color(0x1A000000), blurRadius: 12, offset: Offset(0, 4)),
-                      ]
-                    : null,
-              ),
-              child: child,
-            ),
+            color: color,
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
+            elevation: _held ? 0 : 1,
+            shadowColor: base.withValues(alpha: 0.4),
+            child: child,
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(AppColors.radiusPill),
+            borderRadius: BorderRadius.circular(AppColors.radiusMd),
             splashColor: Colors.white24,
             highlightColor: Colors.white10,
             onTap: enabled ? _run : null,
@@ -191,7 +174,7 @@ class _ActionButtonState extends State<ActionButton> {
               height: widget.height,
               child: Center(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     transitionBuilder: (child, anim) => FadeTransition(

@@ -59,11 +59,10 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => SafeArea(
-        // Container so the options' background matches the dark theme.
-        child: Container(
-          decoration: AppColors.cardDecoration(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-          ),
+        // Material (not a coloured Container) so the options' ripples show.
+        child: Material(
+          color: AppColors.cardSolid,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
             child: Column(
@@ -76,18 +75,18 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
                 const SizedBox(height: 8),
                 if (_has)
                   ListTile(
-                    leading: const Icon(Icons.visibility_outlined, color: AppColors.primary),
-                    title: const Text('View receipt', style: TextStyle(color: AppColors.textPrimary)),
+                    leading: const Icon(Icons.visibility_outlined),
+                    title: const Text('View receipt'),
                     onTap: () => Navigator.pop(ctx, _Choice.view),
                   ),
                 ListTile(
-                  leading: const Icon(Icons.photo_camera_outlined, color: AppColors.primary),
-                  title: Text(_has ? 'Take a new photo' : 'Take a photo', style: const TextStyle(color: AppColors.textPrimary)),
+                  leading: const Icon(Icons.photo_camera_outlined),
+                  title: Text(_has ? 'Take a new photo' : 'Take a photo'),
                   onTap: () => Navigator.pop(ctx, _Choice.camera),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
-                  title: const Text('Choose from gallery', style: TextStyle(color: AppColors.textPrimary)),
+                  leading: const Icon(Icons.photo_library_outlined),
+                  title: const Text('Choose from gallery'),
                   onTap: () => Navigator.pop(ctx, _Choice.gallery),
                 ),
                 if (_has)
@@ -154,13 +153,10 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF141E30),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
+      color: AppColors.bg,
+      borderRadius: BorderRadius.circular(12),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         onTap: _working ? null : _open,
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -168,7 +164,7 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (_working)
-                const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
               else if (_has)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
@@ -178,18 +174,18 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
                     height: 32,
                     fit: BoxFit.cover,
                     cacheWidth: 96,
-                    errorBuilder: (_, _, _) => const Icon(Icons.receipt_long, size: 20, color: AppColors.mutedForeground),
+                    errorBuilder: (_, _, _) => const Icon(Icons.receipt_long, size: 20, color: AppColors.textSecondary),
                   ),
                 )
               else
-                const Icon(Icons.camera_alt_outlined, size: 18, color: AppColors.mutedForeground),
+                const Icon(Icons.camera_alt_outlined, size: 18, color: AppColors.textSecondary),
               const SizedBox(width: 10),
               Flexible(
                 child: Text(
                   _working ? 'Attaching…' : (_has ? 'Receipt attached · tap to view' : 'Attach receipt'),
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: _has ? AppColors.textPrimary : AppColors.mutedForeground,
+                    color: _has ? AppColors.textPrimary : AppColors.textSecondary,
                     fontWeight: _has ? FontWeight.w600 : FontWeight.w500,
                     fontSize: 13,
                   ),
@@ -197,7 +193,7 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
               ),
               if (_has && !_working) ...[
                 const SizedBox(width: 6),
-                const Icon(Icons.check_circle, size: 16, color: AppColors.badgeMintText),
+                const Icon(Icons.check_circle, size: 16, color: AppColors.success),
               ],
             ],
           ),

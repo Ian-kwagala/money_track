@@ -22,37 +22,34 @@ class CloudAccountScreen extends StatelessWidget {
     final online = context.watch<ConnectivityService>().isOnline;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
-        child: SafeArea(
-          top: false,
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: PageHeader(
-                  title: 'Backup & sync',
-                  subtitle: online ? 'Online' : 'Offline — your data is safe on this phone',
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: !auth.isAvailable
-                      ? const _Note(
-                          icon: Icons.cloud_off_outlined,
-                          text: 'Cloud backup isn\'t set up in this version of the app. Everything keeps working offline on this phone.',
-                        )
-                      : sync.status == SyncStatus.needsAccountChoice
-                          ? const _AccountConflict()
-                          : auth.isSignedIn
-                              ? const _SignedIn()
-                              : const _SignInForm(),
-                ),
-              ),
-            ],
+      backgroundColor: AppColors.bg,
+      body: SafeArea(
+        top: false,
+        child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: PageHeader(
+              title: 'Backup & sync',
+              subtitle: online ? 'Online' : 'Offline — your data is safe on this phone',
+            ),
           ),
-        ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: !auth.isAvailable
+                  ? const _Note(
+                      icon: Icons.cloud_off_outlined,
+                      text: 'Cloud backup isn\'t set up in this version of the app. Everything keeps working offline on this phone.',
+                    )
+                  : sync.status == SyncStatus.needsAccountChoice
+                      ? const _AccountConflict()
+                      : auth.isSignedIn
+                          ? const _SignedIn()
+                          : const _SignInForm(),
+            ),
+          ),
+        ],
+      ),
       ),
     );
   }
@@ -330,13 +327,8 @@ class _Panel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
-      child: Container(
-        decoration: AppColors.cardDecoration(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
       ),
@@ -355,16 +347,15 @@ class _Note extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF141E30),
+        color: AppColors.primary.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        border: Border.all(color: AppColors.borderLight, width: 1),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, color: AppColors.primary, size: 20),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground, height: 1.45))),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, height: 1.45))),
         ],
       ),
     );

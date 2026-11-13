@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:money_track/models/category.dart';
 import 'package:money_track/models/frequency.dart';
 import 'package:money_track/models/transaction.dart';
+import 'package:money_track/ui/add_transaction/add_transaction_screen.dart';
 import 'package:money_track/ui/add_transaction/category_sheets.dart';
 import 'package:money_track/ui/add_transaction/quick_add_sheet.dart';
 import 'package:money_track/viewmodels/tracker_view_model.dart';
@@ -65,14 +66,15 @@ void main() {
 
   /// Saves and waits for the transaction to be stored and the sheet to close.
   Future<TxRecord> save(WidgetTester tester) async {
+    final beforeCount = phone.vm.transactions.length;
     await tester.runAsync(() async {
       await tester.tap(find.text('Save transaction'));
-      await until(() => phone.vm.transactions.isNotEmpty);
+      await until(() => phone.vm.transactions.length > beforeCount);
       await Future<void>.delayed(const Duration(milliseconds: 800));
     });
     await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 5)); // the Undo snackbar
-    return phone.vm.transactions.single;
+    return phone.vm.transactions.first;
   }
 
   Future<void> tapFrequency(WidgetTester tester, String label) async {
@@ -101,7 +103,12 @@ void main() {
   });
 
   testWidgets('a new message replaces the old one and can be tapped away', (tester) async {
-    await openQuickAdd(tester);
+    await openQuickAdd(tester, setup: (vm) async {
+      // Remove expense categories so Save prompts to pick a category.
+      for (final c in [...vm.expenseCategories]) {
+        await vm.deleteCategory(c.id);
+      }
+    });
     await typeAmount(tester, '5000');
     await tester.tap(find.text('Save transaction'));
     await tester.pumpAndSettle();
@@ -110,6 +117,51 @@ void main() {
     await tester.tap(find.text('Pick a category'));
     await tester.pumpAndSettle();
     expect(find.text('Pick a category'), findsNothing);
+  });
+
+  testWidgets('most used wallet and category are first and selected by default', (tester) async {
+    await openQuickAdd(tester, setup: (vm) async {
+      for (var i = 0; i < 3; i++) {
+        await vm.addTransaction(TxRecord(
+          id: 'w$i',
+          type: TxType.expense,
+          amount: 1000,
+          walletId: 'wallet_cash',
+          categoryId: 'cat_expense_water',
+          dateTime: DateTime(2026, 10, 1 + i),
+        ));
+      }
+    });
+    // Cash wallet is now first in the horizontal wallet list.
+    expect(tester.getCenter(inSheet(find.text('Cash'))).dx,
+        lessThan(tester.getCenter(inSheet(find.text('MTN Mobile Money'))).dx));
+    // Saving right after typing an amount uses the pre-selected top wallet (Cash)
+    // and top category (Water) without needing an extra tap.
+    await typeAmount(tester, '4500');
+    final tx = await save(tester);
+    expect(tx.walletId, 'wallet_cash');
+    expect(tx.categoryId, 'cat_expense_water');
+  });
+
+  testWidgets('Full form carries over the details entered in Quick add', (tester) async {
+    await openQuickAdd(tester);
+    await typeAmount(tester, '25000');
+    await tester.tap(inSheet(find.text('Cash')));
+    await tester.pump();
+    await tester.tap(inSheet(find.text('Food')));
+    await tester.pump();
+    await tapFrequency(tester, 'Weekly');
+    await tester.enterText(inSheet(find.byType(TextField)), 'Lunch in town');
+    await tester.pump();
+
+    await tester.tap(inSheet(find.text('Full form')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AddTransactionScreen), findsOneWidget);
+    expect(find.text('Add expense'), findsOneWidget);
+    expect(find.text('25,000'), findsOneWidget);
+    expect(find.text('Lunch in town'), findsOneWidget);
+    expect(find.text('Weekly'), findsOneWidget);
   });
 
   testWidgets('the grid ends in More and New; More lists every category', (tester) async {
@@ -262,7 +314,7 @@ void main() {
       await tester.tap(inSheet(find.text('Club dues')));
       await tester.pumpAndSettle();
       expect(tester.getTopLeft(inSheet(find.text('Food'))).dy, foodY);
-      final yearly = tester.getRect(inSheet(find.text('Yearly')));
+      final yearly = tester.getRect(inSheet(find.text(Frequency.yearly.label)));
       expect(yearly.left, greaterThanOrEqualTo(0));
       expect(yearly.right, lessThanOrEqualTo(390));
     });

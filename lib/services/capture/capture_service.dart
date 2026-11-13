@@ -232,11 +232,14 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
     // Two layers of de-duplication: the same text (fingerprint) and the same
     // transaction worded differently (dedupeKey).
     for (final sms in messages) {
-      final id = fingerprint(sms.body);
+      // Strip any corrupted CJK characters before hashing or storing.
+      final cleanBody = MoneyMessageParser.stripCjk(sms.body);
+      final cleanSender = MoneyMessageParser.stripCjk(sms.sender);
+      final id = fingerprint(cleanBody);
       if (box.containsKey(id)) continue;
-      final m = parser.parse(sms.body, sender: sms.sender.isEmpty ? null : sms.sender, receivedAt: sms.receivedAt);
+      final m = parser.parse(cleanBody, sender: cleanSender.isEmpty ? null : cleanSender, receivedAt: sms.receivedAt);
       if (m == null || !seenKeys.add(m.dedupeKey)) continue;
-      final record = CapturedSms(id: id, dedupeKey: m.dedupeKey, sender: sms.sender, body: sms.body, receivedAt: sms.receivedAt);
+      final record = CapturedSms(id: id, dedupeKey: m.dedupeKey, sender: cleanSender, body: cleanBody, receivedAt: sms.receivedAt);
       // Already confirmed on another phone and restored from the cloud.
       final existing = [for (final txId in _transactionIdsFor(id)) if (_hasTransaction(txId)) txId];
       if (existing.isNotEmpty) {
@@ -458,17 +461,30 @@ class CaptureService extends ChangeNotifier with WidgetsBindingObserver {
     return out..sort((a, b) => b.when.compareTo(a.when));
   }
 
-  /// Handled messages past [keepHandledFor], and waiting ones the current
-  /// parser no longer recognises.
+  /// Handled messages past [keepHandledFor], waiting ones the current
+  /// parser no longer recognises, and any CJK characters in stored SMS text.
   Future<void> _deleteOld() async {
     final cutoff = _now().subtract(keepHandledFor);
-    final old = [
-      for (final r in _box!.values)
-        if (r.receivedAt.isBefore(cutoff) &&
-            (r.status != CaptureStatus.pending ||
-                parser.parse(r.body, sender: r.sender.isEmpty ? null : r.sender, receivedAt: r.receivedAt) == null))
-          r.id,
-    ];
+    final old = <String>[];
+    for (final r in _box!.values.toList()) {
+      final cleanedBody = MoneyMessageParser.stripCjk(r.body);
+      final cleanedSender = MoneyMessageParser.stripCjk(r.sender);
+      if (cleanedBody != r.body || cleanedSender != r.sender) {
+        r
+          ..body = cleanedBody
+          ..sender = cleanedSender;
+        await r.save();
+      }
+      final parsed = parser.parse(
+        r.body,
+        sender: r.sender.isEmpty ? null : r.sender,
+        receivedAt: r.receivedAt,
+      );
+      if ((r.status == CaptureStatus.pending && parsed == null) ||
+          (r.receivedAt.isBefore(cutoff) && (r.status != CaptureStatus.pending || parsed == null))) {
+        old.add(r.id);
+      }
+    }
     await _box!.deleteAll(old);
   }
 

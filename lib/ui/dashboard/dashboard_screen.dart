@@ -10,6 +10,7 @@ import '../widgets/alerts_bell.dart';
 import '../widgets/announcement_banner.dart';
 import '../widgets/capture_review_banner.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/skeleton/skeleton_loading.dart';
 import '../../models/bill.dart';
 import '../../models/transaction.dart';
 import '../../models/wallet.dart';
@@ -47,6 +48,19 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<TrackerViewModel>();
+
+    // When the dashboard is loading initial data or refreshing,
+    // show the animated skeleton view to keep the user engaged.
+    if (vm.isLoading) {
+      return const Scaffold(
+        backgroundColor: AppColors.bg,
+        body: SafeArea(
+          top: false,
+          child: DashboardSkeleton(),
+        ),
+      );
+    }
+
     final symbol = vm.settings.currencySymbol;
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
@@ -100,11 +114,15 @@ class DashboardScreen extends StatelessWidget {
       ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: AppColors.bg,
       body: SafeArea(
         top: false,
-        child: CustomScrollView(
-        slivers: [
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () => vm.refreshData(),
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
           // PageHeader
           SliverToBoxAdapter(
             child: PageHeader(
@@ -235,6 +253,7 @@ class DashboardScreen extends StatelessWidget {
         ],
       ),
       ),
+      ),
     );
   }
 }
@@ -255,21 +274,16 @@ class _BalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasWallets = wallets.isNotEmpty;
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
-      child: Container(
-        decoration: AppColors.cardDecoration(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+      child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(
-                  Icons.account_balance_wallet_outlined,
+                Icon(
+                  hasWallets ? Icons.visibility_outlined : Icons.account_balance_wallet_outlined,
                   size: 14,
                   color: AppColors.mutedForeground,
                 ),
@@ -290,30 +304,6 @@ class _BalanceCard extends StatelessWidget {
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
                 letterSpacing: -0.5,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: AppColors.pillBadgeDecoration(),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    totalBalance >= 0 ? Icons.trending_up : Icons.trending_down,
-                    size: 14,
-                    color: totalBalance >= 0 ? AppColors.badgeMintText : AppColors.danger,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    totalBalance >= 0 ? '+Active portfolio' : 'Over budget',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: totalBalance >= 0 ? AppColors.badgeMintText : AppColors.danger,
-                    ),
-                  ),
-                ],
               ),
             ),
             if (hasWallets) ...[
@@ -351,9 +341,8 @@ class _WalletPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0x6618263E),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.10), width: 1),
+        color: AppColors.elevated,
+        borderRadius: BorderRadius.circular(AppColors.radiusMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -387,17 +376,12 @@ class _IncomeSpentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isIncome ? AppColors.badgeMintText : AppColors.danger;
+    final color = isIncome ? AppColors.success : AppColors.danger;
     final icon = isIncome ? Icons.arrow_downward : Icons.arrow_upward;
 
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
-      child: Container(
-        decoration: AppColors.cardDecoration(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+      child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,9 +390,8 @@ class _IncomeSpentCard extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: isIncome ? AppColors.badgeBg : const Color(0x33F87171),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: AppColors.borderLight, width: 1),
               ),
               child: Icon(icon, color: color, size: 16),
             ),
@@ -420,7 +403,7 @@ class _IncomeSpentCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
-                color: isIncome ? AppColors.badgeMintText : AppColors.textPrimary,
+                color: color,
               ),
             ),
           ],
@@ -456,21 +439,18 @@ class _Shortcuts extends StatelessWidget {
           for (var i = 0; i < _items.length; i++) ...[
             InkWell(
               onTap: () => Navigator.pushNamed(context, _items[i].$3),
-              borderRadius: BorderRadius.circular(AppColors.radiusPill),
+              borderRadius: BorderRadius.circular(AppColors.radius2xl),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E3A5F).withValues(alpha: 0.6),
-                  borderRadius: BorderRadius.circular(AppColors.radiusPill),
-                  border: Border.all(color: AppColors.borderLight, width: 1),
-                  boxShadow: const [
-                    BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, 2)),
-                  ],
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(AppColors.radius2xl),
+                  border: Border.all(color: AppColors.border, width: 1),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(_items[i].$2, size: 16, color: AppColors.primary),
+                    Icon(_items[i].$2, size: 16, color: AppColors.textPrimary),
                     const SizedBox(width: 6),
                     Text(
                       _items[i].$1,
@@ -502,16 +482,11 @@ class _UpcomingBills extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppColors.radiusXl),
         onTap: () => Navigator.pushNamed(context, '/recurring'),
-        child: Container(
-          decoration: AppColors.cardDecoration(),
+        child: Padding(
           padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -547,7 +522,7 @@ class _UpcomingBillRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final overdue = bill.isOverdue;
     final days = bill.daysUntilDue;
-    final color = overdue ? AppColors.danger : (days <= 3 ? AppColors.warning : AppColors.badgeMintText);
+    final color = overdue ? AppColors.danger : (days <= 3 ? AppColors.warning : AppColors.primary);
     final label = overdue
         ? 'Overdue by ${-days} day${-days == 1 ? '' : 's'}'
         : days == 0
@@ -592,26 +567,18 @@ class _TopSpending extends StatelessWidget {
     required this.catColorMap,
   });
 
-  /// High contrast sections (dark navy vs bright sky blue)
+  /// The category's own colour, or a fixed fallback by position.
   Color _colorFor(String name, int idx) {
-    const palette = [
-      Color(0xFF38BDF8), // Glowing sky blue
-      Color(0xFF1E3A5F), // Deep navy
-      Color(0xFF60A5FA), // Accent sky blue
-    ];
-    return palette[idx % palette.length];
+    if (catColorMap.containsKey(name)) return Color(catColorMap[name]!);
+    const fallback = [AppColors.catFood, AppColors.catTransport, AppColors.catRent];
+    return fallback[idx % 3];
   }
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
-      child: Container(
-        decoration: AppColors.cardDecoration(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+      child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -642,59 +609,59 @@ class _TopSpending extends StatelessWidget {
                 children: [
                   SizedBox(
                     width: 100,
-                    height: 100,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        PieChart(
-                          PieChartData(
-                            sectionsSpace: 3,
-                            centerSpaceRadius: 34,
-                            startDegreeOffset: -90,
-                            sections: [
-                              for (var i = 0; i < topCats.length; i++)
-                                PieChartSectionData(
-                                  value: topCats[i].value,
-                                  color: _colorFor(topCats[i].key, i),
-                                  radius: 18,
-                                  title: '',
-                                ),
+                  height: 100,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 36,
+                          startDegreeOffset: -90,
+                          sections: [
+                            for (var i = 0; i < topCats.length; i++)
+                              PieChartSectionData(
+                                value: topCats[i].value,
+                                color: _colorFor(topCats[i].key, i),
+                                radius: 20,
+                                title: '',
+                              ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Top 3', style: TextStyle(fontSize: 9, color: AppColors.mutedForeground)),
+                          Text(MoneyFormat.compact(topTotal, symbol: symbol),
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    children: [
+                      for (var i = 0; i < topCats.length; i++)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Container(width: 7, height: 7, decoration: BoxDecoration(color: _colorFor(topCats[i].key, i), shape: BoxShape.circle)),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(topCats[i].key, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
+                              Text(MoneyFormat.compact(topCats[i].value, symbol: symbol),
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.mutedForeground)),
                             ],
                           ),
                         ),
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('Top 3', style: TextStyle(fontSize: 9, color: AppColors.mutedForeground)),
-                            Text(MoneyFormat.compact(topTotal, symbol: symbol),
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                          ],
-                        ),
-                      ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        for (var i = 0; i < topCats.length; i++)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                Container(width: 8, height: 8, decoration: BoxDecoration(color: _colorFor(topCats[i].key, i), shape: BoxShape.circle)),
-                                const SizedBox(width: 8),
-                                Expanded(child: Text(topCats[i].key, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
-                                Text(MoneyFormat.compact(topCats[i].value, symbol: symbol),
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.mutedForeground)),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -713,13 +680,8 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
-      child: Container(
-        decoration: AppColors.cardDecoration(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+      child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -754,19 +716,15 @@ class _TodaySpendCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pct = budget > 0 ? (spent / budget).clamp(0.0, 1.0) : 0.0;
-    final color = pct >= 1 ? AppColors.danger : AppColors.primary;
+    // Spending ring — always red (expense outflow)
+    const color = AppColors.danger;
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        child: Container(
-          decoration: AppColors.cardDecoration(),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppColors.radiusXl),
+      child: Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+        child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
@@ -783,8 +741,8 @@ class _TodaySpendCard extends StatelessWidget {
                       height: 78,
                       child: CircularProgressIndicator(
                         value: pct,
-                        strokeWidth: 9,
-                        backgroundColor: const Color(0xFF141E30),
+                        strokeWidth: 8,
+                        backgroundColor: AppColors.border,
                         valueColor: AlwaysStoppedAnimation<Color>(color),
                         strokeCap: StrokeCap.round,
                       ),
@@ -841,14 +799,9 @@ class _RecentSection extends StatelessWidget {
           )
         else
           Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppColors.radiusXl),
-              side: const BorderSide(color: AppColors.borderLight, width: 1),
-            ),
-            child: Container(
-              decoration: AppColors.cardDecoration(),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
               child: Column(
                 children: [
                   for (final tx in recent) TransactionTile(tx: tx),
@@ -875,16 +828,12 @@ class _MonthlyBudgetBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pct = budget > 0 ? (spent / budget).clamp(0.0, 1.0) : 0.0;
-    final color = pct >= 1 ? AppColors.danger : AppColors.primary;
+    // Spending bar — always red (expense outflow)
+    const color = AppColors.danger;
 
     return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppColors.radiusXl),
-        side: const BorderSide(color: AppColors.borderLight, width: 1),
-      ),
-      child: Container(
-        decoration: AppColors.cardDecoration(),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+      child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -896,7 +845,7 @@ class _MonthlyBudgetBar extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: pct,
                 minHeight: 8,
-                backgroundColor: const Color(0xFF141E30),
+                backgroundColor: AppColors.border,
                 valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),

@@ -62,8 +62,9 @@ class _CheckMessageSheetState extends State<CheckMessageSheet> {
     return SafeArea(
       child: Container(
         constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.9),
-        decoration: AppColors.cardDecoration(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        decoration: const BoxDecoration(
+          color: AppColors.cardSolid,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).viewInsets.bottom + 20),
@@ -88,21 +89,7 @@ class _CheckMessageSheetState extends State<CheckMessageSheet> {
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
                   hintText: 'e.g. SENT UGX 21,000 to … TID …',
-                  hintStyle: const TextStyle(color: AppColors.textSecondary),
-                  filled: true,
-                  fillColor: AppColors.cardBgSolid,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                    borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                    borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppColors.radiusMd),
-                    borderSide: const BorderSide(color: AppColors.skyBlue, width: 1.5),
-                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
                 ),
               ),
               const SizedBox(height: 8),
@@ -110,14 +97,12 @@ class _CheckMessageSheetState extends State<CheckMessageSheet> {
                 children: [
                   TextButton.icon(
                     onPressed: _paste,
-                    style: TextButton.styleFrom(foregroundColor: AppColors.skyBlue),
-                    icon: const Icon(Icons.content_paste, size: 18, color: AppColors.skyBlue),
+                    icon: const Icon(Icons.content_paste, size: 18),
                     label: const Text('Paste'),
                   ),
                   if (text.isNotEmpty)
                     TextButton(
                       onPressed: () => setState(_ctrl.clear),
-                      style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
                       child: const Text('Clear'),
                     ),
                 ],
@@ -129,16 +114,7 @@ class _CheckMessageSheetState extends State<CheckMessageSheet> {
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    child: FilledButton(
-                      onPressed: _add,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusPill)),
-                        minimumSize: const Size(double.infinity, 48),
-                      ),
-                      child: const Text('Add to review list', style: TextStyle(fontWeight: FontWeight.w700)),
-                    ),
+                    child: FilledButton(onPressed: _add, child: const Text('Add to review list')),
                   ),
                 ],
               ],
@@ -159,9 +135,8 @@ class _NotRecognised extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.cardBgSolid,
+        color: AppColors.warning.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35), width: 1),
       ),
       child: const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +166,7 @@ class _ParsedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = m.kind.isMoneyIn ? AppColors.badgeMintText : AppColors.danger;
+    final color = m.kind.isMoneyIn ? AppColors.income : AppColors.danger;
     final at = m.occurredAt;
     // (label, value) pairs; rows with a null value are skipped below.
     final rows = <(String, String?)>[
@@ -209,9 +184,8 @@ class _ParsedCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppColors.cardBgSolid,
+        color: AppColors.elevated,
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
-        border: Border.all(color: AppColors.borderLight, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

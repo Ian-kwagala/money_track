@@ -133,9 +133,69 @@ class MoneyRepository {
     _registerAdapterSafe(AlertRuleAdapter());
     await _openBoxes();
     await _seedIfNeeded();
+    await _sanitizeStoredText();
     // Stored balances can be stale (e.g. edited before this fix); always
     // re-derive them from opening balance + transactions on launch.
     await updateWalletBalances();
+  }
+
+  /// Pattern matching CJK ideographs and fullwidth characters that may have
+  /// entered local storage from garbled SMS decoding or corrupted icon strings.
+  static final _cjkPattern = RegExp(
+    r'[\u2E80-\u9FFF\u3400-\u4DBF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF]+',
+  );
+
+  static String _stripCjk(String value) =>
+      value.replaceAll(_cjkPattern, ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  /// Cleans any CJK characters out of existing stored records so the UI
+  /// never displays garbled Chinese text.
+  Future<void> _sanitizeStoredText() async {
+    for (final w in _wallets.values.toList()) {
+      final cleanName = _stripCjk(w.name);
+      final cleanIcon = _stripCjk(w.icon);
+      if (cleanName != w.name || cleanIcon != w.icon) {
+        w.name = cleanName.isEmpty ? 'Wallet' : cleanName;
+        w.icon = cleanIcon.isEmpty ? 'cash' : cleanIcon;
+        await _wallets.put(w.id, w);
+      }
+    }
+    for (final c in _categories.values.toList()) {
+      final cleanName = _stripCjk(c.name);
+      final cleanIcon = _stripCjk(c.icon);
+      if (cleanName != c.name || cleanIcon != c.icon) {
+        c.name = cleanName.isEmpty ? 'Category' : cleanName;
+        c.icon = cleanIcon.isEmpty ? 'category' : cleanIcon;
+        await _categories.put(c.id, c);
+      }
+    }
+    for (final t in _transactions.values.toList()) {
+      if (_cjkPattern.hasMatch(t.note)) {
+        t.note = _stripCjk(t.note);
+        await _transactions.put(t.id, t);
+      }
+    }
+    for (final b in _bills.values.toList()) {
+      if (_cjkPattern.hasMatch(b.name)) {
+        b.name = _stripCjk(b.name);
+        await _bills.put(b.id, b);
+      }
+    }
+    for (final g in _savingsGoals.values.toList()) {
+      if (_cjkPattern.hasMatch(g.name)) {
+        g.name = _stripCjk(g.name);
+        await _savingsGoals.put(g.id, g);
+      }
+    }
+    for (final d in _debts.values.toList()) {
+      final desc = d.description;
+      if (_cjkPattern.hasMatch(d.counterparty) ||
+          (desc != null && _cjkPattern.hasMatch(desc))) {
+        d.counterparty = _stripCjk(d.counterparty);
+        if (desc != null) d.description = _stripCjk(desc);
+        await _debts.put(d.id, d);
+      }
+    }
   }
 
   /// Registering the same typeId twice throws, which would happen when

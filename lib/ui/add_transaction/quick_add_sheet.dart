@@ -60,9 +60,10 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   int _hintId = 0;
   Timer? _hintTimer;
 
-  /// How often each category has been used, so the grid shows the ones
-  /// this person actually uses first.
-  late final Map<String, int> _usage = _countUsage();
+  /// How often and how recently each category has been used, so the grid
+  /// shows the ones this person actually uses first.
+  late final ({Map<String, int> counts, Map<String, DateTime> lastUsed}) _usage =
+      _computeUsage();
 
   /// Every frequency except custom, which needs a day count this sheet
   /// doesn't ask for.
@@ -84,12 +85,18 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     super.dispose();
   }
 
-  Map<String, int> _countUsage() {
+  ({Map<String, int> counts, Map<String, DateTime> lastUsed}) _computeUsage() {
     final counts = <String, int>{};
+    final lastUsed = <String, DateTime>{};
     for (final t in context.read<TrackerViewModel>().transactions) {
+      if (t.categoryId.isEmpty) continue;
       counts[t.categoryId] = (counts[t.categoryId] ?? 0) + 1;
+      final prev = lastUsed[t.categoryId];
+      if (prev == null || t.dateTime.isAfter(prev)) {
+        lastUsed[t.categoryId] = t.dateTime;
+      }
     }
-    return counts;
+    return (counts: counts, lastUsed: lastUsed);
   }
 
   void _tell(String message, {bool ok = false}) {
@@ -128,7 +135,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
         _frequencyFromCategory = false;
       }
     });
-    if (_frequency != before) _showFrequency();
+    if (_frequency != before || _frequencyFromCategory) _showFrequency();
   }
 
   /// Slides the frequency row sideways so the selected one is in view. Only
@@ -147,13 +154,24 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     });
   }
 
-  /// Categories by how often they're used; at a tie, ones this person
-  /// made come before the built-in ones, then the usual order.
+  /// Categories by how often they're used, then how recently they were used;
+  /// at a tie, ones this person made come before built-in ones, then the
+  /// usual order.
   List<Category> _ranked(List<Category> categories) {
     final order = {for (final (i, c) in categories.indexed) c.id: i};
     return [...categories]..sort((a, b) {
-        final byUse = (_usage[b.id] ?? 0).compareTo(_usage[a.id] ?? 0);
+        final byUse = (_usage.counts[b.id] ?? 0).compareTo(_usage.counts[a.id] ?? 0);
         if (byUse != 0) return byUse;
+        final dateA = _usage.lastUsed[a.id];
+        final dateB = _usage.lastUsed[b.id];
+        if (dateA != null && dateB != null) {
+          final byRecent = dateB.compareTo(dateA);
+          if (byRecent != 0) return byRecent;
+        } else if (dateB != null) {
+          return 1;
+        } else if (dateA != null) {
+          return -1;
+        }
         if (a.isBuiltIn != b.isBuiltIn) return a.isBuiltIn ? 1 : -1;
         return order[a.id]!.compareTo(order[b.id]!);
       });
@@ -231,12 +249,33 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
     final screenH = media.size.height;
     final isSmall = screenH < 700;
 
-    // Default to the first wallet the first time there is one.
+    // Default to the most-used / most recent wallet (first in vm.wallets).
     if (_walletId.isEmpty && vm.wallets.isNotEmpty) {
       _walletId = vm.wallets.first.id;
     }
 
     final categories = _type == TxType.income ? vm.incomeCategories : vm.expenseCategories;
+    final rankedCategories = _ranked(categories);
+
+    // Clear selection if the category no longer exists in the current list.
+    if (_categoryId != null && !rankedCategories.any((c) => c.id == _categoryId)) {
+      _categoryId = null;
+    }
+
+    // Default to the top-ranked (most used / most recent) category so it is
+    // pre-selected immediately when opening Quick Add or switching types.
+    if (_categoryId == null && rankedCategories.isNotEmpty) {
+      final topCat = rankedCategories.first;
+      _categoryId = topCat.id;
+      if (!_frequencyChosen &&
+          !topCat.isBuiltIn &&
+          _frequencyOptions.contains(topCat.usualFrequency)) {
+        final before = _frequency;
+        _frequency = topCat.usualFrequency;
+        _frequencyFromCategory = true;
+        if (_frequency != before) _showFrequency();
+      }
+    }
 
     return SafeArea(
       child: Container(
@@ -244,8 +283,9 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
           maxHeight: screenH * 0.92,
           minHeight: screenH * 0.5,
         ),
-        decoration: AppColors.cardDecoration(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+        decoration: const BoxDecoration(
+          color: AppColors.cardSolid,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -264,10 +304,24 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                   const Spacer(),
                   TextButton.icon(
                     onPressed: () {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
+                      // Carry all details filled in so far into the full form.
+                      final draft = TxRecord(
+                        id: '',
+                        type: _type,
+                        amount: _amount,
+                        walletId: _walletId,
+                        categoryId: _categoryId ?? '',
+                        note: _noteCtrl.text.trim(),
+                        dateTime: DateTime.now(),
+                        receiptPath: _receiptPath,
+                        frequency: _frequency,
+                      );
+                      final nav = Navigator.of(context);
+                      nav.pop();
+                      nav.push(
+                        MaterialPageRoute(
+                          builder: (_) => AddTransactionScreen(draft: draft),
+                        ),
                       );
                     },
                     icon: const Icon(Icons.open_in_new, size: 15),
@@ -284,11 +338,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                     icon: Container(
                       width: 28,
                       height: 28,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF141E30),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.08), width: 1),
-                      ),
+                      decoration: const BoxDecoration(color: AppColors.bg, shape: BoxShape.circle),
                       child: const Icon(Icons.close, size: 16, color: AppColors.textPrimary),
                     ),
                   ),
@@ -309,11 +359,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: Container(
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF141E30),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: AppColors.borderLight, width: 1),
-                            ),
+                            decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(24)),
                             padding: const EdgeInsets.all(4),
                             child: Row(
                               children: [
@@ -323,25 +369,11 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(vertical: 10),
                                       decoration: BoxDecoration(
-                                        gradient: _type == TxType.expense ? AppColors.cardGradient : null,
+                                        color: _type == TxType.expense ? Colors.white : Colors.transparent,
                                         borderRadius: BorderRadius.circular(20),
-                                        border: _type == TxType.expense
-                                            ? Border.all(color: Colors.white.withOpacity(0.12), width: 1)
-                                            : null,
-                                        boxShadow: _type == TxType.expense
-                                            ? const [BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, 2))]
-                                            : null,
+                                        boxShadow: _type == TxType.expense ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))] : null,
                                       ),
-                                      child: Center(
-                                        child: Text(
-                                          'Expense',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                            color: _type == TxType.expense ? AppColors.textPrimary : AppColors.mutedForeground,
-                                          ),
-                                        ),
-                                      ),
+                                      child: Center(child: Text('Expense', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _type == TxType.expense ? AppColors.textPrimary : AppColors.textSecondary))),
                                     ),
                                   ),
                                 ),
@@ -351,25 +383,11 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(vertical: 10),
                                       decoration: BoxDecoration(
-                                        gradient: _type == TxType.income ? AppColors.cardGradient : null,
+                                        color: _type == TxType.income ? Colors.white : Colors.transparent,
                                         borderRadius: BorderRadius.circular(20),
-                                        border: _type == TxType.income
-                                            ? Border.all(color: Colors.white.withOpacity(0.12), width: 1)
-                                            : null,
-                                        boxShadow: _type == TxType.income
-                                            ? const [BoxShadow(color: Color(0x1A000000), blurRadius: 8, offset: Offset(0, 2))]
-                                            : null,
+                                        boxShadow: _type == TxType.income ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))] : null,
                                       ),
-                                      child: Center(
-                                        child: Text(
-                                          'Income',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 14,
-                                            color: _type == TxType.income ? AppColors.textPrimary : AppColors.mutedForeground,
-                                          ),
-                                        ),
-                                      ),
+                                      child: Center(child: Text('Income', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: _type == TxType.income ? AppColors.textPrimary : AppColors.textSecondary))),
                                     ),
                                   ),
                                 ),
@@ -378,7 +396,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                           ),
                         ),
                         SizedBox(height: isSmall ? 12 : 18),
-                        const Text('Amount', style: TextStyle(fontSize: 13, color: AppColors.mutedForeground)),
+                        const Text('Amount', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                         const SizedBox(height: 4),
                         FittedBox(
                           fit: BoxFit.scaleDown,
@@ -386,7 +404,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               if (_type == TxType.income)
-                                const Text('+ ', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.badgeMintText)),
+                                const Text('+ ', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.primary)),
                               Text(
                                 '$symbol ${MoneyInput.group(_amountDisplay)}',
                                 style: TextStyle(fontSize: isSmall ? 28 : 32, fontWeight: FontWeight.w800, color: AppColors.textPrimary, letterSpacing: -1),
@@ -411,22 +429,16 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: selected ? const Color(0xFF1E3A5F) : const Color(0xFF141E30),
-                                    borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(
-                                      color: selected ? AppColors.primary : AppColors.borderLight,
-                                      width: selected ? 1.5 : 1,
-                                    ),
+                                    color: selected ? Colors.white : AppColors.bg,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: selected ? AppColors.primary : Colors.transparent, width: 1.5),
                                   ),
                                   child: Center(
-                                    child: Text(
-                                      w.name,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w600,
-                                        color: selected ? AppColors.primary : AppColors.mutedForeground,
-                                      ),
-                                    ),
+                                    child: Text(w.name,
+                                        style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: selected ? AppColors.primary : AppColors.textPrimary)),
                                   ),
                                 ),
                               );
@@ -469,12 +481,9 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: selected ? const Color(0xFF1E3A5F) : const Color(0xFF141E30),
-                                    borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(
-                                      color: selected ? AppColors.primary : AppColors.borderLight,
-                                      width: selected ? 1.2 : 1,
-                                    ),
+                                    color: selected ? AppColors.primary.withValues(alpha: 0.12) : AppColors.bg,
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: selected ? AppColors.primary : Colors.transparent, width: 1.2),
                                   ),
                                   child: Center(
                                     child: Text(
@@ -482,7 +491,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                                        color: selected ? AppColors.primary : AppColors.mutedForeground,
+                                        color: selected ? AppColors.primary : AppColors.textSecondary,
                                       ),
                                     ),
                                   ),
@@ -509,22 +518,11 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                             controller: _noteCtrl,
                             decoration: InputDecoration(
                               hintText: 'Add a note (optional)',
-                              hintStyle: const TextStyle(color: AppColors.mutedForeground, fontSize: 13),
-                              prefixIcon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.mutedForeground),
+                              hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                              prefixIcon: const Icon(Icons.edit_outlined, size: 16, color: AppColors.textSecondary),
                               filled: true,
-                              fillColor: const Color(0xFF141E30),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(color: AppColors.borderLight, width: 1),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14),
-                                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                              ),
+                              fillColor: AppColors.bg,
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                             ),
                           ),
@@ -551,8 +549,8 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
             Container(
               padding: EdgeInsets.fromLTRB(16, 8, 16, viewInsets + 12),
               decoration: const BoxDecoration(
-                color: Color(0xFF0F172A),
-                border: Border(top: BorderSide(color: AppColors.borderLight, width: 1)),
+                color: AppColors.cardSolid,
+                border: Border(top: BorderSide(color: AppColors.borderLight, width: 0.5)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -740,13 +738,10 @@ class _Numpad extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
           child: Material(
-            color: const Color(0xFF141E30),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-              side: BorderSide(color: Colors.white.withOpacity(0.08), width: 1),
-            ),
+            color: AppColors.bg,
+            borderRadius: BorderRadius.circular(12),
             child: InkWell(
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               onTap: () {
                 HapticFeedback.selectionClick();
                 (tap ?? () => onKey(label))();
@@ -755,7 +750,7 @@ class _Numpad extends StatelessWidget {
                 height: isSmall ? 42 : 48,
                 child: Center(
                   child: icon != null
-                      ? Icon(icon, color: AppColors.mutedForeground, size: 18)
+                      ? Icon(icon, color: AppColors.textSecondary, size: 18)
                       : Text(label, style: TextStyle(fontSize: isSmall ? 16 : 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                 ),
               ),

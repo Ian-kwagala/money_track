@@ -106,6 +106,12 @@ void main() {
 
   testWidgets('Save says what is missing instead of doing nothing', (tester) async {
     await openQuickAdd(tester);
+    await tester.runAsync(() async {
+      for (final c in [...phone.vm.expenseCategories]) {
+        await phone.vm.deleteCategory(c.id);
+      }
+    });
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Save transaction'));
     await tester.pumpAndSettle();
     expect(find.text('Enter an amount'), findsOneWidget);
