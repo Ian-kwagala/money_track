@@ -245,6 +245,7 @@ class SyncService extends ChangeNotifier {
   /// then schedules an upload 1.5 s later, restarting the timer on each new
   /// edit.
   void _onLocalEvent(String box, BoxEvent e) {
+    if (_disposed || !_meta.isOpen) return;
     final key = '$box/${e.key}';
     if (_suppress.remove(key)) return;
     _meta.put('dirty:$key', DateTime.now().millisecondsSinceEpoch);
@@ -293,6 +294,9 @@ class SyncService extends ChangeNotifier {
       commit = batch.commit().then((_) async {
         for (final entry in chunk) {
           _inFlight.remove(entry.key);
+        }
+        if (_disposed || !_meta.isOpen) return;
+        for (final entry in chunk) {
           await _meta.put('ts:${entry.key}', entry.value);
           // Only clear if the record wasn't edited again since this push.
           if (_meta.get('dirty:${entry.key}') == entry.value) {

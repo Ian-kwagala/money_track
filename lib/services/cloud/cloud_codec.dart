@@ -111,6 +111,7 @@ class CloudCodec {
           'unusualSpendingEnabled': s.unusualSpendingEnabled,
           'weeklySummaryEnabled': s.weeklySummaryEnabled,
           'dailyBudget': s.dailyBudget,
+          'monthlySpendingLimit': s.monthlySpendingLimit,
         };
       case HiveBoxes.users:
         final u = value as User;
@@ -273,7 +274,8 @@ class CloudCodec {
           ..billRemindersEnabled = m['billRemindersEnabled'] != false
           ..unusualSpendingEnabled = m['unusualSpendingEnabled'] != false
           ..weeklySummaryEnabled = m['weeklySummaryEnabled'] == true
-          ..dailyBudget = (m['dailyBudget'] as num?)?.toDouble();
+          ..dailyBudget = (m['dailyBudget'] as num?)?.toDouble()
+          ..monthlySpendingLimit = (m['monthlySpendingLimit'] as num?)?.toDouble();
         return s;
       case HiveBoxes.users:
         return User(

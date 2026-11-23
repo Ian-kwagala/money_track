@@ -35,6 +35,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   String? _categoryId;
   String _walletId = '';
   final _noteCtrl = TextEditingController();
+  DateTime _dateTime = DateTime.now();
 
   /// The amount as typed on the numpad, digits only ("25000"); grouped with
   /// commas only for display.
@@ -312,7 +313,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                         walletId: _walletId,
                         categoryId: _categoryId ?? '',
                         note: _noteCtrl.text.trim(),
-                        dateTime: DateTime.now(),
+                        dateTime: _dateTime,
                         receiptPath: _receiptPath,
                         frequency: _frequency,
                       );
@@ -503,12 +504,45 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                         SizedBox(height: isSmall ? 8 : 12),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ReceiptPicker(
-                              path: _receiptPath,
-                              onChanged: (p) => setState(() => _receiptPath = p),
-                            ),
+                          child: Row(
+                            children: [
+                              InkWell(
+                                key: const Key('quick_add_date_button'),
+                                onTap: _pickDate,
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.bg,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.calendar_today_outlined, size: 15, color: AppColors.primary),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        MoneyFormat.isSameDay(_dateTime, DateTime.now())
+                                            ? 'Today'
+                                            : MoneyFormat.shortDay(_dateTime),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: ReceiptPicker(
+                                  path: _receiptPath,
+                                  onChanged: (p) => setState(() => _receiptPath = p),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -607,6 +641,26 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   /// Amount and category set; drives the Save button's dimmed look.
   bool get _ready => _amount > 0 && (_categoryId?.isNotEmpty ?? false);
 
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _dateTime,
+      firstDate: DateTime(2015),
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _dateTime = DateTime(
+        picked.year,
+        picked.month,
+        picked.day,
+        _dateTime.hour,
+        _dateTime.minute,
+      );
+    });
+  }
+
   /// True once saved; the button then shows its check and [_close] runs.
   Future<bool> _save() async {
     if (_amount <= 0) {
@@ -629,7 +683,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
       walletId: _walletId,
       categoryId: _categoryId ?? '',
       note: _noteCtrl.text.trim(),
-      dateTime: DateTime.now(),
+      dateTime: _dateTime,
       receiptPath: _receiptPath,
       frequency: _frequency,
     );

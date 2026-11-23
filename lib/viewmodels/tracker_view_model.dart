@@ -548,13 +548,58 @@ class TrackerViewModel extends ChangeNotifier {
   double get monthlyBudgetTotal =>
       budgets.fold<double>(0, (sum, b) => sum + b.monthlyEquivalent);
 
+  /// True when the user has explicitly set an overall monthly spending limit.
+  bool get hasCustomMonthlyLimit => (settings.monthlySpendingLimit ?? 0) > 0;
+
+  /// The active monthly spending limit: the user's explicit monthly limit if
+  /// set, otherwise the sum of category budgets ([monthlyBudgetTotal]).
+  double get effectiveMonthlyLimit =>
+      hasCustomMonthlyLimit ? settings.monthlySpendingLimit! : monthlyBudgetTotal;
+
+  /// Saves (or clears, when [limit] is null or <= 0) the user's overall
+  /// monthly spending limit in local storage and queues a Firestore sync.
+  Future<void> setMonthlySpendingLimit(double? limit) async {
+    final s = settings;
+    s.monthlySpendingLimit = (limit != null && limit > 0) ? limit : null;
+    await updateSettings(s);
+  }
+
+  /// Filters [transactions] (newest first) by display title, category name,
+  /// or note, case-insensitively.
+  List<TxRecord> searchTransactions(String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return transactions;
+
+    return transactions.where((tx) {
+      final cat = categoryById(tx.categoryId);
+      final catName = cat?.name ?? '';
+      final String title;
+      if (tx.isOneSided) {
+        title = tx.note.isNotEmpty ? tx.note : (tx.isOneSidedIn ? 'Money in' : 'Money out');
+      } else if (tx.type == TxType.transfer) {
+        final from = walletById(tx.walletId);
+        final to = walletById(tx.toWalletId ?? tx.walletId);
+        title = '${from.name} → ${to.name} ${from.name} -> ${to.name}';
+      } else {
+        title = tx.note.isNotEmpty
+            ? tx.note
+            : (catName.isNotEmpty ? catName : (tx.type == TxType.income ? 'Income' : 'Expense'));
+      }
+
+      return title.toLowerCase().contains(q) ||
+          catName.toLowerCase().contains(q) ||
+          tx.note.toLowerCase().contains(q);
+    }).toList();
+  }
+
   /// How much the user aims to spend per day: their own daily budget if set,
-  /// otherwise an estimate from budgets, then this month's income, then the
-  /// current pace. Shared by every screen that shows a daily target.
+  /// otherwise an estimate from budgets/monthly limit, then this month's
+  /// income, then the current pace. Shared by every screen that shows a daily
+  /// target.
   double get dailyTarget {
     final own = settings.dailyBudget;
     if (own != null && own > 0) return own;
-    final budgetTotal = monthlyBudgetTotal;
+    final budgetTotal = effectiveMonthlyLimit;
     if (budgetTotal > 0) return budgetTotal / 30;
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);

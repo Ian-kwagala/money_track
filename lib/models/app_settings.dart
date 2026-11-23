@@ -70,6 +70,11 @@ class AppSettings extends HiveObject {
   @HiveField(14)
   double? dailyBudget;
 
+  /// Optional overall monthly spending limit set by the user. When null or
+  /// non-positive, the dashboard falls back to the sum of category budgets.
+  @HiveField(15)
+  double? monthlySpendingLimit;
+
   AppSettings({
     this.profileName = 'Ian',
     this.currencySymbol = 'UGX',
@@ -86,5 +91,6 @@ class AppSettings extends HiveObject {
     this.unusualSpendingEnabled = true,
     this.weeklySummaryEnabled = false,
     this.dailyBudget,
+    this.monthlySpendingLimit,
   });
 }

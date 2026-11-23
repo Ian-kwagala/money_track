@@ -77,7 +77,7 @@ Map<String, Object> _samples() => {
         profileName: 'Nakato', currencySymbol: 'USh', currencyCode: 'USD', darkMode: true,
         notificationsEnabled: false, locale: 'en_UG', onboardingCompleted: true,
         budgetWarningsEnabled: false, billRemindersEnabled: false, unusualSpendingEnabled: false,
-        weeklySummaryEnabled: true, dailyBudget: 20000,
+        weeklySummaryEnabled: true, dailyBudget: 20000, monthlySpendingLimit: 500000,
       ),
     };
 

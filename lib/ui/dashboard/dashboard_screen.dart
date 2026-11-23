@@ -1,10 +1,12 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../account/cloud_account_screen.dart';
+import '../add_transaction/add_transaction_screen.dart';
 import '../home_shell.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
+import '../../services/cloud/sync_service.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../widgets/alerts_bell.dart';
 import '../widgets/announcement_banner.dart';
@@ -15,21 +17,44 @@ import '../../models/bill.dart';
 import '../../models/transaction.dart';
 import '../../models/wallet.dart';
 import '../widgets/transaction_tile.dart';
+import 'category_expense_pie_chart.dart';
 import 'daily_spend_screen.dart';
+import 'monthly_budget_card.dart';
 
 /// The Home tab: the at-a-glance summary of the user's money.
 ///
 /// From top to bottom: announcement and SMS-review banners, total balance
-/// with a pill per wallet, this month's income and spending, shortcut chips
-/// to the secondary screens, bills due within a week, top three spending
-/// categories, saved-this-month / average daily spend beside today's
-/// spending ring, the four most recent transactions, and the monthly budget
-/// bar.
-///
-/// Everything is computed from the view model on each build; nothing is
-/// cached.
-class DashboardScreen extends StatelessWidget {
+/// with a pill per wallet, this month's income and total expenses, shortcut
+/// chips to the secondary screens, bills due within a week, an interactive
+/// expense-by-category pie chart, saved-this-month / average daily spend
+/// beside today's spending ring, a searchable recent-transactions list, and
+/// the monthly spending limit & remaining-budget card.
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  final TextEditingController _searchCtrl = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  /// Reads [SyncService] if mounted in the widget tree, returning null in
+  /// isolated tests that only provide [TrackerViewModel].
+  SyncService? _maybeSync(BuildContext context, {bool listen = true}) {
+    try {
+      return Provider.of<SyncService>(context, listen: listen);
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
 
   /// "Tuesday, 13 Oct" for the header subtitle.
   String _headerDate(DateTime now) {
@@ -48,6 +73,7 @@ class DashboardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<TrackerViewModel>();
+    final sync = _maybeSync(context);
 
     // When the dashboard is loading initial data or refreshing,
     // show the animated skeleton view to keep the user engaged.
@@ -69,6 +95,15 @@ class DashboardScreen extends StatelessWidget {
     final spentToday = vm.spentTotal(todayStart, now);
     final spentThisMonth = vm.spentTotal(monthStart, now);
     final incomeThisMonth = vm.incomeTotal(monthStart, now);
+    final totalExpensesAllTime = vm.transactions
+        .where((t) => t.type == TxType.expense)
+        .fold<double>(0, (sum, t) => sum + t.amount);
+    final expenseCountThisMonth = vm.transactions
+        .where((t) =>
+            t.type == TxType.expense &&
+            !t.dateTime.isBefore(monthStart) &&
+            !t.dateTime.isAfter(now))
+        .length;
 
     final totalBalance = vm.wallets.fold<double>(
       0,
@@ -83,9 +118,12 @@ class DashboardScreen extends StatelessWidget {
     // opening balances).
     final displayBalance = vm.wallets.isNotEmpty ? totalBalance : netFromTransactions;
 
-    final recent = vm.transactions.take(4).toList();
+    final isSearching = _searchQuery.trim().isNotEmpty;
+    final recent = isSearching
+        ? vm.searchTransactions(_searchQuery).take(10).toList()
+        : vm.transactions.take(4).toList();
 
-    final totalBudget = vm.monthlyBudgetTotal;
+    final monthlyLimit = vm.effectiveMonthlyLimit;
     final dailyTarget = vm.dailyTarget;
 
     // "Saved" here is simply income minus spending this month (it can go
@@ -93,21 +131,18 @@ class DashboardScreen extends StatelessWidget {
     final savedThisMonth = incomeThisMonth - spentThisMonth;
     final avgDailySpend = spentThisMonth / now.day;
 
-    // Category totals for Top spending: this month, keyed by category name,
-    // largest three kept.
-    final categoryTotals = <String, double>{};
-    final catColorMap = <String, int>{};
+    // Full breakdown of this month's expenses by category for the pie chart.
+    final categorySlices = <CategoryExpenseSlice>[];
     for (final cat in vm.expenseCategories) {
       final amount = vm.spentByCategory(monthStart, now, cat.id);
       if (amount > 0) {
-        categoryTotals[cat.name] = amount;
-        catColorMap[cat.name] = cat.color;
+        categorySlices.add(CategoryExpenseSlice(
+          name: cat.name,
+          amount: amount,
+          color: Color(cat.color),
+        ));
       }
     }
-    final sortedCats = categoryTotals.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-    final topCats = sortedCats.take(3).toList();
-    final topTotal = topCats.fold<double>(0, (sum, e) => sum + e.value);
 
     // Bills due within a week (or already overdue), soonest first.
     final upcomingBills = vm.bills.where((b) => b.isDueWithin(7)).toList()
@@ -119,7 +154,13 @@ class DashboardScreen extends StatelessWidget {
         top: false,
         child: RefreshIndicator(
           color: AppColors.primary,
-          onRefresh: () => vm.refreshData(),
+          onRefresh: () async {
+            final syncRef = _maybeSync(context, listen: false);
+            await vm.refreshData();
+            if (syncRef != null && syncRef.isEnabled) {
+              await syncRef.syncNow();
+            }
+          },
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
@@ -140,6 +181,11 @@ class DashboardScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (sync != null && sync.isEnabled) ...[
+                    _CloudSyncPill(sync: sync),
+                    const SizedBox(height: 12),
+                  ],
+
                   // Balance Card
                   _BalanceCard(
                     totalBalance: displayBalance,
@@ -148,7 +194,7 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Income / Spent row
+                  // Income / Total expenses summary row
                   Row(
                     children: [
                       Expanded(
@@ -162,10 +208,12 @@ class DashboardScreen extends StatelessWidget {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _IncomeSpentCard(
-                          label: 'Spent this month',
+                          label: 'Total expenses',
                           amount: spentThisMonth,
                           symbol: symbol,
                           isIncome: false,
+                          footnote:
+                              '$expenseCountThisMonth this month · All: ${MoneyFormat.compact(totalExpensesAllTime, symbol: symbol)}',
                         ),
                       ),
                     ],
@@ -182,12 +230,11 @@ class DashboardScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                   ],
 
-                  // Top Spending
-                  _TopSpending(
-                    topCats: topCats,
-                    topTotal: topTotal,
+                  // Expenses by category pie chart
+                  CategoryExpensePieChart(
+                    slices: categorySlices,
                     symbol: symbol,
-                    catColorMap: catColorMap,
+                    onAnalyticsTap: () => Navigator.pushNamed(context, '/analytics'),
                   ),
                   const SizedBox(height: 16),
 
@@ -235,15 +282,31 @@ class DashboardScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Recent
-                  _RecentSection(recent: recent),
+                  // Recent transactions with search bar
+                  _RecentSection(
+                    recent: recent,
+                    hasTransactions: vm.transactions.isNotEmpty,
+                    searchController: _searchCtrl,
+                    searchQuery: _searchQuery,
+                    onSearchChanged: (value) => setState(() => _searchQuery = value),
+                    onClearSearch: () {
+                      _searchCtrl.clear();
+                      setState(() => _searchQuery = '');
+                    },
+                    onAddTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AddTransactionScreen()),
+                    ),
+                  ),
                   const SizedBox(height: 16),
 
-                  // Monthly Budget
-                  _MonthlyBudgetBar(
+                  // Monthly spending limit & remaining budget
+                  MonthlyBudgetCard(
                     spent: spentThisMonth,
-                    budget: totalBudget,
+                    limit: monthlyLimit,
+                    hasCustomLimit: vm.hasCustomMonthlyLimit,
                     symbol: symbol,
+                    onSaveLimit: (limit) => vm.setMonthlySpendingLimit(limit),
                   ),
                   const SizedBox(height: 100), // FAB clearance
                 ],
@@ -360,18 +423,75 @@ class _WalletPill extends StatelessWidget {
   }
 }
 
-/// Income/Spent card
+/// Compact Firestore sync status pill shown when cloud sync is enabled.
+class _CloudSyncPill extends StatelessWidget {
+  final SyncService sync;
+
+  const _CloudSyncPill({required this.sync});
+
+  @override
+  Widget build(BuildContext context) {
+    final (label, icon, color) = switch (sync.status) {
+      SyncStatus.synced => ('Cloud sync · Up to date', Icons.cloud_done_outlined, AppColors.primary),
+      SyncStatus.syncing => ('Cloud sync · Syncing...', Icons.cloud_sync_outlined, AppColors.info),
+      SyncStatus.offline => ('Cloud sync · Offline (${sync.pendingCount} queued)', Icons.cloud_off_outlined, AppColors.warning),
+      SyncStatus.error => ('Cloud sync · Needs attention', Icons.cloud_off_outlined, AppColors.danger),
+      SyncStatus.needsAccountChoice => ('Cloud sync · Account switch pending', Icons.manage_accounts_outlined, AppColors.warning),
+      SyncStatus.signedOut => ('Cloud sync · Sign in to back up to Firestore', Icons.cloud_upload_outlined, AppColors.mutedForeground),
+      SyncStatus.disabled => ('Local storage only', Icons.storage_outlined, AppColors.mutedForeground),
+    };
+
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const CloudAccountScreen()),
+      ),
+      borderRadius: BorderRadius.circular(AppColors.radius2xl),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(AppColors.radius2xl),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 15, color: color),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Income/Spent summary card
 class _IncomeSpentCard extends StatelessWidget {
   final String label;
   final double amount;
   final String symbol;
   final bool isIncome;
+  final String? footnote;
 
   const _IncomeSpentCard({
     required this.label,
     required this.amount,
     required this.symbol,
     required this.isIncome,
+    this.footnote,
   });
 
   @override
@@ -398,14 +518,27 @@ class _IncomeSpentCard extends StatelessWidget {
             const SizedBox(height: 10),
             Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
             const SizedBox(height: 4),
-            Text(
-              MoneyFormat.money(amount, symbol: symbol),
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: color,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                MoneyFormat.money(amount, symbol: symbol),
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: color,
+                ),
               ),
             ),
+            if (footnote != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                footnote!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10, color: AppColors.mutedForeground),
+              ),
+            ],
           ],
         ),
       ),
@@ -553,122 +686,6 @@ class _UpcomingBillRow extends StatelessWidget {
   }
 }
 
-/// Top spending with donut + list
-class _TopSpending extends StatelessWidget {
-  final List<MapEntry<String, double>> topCats;
-  final double topTotal;
-  final String symbol;
-  final Map<String, int> catColorMap;
-
-  const _TopSpending({
-    required this.topCats,
-    required this.topTotal,
-    required this.symbol,
-    required this.catColorMap,
-  });
-
-  /// The category's own colour, or a fixed fallback by position.
-  Color _colorFor(String name, int idx) {
-    if (catColorMap.containsKey(name)) return Color(catColorMap[name]!);
-    const fallback = [AppColors.catFood, AppColors.catTransport, AppColors.catRent];
-    return fallback[idx % 3];
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text('Top spending', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                const Spacer(),
-                InkWell(
-                  onTap: () => Navigator.pushNamed(context, '/analytics'),
-                  child: const Text('Analytics', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 12)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (topCats.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
-                child: Center(
-                  child: Text(
-                    'No expenses recorded this month',
-                    style: TextStyle(fontSize: 12, color: AppColors.mutedForeground),
-                  ),
-                ),
-              )
-            else
-              Row(
-                children: [
-                  SizedBox(
-                    width: 100,
-                  height: 100,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      PieChart(
-                        PieChartData(
-                          sectionsSpace: 2,
-                          centerSpaceRadius: 36,
-                          startDegreeOffset: -90,
-                          sections: [
-                            for (var i = 0; i < topCats.length; i++)
-                              PieChartSectionData(
-                                value: topCats[i].value,
-                                color: _colorFor(topCats[i].key, i),
-                                radius: 20,
-                                title: '',
-                              ),
-                          ],
-                        ),
-                      ),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('Top 3', style: TextStyle(fontSize: 9, color: AppColors.mutedForeground)),
-                          Text(MoneyFormat.compact(topTotal, symbol: symbol),
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    children: [
-                      for (var i = 0; i < topCats.length; i++)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            children: [
-                              Container(width: 7, height: 7, decoration: BoxDecoration(color: _colorFor(topCats[i].key, i), shape: BoxShape.circle)),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text(topCats[i].key, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary))),
-                              Text(MoneyFormat.compact(topCats[i].value, symbol: symbol),
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.mutedForeground)),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// One figure with a label, e.g. "Saved this month".
 class _StatCard extends StatelessWidget {
   final String label;
@@ -767,20 +784,54 @@ class _TodaySpendCard extends StatelessWidget {
   }
 }
 
-/// Recent transactions section
+/// Recent transactions section with an inline search bar filtering by title,
+/// category, or note.
 class _RecentSection extends StatelessWidget {
   final List<TxRecord> recent;
-  const _RecentSection({required this.recent});
+  final bool hasTransactions;
+  final TextEditingController searchController;
+  final String searchQuery;
+  final ValueChanged<String> onSearchChanged;
+  final VoidCallback onClearSearch;
+  final VoidCallback onAddTap;
+
+  const _RecentSection({
+    required this.recent,
+    required this.hasTransactions,
+    required this.searchController,
+    required this.searchQuery,
+    required this.onSearchChanged,
+    required this.onClearSearch,
+    required this.onAddTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isSearching = searchQuery.trim().isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Text('Recent', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const Text(
+              'Recent transactions',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            ),
             const Spacer(),
+            TextButton.icon(
+              key: const Key('dashboard_add_transaction_button'),
+              onPressed: onAddTap,
+              icon: const Icon(Icons.add_circle_outline, size: 15),
+              label: const Text('Add'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                visualDensity: VisualDensity.compact,
+                textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+              ),
+            ),
+            const SizedBox(width: 4),
             InkWell(
               onTap: () => Navigator.pushNamed(context, '/transactions'),
               child: const Text(
@@ -791,11 +842,74 @@ class _RecentSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 8),
-        if (recent.isEmpty)
+        if (hasTransactions) ...[
+          TextField(
+            key: const Key('dashboard_search_bar'),
+            controller: searchController,
+            onChanged: onSearchChanged,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search by title, category, or note...',
+              hintStyle: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+              prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.mutedForeground),
+              suffixIcon: isSearching
+                  ? IconButton(
+                      key: const Key('dashboard_search_clear'),
+                      icon: const Icon(Icons.close, size: 18, color: AppColors.mutedForeground),
+                      tooltip: 'Clear search',
+                      onPressed: onClearSearch,
+                    )
+                  : null,
+              filled: true,
+              fillColor: AppColors.card,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                borderSide: const BorderSide(color: AppColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppColors.radiusLg),
+                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+        if (!hasTransactions)
           const EmptyState(
             icon: Icons.receipt_long_outlined,
             title: 'No transactions yet',
             message: 'Tap + to add your first expense.',
+          )
+        else if (recent.isEmpty && isSearching)
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Center(
+                child: Column(
+                  children: [
+                    const Icon(Icons.search_off_rounded, size: 28, color: AppColors.mutedForeground),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No transactions matching "$searchQuery"',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: onClearSearch,
+                      child: const Text('Clear search'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           )
         else
           Card(
@@ -810,51 +924,6 @@ class _RecentSection extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-/// Monthly budget progress bar
-///
-/// All spending this month against the sum of every budget scaled to a
-/// month (TrackerViewModel.monthlyBudgetTotal).
-class _MonthlyBudgetBar extends StatelessWidget {
-  final double spent;
-  final double budget;
-  final String symbol;
-
-  const _MonthlyBudgetBar({required this.spent, required this.budget, required this.symbol});
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = budget > 0 ? (spent / budget).clamp(0.0, 1.0) : 0.0;
-    // Spending bar — always red (expense outflow)
-    const color = AppColors.danger;
-
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
-      child: Padding(
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Monthly budget used', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(6),
-              child: LinearProgressIndicator(
-                value: pct,
-                minHeight: 8,
-                backgroundColor: AppColors.border,
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('${MoneyFormat.money(spent, symbol: symbol)} of ${MoneyFormat.money(budget, symbol: symbol)}',
-                style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground)),
-          ],
-        ),
-      ),
     );
   }
 }

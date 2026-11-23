@@ -32,13 +32,14 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       unusualSpendingEnabled: fields[12] as bool,
       weeklySummaryEnabled: fields[13] as bool,
       dailyBudget: fields[14] as double?,
+      monthlySpendingLimit: fields[15] as double?,
     );
   }
 
   @override
   void write(BinaryWriter writer, AppSettings obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.profileName)
       ..writeByte(1)
@@ -68,7 +69,9 @@ class AppSettingsAdapter extends TypeAdapter<AppSettings> {
       ..writeByte(13)
       ..write(obj.weeklySummaryEnabled)
       ..writeByte(14)
-      ..write(obj.dailyBudget);
+      ..write(obj.dailyBudget)
+      ..writeByte(15)
+      ..write(obj.monthlySpendingLimit);
   }
 
   @override

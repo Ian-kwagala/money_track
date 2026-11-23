@@ -41,14 +41,19 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     final now = DateTime.now();
     final monthStart = DateTime(now.year, now.month, 1);
 
-    // Overall card: spent this month across budgeted categories against the sum
-    // of all category budgets scaled to a month.
+    // Overall card: if a custom monthly spending limit is set, compare total
+    // monthly spending against it; otherwise compare budgeted categories
+    // against the sum of all category budgets scaled to a month.
     final budgetedCategoryIds = vm.budgets.map((b) => b.categoryId).toSet();
     double spentMonth = 0;
-    for (final cid in budgetedCategoryIds) {
-      spentMonth += vm.spentByCategory(monthStart, now, cid);
+    if (vm.hasCustomMonthlyLimit) {
+      spentMonth = vm.spentTotal(monthStart, now);
+    } else {
+      for (final cid in budgetedCategoryIds) {
+        spentMonth += vm.spentByCategory(monthStart, now, cid);
+      }
     }
-    final totalBudget = vm.monthlyBudgetTotal;
+    final totalBudget = vm.effectiveMonthlyLimit;
     final overallPct = totalBudget > 0 ? spentMonth / totalBudget : 0.0;
     final isOver = spentMonth > totalBudget;
     final diff = (totalBudget - spentMonth).abs();
