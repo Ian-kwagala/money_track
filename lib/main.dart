@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'data/money_repository.dart';
 import 'services/alerts_service.dart';
+import 'services/budget_notification_service.dart';
 import 'services/capture/capture_service.dart';
 import 'services/capture/sms_bridge.dart';
 import 'services/cloud/announcement_service.dart';
@@ -10,6 +11,7 @@ import 'services/cloud/auth_service.dart';
 import 'services/cloud/connectivity_service.dart';
 import 'services/cloud/firebase_bootstrap.dart';
 import 'services/cloud/sync_service.dart';
+import 'services/recurring_transaction_service.dart';
 import 'services/shorebird_update_service.dart';
 import 'ui/account/account_settings_screen.dart';
 import 'ui/alerts/alerts_screen.dart';
@@ -51,8 +53,21 @@ Future<void> main() async {
   // CaptureService, so `capture` is declared late to break the cycle. It's
   // assigned before onReady can run.
   late final CaptureService capture;
-  final viewModel = TrackerViewModel(repo, onReady: () => Future.wait([sync.start(), capture.start()]));
+  late final BudgetNotificationService budgetNotifications;
+  late final TrackerViewModel viewModel;
+  viewModel = TrackerViewModel(
+    repo,
+    onReady: () async {
+      await RecurringTransactionService.processDueRecurring(viewModel);
+      await Future.wait([
+        sync.start(),
+        capture.start(),
+        budgetNotifications.start(),
+      ]);
+    },
+  );
   capture = CaptureService(vm: viewModel, bridge: SmsBridge.platform());
+  budgetNotifications = BudgetNotificationService(vm: viewModel);
   // When sync writes data pulled from the cloud into Hive, rebuild the UI.
   sync.onRemoteChangesApplied = viewModel.refreshFromStorage;
 

@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 
 import '../../models/bill.dart';
 import '../../models/frequency.dart';
+import '../../models/recurrence_rule.dart';
 import '../../models/transaction.dart';
+import '../../services/recurring_transaction_service.dart';
 import '../../viewmodels/tracker_view_model.dart';
 import '../home_shell.dart';
 import '../format/money_format.dart';
@@ -32,8 +34,9 @@ class BillsScreen extends StatelessWidget {
         return a.nextDueDate.compareTo(b.nextDueDate);
       });
 
+    final c = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: c.bg,
       body: SafeArea(
         top: false,
         child: CustomScrollView(
@@ -55,11 +58,11 @@ class BillsScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Total monthly recurring', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
+                          Text('Total monthly recurring', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c.mutedForeground)),
                           const SizedBox(height: 6),
-                          Text(MoneyFormat.money(totalMonthly, symbol: symbol), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                          Text(MoneyFormat.money(totalMonthly, symbol: symbol), style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: c.textPrimary)),
                           const SizedBox(height: 4),
-                          const Text('Subscriptions included — review to save', style: TextStyle(fontSize: 10, color: AppColors.mutedForeground)),
+                          Text('Subscriptions included — review to save', style: TextStyle(fontSize: 10, color: c.mutedForeground)),
                         ],
                       ),
                     ),
@@ -100,6 +103,7 @@ class BillsScreen extends StatelessWidget {
                       _BillCard(
                         bill: bill,
                         symbol: symbol,
+                        autoPost: vm.recurrenceRuleById(bill.recurrenceRuleId)?.autoPost == true,
                         onEdit: () => _editBillDialog(context, vm, existing: bill),
                         onDelete: () => _confirmDeleteBill(context, vm, bill),
                         onTogglePaid: () => _confirmMarkPaid(context, vm, bill, symbol),
@@ -179,6 +183,9 @@ class BillsScreen extends StatelessWidget {
       ),
     );
     if (confirmed == true) {
+      if (bill.recurrenceRuleId != null && bill.recurrenceRuleId!.isNotEmpty) {
+        await vm.deleteRecurrenceRule(bill.recurrenceRuleId!);
+      }
       await vm.deleteBill(bill.id);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bill deleted')));
@@ -209,6 +216,8 @@ class BillsScreen extends StatelessWidget {
     Frequency frequency = existing?.frequency ?? Frequency.monthly;
     int reminderDays = existing?.reminderDaysBefore ?? 3;
     String? categoryId = existing?.categoryId;
+    final existingRule = vm.recurrenceRuleById(existing?.recurrenceRuleId);
+    bool autoPost = existingRule?.autoPost ?? (existing == null);
     String walletId = existing?.walletId.isNotEmpty == true ? existing!.walletId : (vm.wallets.isNotEmpty ? vm.wallets.first.id : '');
 
     final saved = await showDialog<bool>(
@@ -304,6 +313,21 @@ class BillsScreen extends StatelessWidget {
                     if (v != null) setDialogState(() => reminderDays = v);
                   },
                 ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  key: const Key('bill_auto_post_switch'),
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Auto-add to ledger on due date',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: const Text(
+                    'Automatically record this expense when the scheduled date arrives.',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  value: autoPost,
+                  onChanged: (v) => setDialogState(() => autoPost = v),
+                ),
               ],
             ),
           ),
@@ -327,28 +351,58 @@ class BillsScreen extends StatelessWidget {
     final amount = double.tryParse(amountCtrl.text.replaceAll(',', ''));
     if (amount == null || amount <= 0) return;
 
+    final billId = existing?.id ?? 'bill_${DateTime.now().millisecondsSinceEpoch}';
+    final parsedCustomDays = frequency == Frequency.custom ? int.tryParse(customDaysCtrl.text) : null;
+    final ruleId = existing?.recurrenceRuleId?.isNotEmpty == true
+        ? existing!.recurrenceRuleId!
+        : 'rule_$billId';
+
+    final (ruleFreq, ruleInterval) = RecurringTransactionService.toRuleSchedule(
+      frequency,
+      customDays: parsedCustomDays,
+    );
+
     final bill = Bill(
-      id: existing?.id ?? 'bill_${DateTime.now().millisecondsSinceEpoch}',
+      id: billId,
       name: nameCtrl.text.trim(),
       amount: amount,
       dueDate: dueDate,
       walletId: walletId,
       categoryId: categoryId,
       reminderDaysBefore: reminderDays,
+      recurrenceRuleId: autoPost ? ruleId : null,
       frequency: frequency,
-      customDays: frequency == Frequency.custom ? int.tryParse(customDaysCtrl.text) : null,
+      customDays: parsedCustomDays,
       isPaid: existing?.isPaid ?? false,
       isPaused: existing?.isPaused ?? false,
       lastPaidDate: existing?.lastPaidDate,
     );
+
+    if (autoPost) {
+      await vm.addRecurrenceRule(RecurrenceRule(
+        id: ruleId,
+        frequency: ruleFreq,
+        interval: ruleInterval,
+        nextRunAt: bill.nextDueDate,
+        autoPost: true,
+      ));
+    } else if (existing?.recurrenceRuleId != null && existing!.recurrenceRuleId!.isNotEmpty) {
+      await vm.deleteRecurrenceRule(existing.recurrenceRuleId!);
+    }
 
     if (existing == null) {
       await vm.addBill(bill);
     } else {
       await vm.updateBill(bill);
     }
+
+    // If the scheduled date is today or earlier and auto-post is on, add it now.
+    final posted = await RecurringTransactionService.processDueRecurring(vm);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(existing == null ? 'Bill added' : 'Bill saved')));
+      final msg = posted > 0
+          ? '${bill.name} saved · $posted due transaction added to ledger'
+          : (existing == null ? 'Recurring expense added' : 'Recurring expense saved');
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
     }
   }
 }
@@ -358,6 +412,7 @@ class BillsScreen extends StatelessWidget {
 class _BillCard extends StatelessWidget {
   final Bill bill;
   final String symbol;
+  final bool autoPost;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onTogglePaid;
@@ -366,6 +421,7 @@ class _BillCard extends StatelessWidget {
   const _BillCard({
     required this.bill,
     required this.symbol,
+    this.autoPost = false,
     required this.onEdit,
     required this.onDelete,
     required this.onTogglePaid,
@@ -451,6 +507,24 @@ class _BillCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(statusLabel, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: statusColor)),
+                        if (autoPost && !bill.isPaused && !bill.isSettled) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Text(
+                              'Auto-add',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                     const SizedBox(height: 8),

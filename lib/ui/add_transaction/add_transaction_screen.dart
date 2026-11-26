@@ -303,7 +303,9 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
+              const _Label('RECEIPT PHOTO'),
+              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: ReceiptPicker(

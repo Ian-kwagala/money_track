@@ -61,11 +61,141 @@ class AppColors {
   static const radius2xl = 26.0;
   static const radius3xl = 32.0;
 
-  // Dark theme (kept similar to existing)
-  static const darkBg = Color(0xFF12141F);
-  static const darkCard = Color(0xFF1D2030);
-  static const darkElevated = Color(0xFF272B3A);
-  static const darkPrimary = Color(0xFF0B8457);
+  // Dark theme tokens
+  static const darkBg = Color(0xFF0E1418);
+  static const darkCard = Color(0xFF162026);
+  static const darkElevated = Color(0xFF1E2B33);
+  static const darkBorder = Color(0xFF283742);
+  static const darkTextPrimary = Color(0xFFF1F5F9);
+  static const darkTextSecondary = Color(0xFF94A3B8);
+  static const darkPrimary = Color(0xFF10B981);
+}
+
+/// Theme-aware palette so every screen and widget automatically adapts when
+/// dark mode is enabled, while preserving the exact light-mode design tokens.
+class AppPalette extends ThemeExtension<AppPalette> {
+  final Color bg;
+  final Color card;
+  final Color cardSolid;
+  final Color elevated;
+  final Color muted;
+  final Color mutedForeground;
+  final Color border;
+  final Color borderLight;
+  final Color divider;
+  final Color textPrimary;
+  final Color textSecondary;
+  final Color chipUnselected;
+  final Color primary;
+
+  const AppPalette({
+    required this.bg,
+    required this.card,
+    required this.cardSolid,
+    required this.elevated,
+    required this.muted,
+    required this.mutedForeground,
+    required this.border,
+    required this.borderLight,
+    required this.divider,
+    required this.textPrimary,
+    required this.textSecondary,
+    required this.chipUnselected,
+    required this.primary,
+  });
+
+  static const light = AppPalette(
+    bg: AppColors.bg,
+    card: AppColors.card,
+    cardSolid: AppColors.cardSolid,
+    elevated: AppColors.elevated,
+    muted: AppColors.muted,
+    mutedForeground: AppColors.mutedForeground,
+    border: AppColors.border,
+    borderLight: AppColors.borderLight,
+    divider: AppColors.divider,
+    textPrimary: AppColors.textPrimary,
+    textSecondary: AppColors.textSecondary,
+    chipUnselected: AppColors.chipUnselected,
+    primary: AppColors.primary,
+  );
+
+  static const dark = AppPalette(
+    bg: AppColors.darkBg,
+    card: AppColors.darkCard,
+    cardSolid: AppColors.darkCard,
+    elevated: AppColors.darkElevated,
+    muted: AppColors.darkElevated,
+    mutedForeground: AppColors.darkTextSecondary,
+    border: AppColors.darkBorder,
+    borderLight: AppColors.darkBorder,
+    divider: Color(0xFF24323C),
+    textPrimary: AppColors.darkTextPrimary,
+    textSecondary: AppColors.darkTextSecondary,
+    chipUnselected: AppColors.darkElevated,
+    primary: AppColors.darkPrimary,
+  );
+
+  @override
+  AppPalette copyWith({
+    Color? bg,
+    Color? card,
+    Color? cardSolid,
+    Color? elevated,
+    Color? muted,
+    Color? mutedForeground,
+    Color? border,
+    Color? borderLight,
+    Color? divider,
+    Color? textPrimary,
+    Color? textSecondary,
+    Color? chipUnselected,
+    Color? primary,
+  }) =>
+      AppPalette(
+        bg: bg ?? this.bg,
+        card: card ?? this.card,
+        cardSolid: cardSolid ?? this.cardSolid,
+        elevated: elevated ?? this.elevated,
+        muted: muted ?? this.muted,
+        mutedForeground: mutedForeground ?? this.mutedForeground,
+        border: border ?? this.border,
+        borderLight: borderLight ?? this.borderLight,
+        divider: divider ?? this.divider,
+        textPrimary: textPrimary ?? this.textPrimary,
+        textSecondary: textSecondary ?? this.textSecondary,
+        chipUnselected: chipUnselected ?? this.chipUnselected,
+        primary: primary ?? this.primary,
+      );
+
+  @override
+  AppPalette lerp(ThemeExtension<AppPalette>? other, double t) {
+    if (other is! AppPalette) return this;
+    return AppPalette(
+      bg: Color.lerp(bg, other.bg, t)!,
+      card: Color.lerp(card, other.card, t)!,
+      cardSolid: Color.lerp(cardSolid, other.cardSolid, t)!,
+      elevated: Color.lerp(elevated, other.elevated, t)!,
+      muted: Color.lerp(muted, other.muted, t)!,
+      mutedForeground: Color.lerp(mutedForeground, other.mutedForeground, t)!,
+      border: Color.lerp(border, other.border, t)!,
+      borderLight: Color.lerp(borderLight, other.borderLight, t)!,
+      divider: Color.lerp(divider, other.divider, t)!,
+      textPrimary: Color.lerp(textPrimary, other.textPrimary, t)!,
+      textSecondary: Color.lerp(textSecondary, other.textSecondary, t)!,
+      chipUnselected: Color.lerp(chipUnselected, other.chipUnselected, t)!,
+      primary: Color.lerp(primary, other.primary, t)!,
+    );
+  }
+}
+
+/// Convenience accessor (`context.colors`) for the active light/dark [AppPalette].
+extension AppPaletteContext on BuildContext {
+  AppPalette get colors {
+    final theme = Theme.of(this);
+    return theme.extension<AppPalette>() ??
+        (theme.brightness == Brightness.dark ? AppPalette.dark : AppPalette.light);
+  }
 }
 
 /// Builds the Material light and dark themes from [AppColors]. main.dart
@@ -157,30 +287,39 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
         backgroundColor: AppColors.textPrimary,
       ),
+      extensions: const [AppPalette.light],
       textTheme: googleFonts ? GoogleFonts.manropeTextTheme() : null,
     );
   }
 
-  /// Dark variant. Lighter on overrides than [light]: most colours come from
-  /// the seed-generated scheme.
+  /// Dark variant with high-contrast charcoal surfaces, crisp typography, and
+  /// emerald accents.
   static ThemeData dark({bool googleFonts = false}) {
     return ThemeData(
       useMaterial3: true,
+      brightness: Brightness.dark,
       fontFamily: googleFonts ? GoogleFonts.manrope().fontFamily : null,
       fontFamilyFallback: const ['Roboto', 'sans-serif'],
       scaffoldBackgroundColor: AppColors.darkBg,
       colorScheme: ColorScheme.fromSeed(
         seedColor: AppColors.darkPrimary,
         brightness: Brightness.dark,
+        primary: AppColors.darkPrimary,
+        secondary: AppColors.success,
+        surface: AppColors.darkCard,
+        onSurface: AppColors.darkTextPrimary,
+        onSurfaceVariant: AppColors.darkTextSecondary,
+        error: AppColors.danger,
+        outline: AppColors.darkBorder,
       ),
       appBarTheme: const AppBarTheme(
         elevation: 0,
         centerTitle: false,
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
+        foregroundColor: AppColors.darkTextPrimary,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: TextStyle(
-          color: Colors.white,
+          color: AppColors.darkTextPrimary,
           fontSize: 20,
           fontWeight: FontWeight.w700,
         ),
@@ -189,29 +328,58 @@ class AppTheme {
         elevation: 0,
         color: AppColors.darkCard,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(AppColors.radiusXl)),
+          borderRadius: const BorderRadius.all(Radius.circular(AppColors.radiusXl)),
+          side: BorderSide(color: AppColors.darkBorder.withValues(alpha: 0.55)),
         ),
         margin: EdgeInsets.zero,
+        shadowColor: Colors.transparent,
       ),
-      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.darkCard,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusXl),
+        ),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: AppColors.darkCard,
+        surfaceTintColor: Colors.transparent,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: AppColors.darkBorder,
+        thickness: 1,
+        space: 1,
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         backgroundColor: Colors.transparent,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: const Color(0xFF7A8A8E),
+        selectedItemColor: AppColors.darkPrimary,
+        unselectedItemColor: AppColors.darkTextSecondary,
         type: BottomNavigationBarType.fixed,
         elevation: 0,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.darkCard,
+        fillColor: AppColors.darkElevated,
+        hintStyle: const TextStyle(color: AppColors.darkTextSecondary),
+        labelStyle: const TextStyle(color: AppColors.darkTextSecondary),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppColors.radiusMd),
-          borderSide: BorderSide.none,
+          borderSide: const BorderSide(color: AppColors.darkBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          borderSide: const BorderSide(color: AppColors.darkBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppColors.radiusMd),
+          borderSide: const BorderSide(color: AppColors.darkPrimary, width: 1.5),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.darkPrimary,
+          foregroundColor: Colors.white,
           minimumSize: const Size.fromHeight(52),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
@@ -220,7 +388,10 @@ class AppTheme {
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusMd)),
+        backgroundColor: AppColors.darkElevated,
+        contentTextStyle: const TextStyle(color: AppColors.darkTextPrimary),
       ),
+      extensions: const [AppPalette.dark],
       textTheme: googleFonts ? GoogleFonts.manropeTextTheme(ThemeData.dark().textTheme) : null,
     );
   }

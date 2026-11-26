@@ -432,6 +432,8 @@ class MoneyRepository {
   Future<void> addRecurrenceRule(RecurrenceRule rule) =>
       _recurrenceRules.put(rule.id, rule);
 
+  Future<void> deleteRecurrenceRule(String id) => _recurrenceRules.delete(id);
+
   Future<void> addAlertRule(AlertRule rule) => _alertRules.put(rule.id, rule);
 
   Future<void> deleteAlertRule(String id) => _alertRules.delete(id);

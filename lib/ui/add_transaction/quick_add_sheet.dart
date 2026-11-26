@@ -278,15 +278,16 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
       }
     }
 
+    final c = context.colors;
     return SafeArea(
       child: Container(
         constraints: BoxConstraints(
           maxHeight: screenH * 0.92,
           minHeight: screenH * 0.5,
         ),
-        decoration: const BoxDecoration(
-          color: AppColors.cardSolid,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: c.cardSolid,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -295,13 +296,13 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               margin: const EdgeInsets.only(top: 10),
               width: 36,
               height: 4,
-              decoration: BoxDecoration(color: AppColors.borderLight, borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(color: c.borderLight, borderRadius: BorderRadius.circular(2)),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 12, 8, 0),
               child: Row(
                 children: [
-                  const Text('Quick add', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  Text('Quick add', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: c.textPrimary)),
                   const Spacer(),
                   TextButton.icon(
                     onPressed: () {
@@ -582,9 +583,9 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
             // Fixed bottom: numpad + CTA with responsive sizing
             Container(
               padding: EdgeInsets.fromLTRB(16, 8, 16, viewInsets + 12),
-              decoration: const BoxDecoration(
-                color: AppColors.cardSolid,
-                border: Border(top: BorderSide(color: AppColors.borderLight, width: 0.5)),
+              decoration: BoxDecoration(
+                color: c.cardSolid,
+                border: Border(top: BorderSide(color: c.borderLight, width: 0.5)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -786,13 +787,14 @@ class _Numpad extends StatelessWidget {
   const _Numpad({required this.onKey, this.isSmall = false});
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     Widget key(String label, {IconData? icon, VoidCallback? tap}) {
       // A ripple and a light tick on every key, like a phone keypad.
       return Expanded(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
           child: Material(
-            color: AppColors.bg,
+            color: c.bg,
             borderRadius: BorderRadius.circular(12),
             child: InkWell(
               borderRadius: BorderRadius.circular(12),
@@ -804,8 +806,8 @@ class _Numpad extends StatelessWidget {
                 height: isSmall ? 42 : 48,
                 child: Center(
                   child: icon != null
-                      ? Icon(icon, color: AppColors.textSecondary, size: 18)
-                      : Text(label, style: TextStyle(fontSize: isSmall ? 16 : 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                      ? Icon(icon, color: c.textSecondary, size: 18)
+                      : Text(label, style: TextStyle(fontSize: isSmall ? 16 : 18, fontWeight: FontWeight.w700, color: c.textPrimary)),
                 ),
               ),
             ),

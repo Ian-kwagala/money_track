@@ -707,6 +707,20 @@ class TrackerViewModel extends ChangeNotifier {
     _markDirty();
   }
 
+  Future<void> deleteRecurrenceRule(String id) async {
+    await repo.deleteRecurrenceRule(id);
+    _markDirty();
+  }
+
+  /// Looks up the [RecurrenceRule] linked to a bill, or null if none exists.
+  RecurrenceRule? recurrenceRuleById(String? id) {
+    if (id == null || id.isEmpty) return null;
+    for (final r in recurrenceRules) {
+      if (r.id == id) return r;
+    }
+    return null;
+  }
+
   Future<void> addAlertRule(AlertRule rule) async {
     await repo.addAlertRule(rule);
     _markDirty();

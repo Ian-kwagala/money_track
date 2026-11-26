@@ -24,6 +24,7 @@ class MonthlyBudgetCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final hasLimit = limit > 0;
     final ratio = hasLimit ? spent / limit : 0.0;
     final remaining = limit - spent;
@@ -31,12 +32,12 @@ class MonthlyBudgetCard extends StatelessWidget {
 
     // Color-code progress so the user gets an early visual cue at 80% and over 100%.
     final statusColor = !hasLimit
-        ? AppColors.mutedForeground
+        ? c.mutedForeground
         : isOver
             ? AppColors.danger
             : ratio >= 0.8
                 ? AppColors.warning
-                : AppColors.primary;
+                : c.primary;
 
     return Card(
       shape: RoundedRectangleBorder(
@@ -49,13 +50,13 @@ class MonthlyBudgetCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'Monthly spending limit',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
+                      color: c.textPrimary,
                     ),
                   ),
                 ),
@@ -68,7 +69,7 @@ class MonthlyBudgetCard extends StatelessWidget {
                   ),
                   label: Text(hasLimit ? 'Edit limit' : 'Set limit'),
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
+                    foregroundColor: c.primary,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     visualDensity: VisualDensity.compact,
                     textStyle: const TextStyle(
@@ -81,11 +82,11 @@ class MonthlyBudgetCard extends StatelessWidget {
             ),
             if (!hasLimit) ...[
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Set a monthly limit to track how much budget you have left this month.',
                 style: TextStyle(
                   fontSize: 12,
-                  color: AppColors.mutedForeground,
+                  color: c.mutedForeground,
                   height: 1.4,
                 ),
               ),
@@ -97,8 +98,8 @@ class MonthlyBudgetCard extends StatelessWidget {
                   icon: const Icon(Icons.savings_outlined, size: 18),
                   label: const Text('Set monthly spending limit'),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
+                    foregroundColor: c.primary,
+                    side: BorderSide(color: c.primary),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppColors.radiusMd),
                     ),
@@ -140,7 +141,7 @@ class MonthlyBudgetCard extends StatelessWidget {
                 child: LinearProgressIndicator(
                   value: ratio.clamp(0.0, 1.0),
                   minHeight: 10,
-                  backgroundColor: AppColors.border,
+                  backgroundColor: c.border,
                   valueColor: AlwaysStoppedAnimation<Color>(statusColor),
                 ),
               ),
@@ -150,18 +151,18 @@ class MonthlyBudgetCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       '${MoneyFormat.money(spent, symbol: symbol)} of ${MoneyFormat.money(limit, symbol: symbol)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.mutedForeground,
+                        color: c.mutedForeground,
                       ),
                     ),
                   ),
                   Text(
                     hasCustomLimit ? 'Custom limit' : 'Category budgets',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.mutedForeground,
+                      color: c.mutedForeground,
                     ),
                   ),
                 ],

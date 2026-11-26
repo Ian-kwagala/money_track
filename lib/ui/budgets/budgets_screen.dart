@@ -59,8 +59,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
     final diff = (totalBudget - spentMonth).abs();
     final visibleBudgets = _filter == null ? vm.budgets : vm.budgets.where((b) => b.frequency == _filter).toList();
 
+    final c = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: c.bg,
       body: SafeArea(
         top: false,
         child: CustomScrollView(
@@ -86,13 +87,13 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Spent of budget', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
+                          Text('Spent of budget', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c.mutedForeground)),
                           const SizedBox(height: 6),
                           RichText(
                             text: TextSpan(
                               children: [
-                                TextSpan(text: MoneyFormat.money(spentMonth, symbol: symbol), style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                                TextSpan(text: ' / ${MoneyFormat.money(totalBudget, symbol: symbol)}', style: const TextStyle(fontSize: 14, color: AppColors.mutedForeground, fontWeight: FontWeight.w500)),
+                                TextSpan(text: MoneyFormat.money(spentMonth, symbol: symbol), style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: c.textPrimary)),
+                                TextSpan(text: ' / ${MoneyFormat.money(totalBudget, symbol: symbol)}', style: TextStyle(fontSize: 14, color: c.mutedForeground, fontWeight: FontWeight.w500)),
                               ],
                             ),
                           ),
@@ -102,9 +103,9 @@ class _BudgetsScreenState extends State<BudgetsScreen> {
                             child: LinearProgressIndicator(
                               value: overallPct.clamp(0.0, 1.0),
                               minHeight: 8,
-                              backgroundColor: AppColors.border,
+                              backgroundColor: c.border,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                overallPct >= 1 ? AppColors.danger : overallPct >= 0.8 ? AppColors.warning : AppColors.primary,
+                                overallPct >= 1 ? AppColors.danger : overallPct >= 0.8 ? AppColors.warning : c.primary,
                               ),
                             ),
                           ),

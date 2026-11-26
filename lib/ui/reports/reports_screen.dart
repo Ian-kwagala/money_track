@@ -61,8 +61,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
       c.pct = total > 0 ? c.amount / total : 0;
     }
 
+    final c = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: c.bg,
       body: SafeArea(
         top: false,
         child: CustomScrollView(
@@ -88,7 +89,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Spend by category', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          Text('Spend by category', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c.textPrimary)),
                           const SizedBox(height: 16),
                           Row(
                             children: [

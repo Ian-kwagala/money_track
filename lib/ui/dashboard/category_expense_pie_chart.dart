@@ -68,6 +68,7 @@ class _CategoryExpensePieChartState extends State<CategoryExpensePieChart> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final slices = CategoryExpensePieChart.groupOverflow(widget.slices);
     final total = slices.fold<double>(0, (sum, s) => sum + s.amount);
 
@@ -92,22 +93,22 @@ class _CategoryExpensePieChartState extends State<CategoryExpensePieChart> {
           children: [
             Row(
               children: [
-                const Text(
+                Text(
                   'Expenses by category',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: c.textPrimary,
                   ),
                 ),
                 const Spacer(),
                 if (widget.onAnalyticsTap != null)
                   InkWell(
                     onTap: widget.onAnalyticsTap,
-                    child: const Text(
+                    child: Text(
                       'Analytics',
                       style: TextStyle(
-                        color: AppColors.primary,
+                        color: c.primary,
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
@@ -117,14 +118,14 @@ class _CategoryExpensePieChartState extends State<CategoryExpensePieChart> {
             ),
             const SizedBox(height: 16),
             if (slices.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
                   child: Text(
                     'No expenses recorded this month',
                     style: TextStyle(
                       fontSize: 12,
-                      color: AppColors.mutedForeground,
+                      color: c.mutedForeground,
                     ),
                   ),
                 ),
@@ -181,9 +182,9 @@ class _CategoryExpensePieChartState extends State<CategoryExpensePieChart> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 9,
-                                  color: AppColors.mutedForeground,
+                                  color: c.mutedForeground,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -195,10 +196,10 @@ class _CategoryExpensePieChartState extends State<CategoryExpensePieChart> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary,
+                                  color: c.textPrimary,
                                 ),
                               ),
                               if (centerPct != null)
@@ -252,17 +253,17 @@ class _CategoryExpensePieChartState extends State<CategoryExpensePieChart> {
                                         fontWeight: activeIndex == i
                                             ? FontWeight.w800
                                             : FontWeight.w600,
-                                        color: AppColors.textPrimary,
+                                        color: c.textPrimary,
                                       ),
                                     ),
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     '${total > 0 ? ((slices[i].amount / total) * 100).round() : 0}%',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
-                                      color: AppColors.mutedForeground,
+                                      color: c.mutedForeground,
                                     ),
                                   ),
                                   const SizedBox(width: 6),
@@ -271,10 +272,10 @@ class _CategoryExpensePieChartState extends State<CategoryExpensePieChart> {
                                       slices[i].amount,
                                       symbol: widget.symbol,
                                     ),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.textPrimary,
+                                      color: c.textPrimary,
                                     ),
                                   ),
                                 ],

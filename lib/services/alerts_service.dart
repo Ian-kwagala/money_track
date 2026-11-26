@@ -85,6 +85,39 @@ class AlertsService extends ChangeNotifier {
     final alerts = <AlertItem>[];
     final settings = vm.settings;
 
+    // Monthly spending limit: warns at 80% and again when exceeded (100%+).
+    // Uses year + month in the ID so next month's alerts appear fresh.
+    final monthlyLimit = vm.effectiveMonthlyLimit;
+    if (settings.budgetWarningsEnabled && monthlyLimit > 0) {
+      final monthStart = DateTime(now.year, now.month, 1);
+      final spentThisMonth = vm.spentTotal(monthStart, now);
+      final pct = spentThisMonth / monthlyLimit;
+      final monthKey = '${now.year}_${now.month}';
+      if (pct >= 1.0) {
+        alerts.add(AlertItem(
+          id: 'monthly_limit_over_$monthKey',
+          icon: Icons.warning_amber_rounded,
+          iconColor: AppColors.danger,
+          iconBg: AppColors.danger.withValues(alpha: 0.15),
+          title: 'Monthly spending limit exceeded',
+          description:
+              "You've spent ${MoneyFormat.money(spentThisMonth, symbol: symbol)} this month, over your ${MoneyFormat.money(monthlyLimit, symbol: symbol)} monthly limit.",
+          when: now,
+        ));
+      } else if (pct >= 0.8) {
+        alerts.add(AlertItem(
+          id: 'monthly_limit_80_$monthKey',
+          icon: Icons.timer_outlined,
+          iconColor: AppColors.warning,
+          iconBg: AppColors.warning.withValues(alpha: 0.15),
+          title: 'Monthly spending limit crossed 80%',
+          description:
+              "You've spent ${MoneyFormat.money(spentThisMonth, symbol: symbol)} of your ${MoneyFormat.money(monthlyLimit, symbol: symbol)} monthly limit (${(pct * 100).round()}%).",
+          when: now,
+        ));
+      }
+    }
+
     // Daily budget: warns at 80%, then again when exceeded. The ID includes
     // the date, so tomorrow's alert is new even if today's was dismissed.
     final dailyBudget = settings.dailyBudget;

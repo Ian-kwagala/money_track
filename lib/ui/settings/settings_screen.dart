@@ -77,8 +77,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final s = vm.settings;
     final symbol = s.currencySymbol;
 
+    final c = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: c.bg,
       body: SafeArea(
         top: false,
         child: CustomScrollView(
@@ -105,18 +106,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Container(
                               width: 36,
                               height: 36,
-                              decoration: const BoxDecoration(color: AppColors.muted, shape: BoxShape.circle),
-                              child: const Icon(Icons.person_outline, color: AppColors.primary, size: 18),
+                              decoration: BoxDecoration(color: c.muted, shape: BoxShape.circle),
+                              child: Icon(Icons.person_outline, color: c.primary, size: 18),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Account & Security', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                                  Text('Account & Security', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: c.textPrimary)),
                                   Text(
                                     '${vm.currentUser.name} · Profile, PIN & security settings',
-                                    style: const TextStyle(fontSize: 11, color: AppColors.mutedForeground),
+                                    style: TextStyle(fontSize: 11, color: c.mutedForeground),
                                   ),
                                 ],
                               ),

@@ -7,6 +7,7 @@ import '../add_transaction/add_transaction_screen.dart';
 import '../format/money_format.dart';
 import '../theme/app_theme.dart';
 import 'category_avatar.dart';
+import 'receipt_picker.dart';
 
 /// One row in a transaction list: avatar, title, wallet and time, and the
 /// signed amount.
@@ -108,12 +109,36 @@ class TransactionTile extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                      if (tx.receiptPath != null && tx.receiptPath!.isNotEmpty) ...[
+                        const SizedBox(width: 6),
+                        InkWell(
+                          key: Key('receipt_badge_${tx.id}'),
+                          onTap: () => ReceiptViewer.open(context, tx.receiptPath!),
+                          borderRadius: BorderRadius.circular(6),
+                          child: const Tooltip(
+                            message: 'View attached receipt',
+                            child: Icon(
+                              Icons.receipt_long_outlined,
+                              size: 14,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ],
               ),

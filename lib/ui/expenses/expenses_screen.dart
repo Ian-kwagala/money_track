@@ -86,8 +86,9 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
     }
     final days = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
+    final c = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: c.bg,
       body: SafeArea(
         top: false,
         child: CustomScrollView(

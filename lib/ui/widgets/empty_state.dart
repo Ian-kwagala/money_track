@@ -20,6 +20,7 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -30,28 +31,28 @@ class EmptyState extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: BoxDecoration(
-                color: AppColors.chipUnselected,
+                color: c.chipUnselected,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 28, color: AppColors.textSecondary),
+              child: Icon(icon, size: 28, color: c.textSecondary),
             ),
             const SizedBox(height: 14),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+                color: c.textPrimary,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 height: 1.4,
-                color: AppColors.textSecondary,
+                color: c.textSecondary,
               ),
             ),
             if (action != null) ...[

@@ -15,6 +15,9 @@ class MainActivity : FlutterActivity() {
         val channel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SmsCapture.CHANNEL)
         channel.setMethodCallHandler { call, result -> SmsCapture.handle(applicationContext, call, result) }
         SmsCapture.channel = channel
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, BudgetNotifications.CHANNEL)
+            .setMethodCallHandler { call, result -> BudgetNotifications.handle(applicationContext, call, result) }
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {

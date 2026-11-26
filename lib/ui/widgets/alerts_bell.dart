@@ -14,6 +14,7 @@ class AlertsBell extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<TrackerViewModel>();
     final count = context.watch<AlertsService>().countFor(vm);
+    final c = context.colors;
 
     // Screen readers hear one button with the count, instead of the icon and
     // badge as separate items.
@@ -33,8 +34,8 @@ class AlertsBell extends StatelessWidget {
               Container(
                 width: 36,
                 height: 36,
-                decoration: const BoxDecoration(color: AppColors.muted, shape: BoxShape.circle),
-                child: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary, size: 18),
+                decoration: BoxDecoration(color: c.muted, shape: BoxShape.circle),
+                child: Icon(Icons.notifications_outlined, color: c.textPrimary, size: 18),
               ),
               // Red count badge over the top-right corner. Its border uses the
               // page background so it looks cut out of the bell.

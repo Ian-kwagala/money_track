@@ -58,10 +58,12 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
     final choice = await showModalBottomSheet<_Choice>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => SafeArea(
+      builder: (ctx) {
+        final c = ctx.colors;
+        return SafeArea(
         // Material (not a coloured Container) so the options' ripples show.
         child: Material(
-          color: AppColors.cardSolid,
+          color: c.cardSolid,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
@@ -70,7 +72,7 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
               children: [
                 Text(
                   _has ? 'Receipt' : 'Attach receipt',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: c.textPrimary),
                 ),
                 const SizedBox(height: 8),
                 if (_has)
@@ -99,7 +101,8 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
             ),
           ),
         ),
-      ),
+      );
+      },
     );
     if (!mounted || choice == null) return;
     switch (choice) {
@@ -152,8 +155,9 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Material(
-      color: AppColors.bg,
+      color: c.bg,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -174,18 +178,18 @@ class _ReceiptPickerState extends State<ReceiptPicker> {
                     height: 32,
                     fit: BoxFit.cover,
                     cacheWidth: 96,
-                    errorBuilder: (_, _, _) => const Icon(Icons.receipt_long, size: 20, color: AppColors.textSecondary),
+                    errorBuilder: (_, _, _) => Icon(Icons.receipt_long, size: 20, color: c.textSecondary),
                   ),
                 )
               else
-                const Icon(Icons.camera_alt_outlined, size: 18, color: AppColors.textSecondary),
+                Icon(Icons.camera_alt_outlined, size: 18, color: c.textSecondary),
               const SizedBox(width: 10),
               Flexible(
                 child: Text(
                   _working ? 'Attaching…' : (_has ? 'Receipt attached · tap to view' : 'Attach receipt'),
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: _has ? AppColors.textPrimary : AppColors.textSecondary,
+                    color: _has ? c.textPrimary : c.textSecondary,
                     fontWeight: _has ? FontWeight.w600 : FontWeight.w500,
                     fontSize: 13,
                   ),

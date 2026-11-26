@@ -98,8 +98,9 @@ class _HomeShellState extends State<HomeShell> {
   /// Sidebar + centred content. Only the selected page is built here (no
   /// IndexedStack), so switching tabs rebuilds the page.
   Widget _buildWide(BuildContext context, List<Widget> pages) {
+    final c = context.colors;
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: c.bg,
       body: Row(
         children: [
           _Sidebar(
@@ -116,7 +117,7 @@ class _HomeShellState extends State<HomeShell> {
                     inner.maxWidth < maxContentWidth ? inner.maxWidth : maxContentWidth;
                 final sideInset = (inner.maxWidth - contentWidth) / 2;
                 return Container(
-                  color: AppColors.bg,
+                  color: c.bg,
                   child: Stack(
                     children: [
                       Align(
@@ -252,9 +253,10 @@ class _Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
       width: 240,
-      color: AppColors.elevated,
+      color: c.elevated,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -268,18 +270,18 @@ class _Sidebar extends StatelessWidget {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: c.primary,
                       borderRadius: BorderRadius.circular(9),
                     ),
                     child: const Icon(Icons.savings_outlined, color: Colors.white, size: 18),
                   ),
                   const SizedBox(width: 10),
-                  const Text(
+                  Text(
                     'MoneyTrack',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: c.textPrimary,
                     ),
                   ),
                 ],
@@ -294,10 +296,10 @@ class _Sidebar extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
                       child: Text(
                         group.$1,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: AppColors.mutedForeground,
+                          color: c.mutedForeground,
                         ),
                       ),
                     ),
@@ -327,7 +329,8 @@ class _SidebarItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? AppColors.primary : AppColors.textPrimary;
+    final c = context.colors;
+    final color = active ? c.primary : c.textPrimary;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppColors.radiusMd),
@@ -383,14 +386,15 @@ class PageHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final vm = context.watch<TrackerViewModel>();
     final isDark = vm.settings.darkMode;
+    final c = context.colors;
 
     return SafeArea(
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.9),
+          color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.92),
           border: Border(
-            bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.6), width: 1),
+            bottom: BorderSide(color: c.border.withValues(alpha: 0.6), width: 1),
           ),
         ),
         child: Row(
@@ -399,9 +403,9 @@ class PageHeader extends StatelessWidget {
               InkWell(
                 onTap: () => Navigator.pop(context),
                 borderRadius: BorderRadius.circular(28),
-                child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(Icons.chevron_left, size: 22, color: AppColors.textPrimary),
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Icon(Icons.chevron_left, size: 22, color: c.textPrimary),
                 ),
               ),
             const SizedBox(width: 8),
@@ -412,18 +416,18 @@ class PageHeader extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                      color: c.textPrimary,
                     ),
                   ),
                   if (subtitle != null)
                     Text(
                       subtitle!,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
-                        color: AppColors.mutedForeground,
+                        color: c.mutedForeground,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -433,18 +437,19 @@ class PageHeader extends StatelessWidget {
             for (final extra in extraActions) ...[extra, const SizedBox(width: 8)],
             action ??
                 InkWell(
+                  key: const Key('theme_toggle_button'),
                   onTap: () => vm.updateSettings(vm.settings..darkMode = !isDark),
                   borderRadius: BorderRadius.circular(28),
                   child: Container(
                     width: 36,
                     height: 36,
-                    decoration: const BoxDecoration(
-                      color: AppColors.muted,
+                    decoration: BoxDecoration(
+                      color: c.muted,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       isDark ? Icons.wb_sunny_outlined : Icons.dark_mode_outlined,
-                      color: AppColors.textPrimary,
+                      color: c.textPrimary,
                       size: 18,
                     ),
                   ),

@@ -74,13 +74,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     final vm = context.watch<TrackerViewModel>();
     final sync = _maybeSync(context);
+    final c = context.colors;
 
     // When the dashboard is loading initial data or refreshing,
     // show the animated skeleton view to keep the user engaged.
     if (vm.isLoading) {
-      return const Scaffold(
-        backgroundColor: AppColors.bg,
-        body: SafeArea(
+      return Scaffold(
+        backgroundColor: c.bg,
+        body: const SafeArea(
           top: false,
           child: DashboardSkeleton(),
         ),
@@ -149,11 +150,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
 
     return Scaffold(
-      backgroundColor: AppColors.bg,
+      backgroundColor: c.bg,
       body: SafeArea(
         top: false,
         child: RefreshIndicator(
-          color: AppColors.primary,
+          color: c.primary,
           onRefresh: () async {
             final syncRef = _maybeSync(context, listen: false);
             await vm.refreshData();
@@ -259,7 +260,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 child: _StatCard(
                                   label: 'Avg daily spend',
                                   value: MoneyFormat.money(avgDailySpend.roundToDouble(), symbol: symbol),
-                                  color: AppColors.textPrimary,
+                                  color: c.textPrimary,
                                 ),
                               ),
                             ],
@@ -335,6 +336,7 @@ class _BalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final hasWallets = wallets.isNotEmpty;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
@@ -348,24 +350,24 @@ class _BalanceCard extends StatelessWidget {
                 Icon(
                   hasWallets ? Icons.visibility_outlined : Icons.account_balance_wallet_outlined,
                   size: 14,
-                  color: AppColors.mutedForeground,
+                  color: c.mutedForeground,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   hasWallets
                       ? 'Total balance \u00b7 ${wallets.length} wallet${wallets.length == 1 ? '' : 's'}'
                       : 'Net balance \u00b7 income - expenses',
-                  style: const TextStyle(fontSize: 13, color: AppColors.mutedForeground),
+                  style: TextStyle(fontSize: 13, color: c.mutedForeground),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
               MoneyFormat.signed(totalBalance, symbol: symbol),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 34,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+                color: c.textPrimary,
                 letterSpacing: -0.5,
               ),
             ),
@@ -401,21 +403,22 @@ class _WalletPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.elevated,
+        color: c.elevated,
         borderRadius: BorderRadius.circular(AppColors.radiusMd),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(name, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
+          Text(name, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: c.mutedForeground)),
           const SizedBox(height: 2),
           Text(
             MoneyFormat.compactSigned(balance, symbol: symbol),
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: c.textPrimary),
           ),
         ],
       ),
@@ -431,14 +434,15 @@ class _CloudSyncPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final (label, icon, color) = switch (sync.status) {
-      SyncStatus.synced => ('Cloud sync · Up to date', Icons.cloud_done_outlined, AppColors.primary),
+      SyncStatus.synced => ('Cloud sync · Up to date', Icons.cloud_done_outlined, c.primary),
       SyncStatus.syncing => ('Cloud sync · Syncing...', Icons.cloud_sync_outlined, AppColors.info),
       SyncStatus.offline => ('Cloud sync · Offline (${sync.pendingCount} queued)', Icons.cloud_off_outlined, AppColors.warning),
       SyncStatus.error => ('Cloud sync · Needs attention', Icons.cloud_off_outlined, AppColors.danger),
       SyncStatus.needsAccountChoice => ('Cloud sync · Account switch pending', Icons.manage_accounts_outlined, AppColors.warning),
-      SyncStatus.signedOut => ('Cloud sync · Sign in to back up to Firestore', Icons.cloud_upload_outlined, AppColors.mutedForeground),
-      SyncStatus.disabled => ('Local storage only', Icons.storage_outlined, AppColors.mutedForeground),
+      SyncStatus.signedOut => ('Cloud sync · Sign in to back up to Firestore', Icons.cloud_upload_outlined, c.mutedForeground),
+      SyncStatus.disabled => ('Local storage only', Icons.storage_outlined, c.mutedForeground),
     };
 
     return InkWell(
@@ -450,9 +454,9 @@ class _CloudSyncPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: AppColors.card,
+          color: c.card,
           borderRadius: BorderRadius.circular(AppColors.radius2xl),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: c.border),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -496,6 +500,7 @@ class _IncomeSpentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final color = isIncome ? AppColors.success : AppColors.danger;
     final icon = isIncome ? Icons.arrow_downward : Icons.arrow_upward;
 
@@ -516,7 +521,7 @@ class _IncomeSpentCard extends StatelessWidget {
               child: Icon(icon, color: color, size: 16),
             ),
             const SizedBox(height: 10),
-            Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
+            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c.mutedForeground)),
             const SizedBox(height: 4),
             FittedBox(
               fit: BoxFit.scaleDown,
@@ -536,7 +541,7 @@ class _IncomeSpentCard extends StatelessWidget {
                 footnote!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 10, color: AppColors.mutedForeground),
+                style: TextStyle(fontSize: 10, color: c.mutedForeground),
               ),
             ],
           ],
@@ -563,6 +568,7 @@ class _Shortcuts extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return SizedBox(
       height: 44,
       child: ListView(
@@ -576,21 +582,21 @@ class _Shortcuts extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.card,
+                  color: c.card,
                   borderRadius: BorderRadius.circular(AppColors.radius2xl),
-                  border: Border.all(color: AppColors.border, width: 1),
+                  border: Border.all(color: c.border, width: 1),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(_items[i].$2, size: 16, color: AppColors.textPrimary),
+                    Icon(_items[i].$2, size: 16, color: c.textPrimary),
                     const SizedBox(width: 6),
                     Text(
                       _items[i].$1,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                        color: c.textPrimary,
                       ),
                     ),
                   ],
@@ -696,6 +702,7 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppColors.radiusXl)),
       child: Padding(
@@ -704,7 +711,7 @@ class _StatCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
+            Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c.mutedForeground)),
             const SizedBox(height: 6),
             FittedBox(
               fit: BoxFit.scaleDown,
@@ -732,6 +739,7 @@ class _TodaySpendCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final pct = budget > 0 ? (spent / budget).clamp(0.0, 1.0) : 0.0;
     // Spending ring — always red (expense outflow)
     const color = AppColors.danger;
@@ -745,7 +753,7 @@ class _TodaySpendCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              const Text('Today', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.mutedForeground)),
+              Text('Today', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: c.mutedForeground)),
               const SizedBox(height: 12),
               SizedBox(
                 width: 78,
@@ -759,8 +767,8 @@ class _TodaySpendCard extends StatelessWidget {
                       child: CircularProgressIndicator(
                         value: pct,
                         strokeWidth: 8,
-                        backgroundColor: AppColors.border,
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                        backgroundColor: c.border,
+                        valueColor: const AlwaysStoppedAnimation<Color>(color),
                         strokeCap: StrokeCap.round,
                       ),
                     ),
@@ -768,9 +776,9 @@ class _TodaySpendCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(MoneyFormat.compact(spent, symbol: symbol),
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: c.textPrimary)),
                         Text('of ${MoneyFormat.compact(budget, symbol: symbol)}',
-                            style: const TextStyle(fontSize: 9, color: AppColors.mutedForeground)),
+                            style: TextStyle(fontSize: 9, color: c.mutedForeground)),
                       ],
                     ),
                   ],
@@ -807,6 +815,7 @@ class _RecentSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = context.colors;
     final isSearching = searchQuery.trim().isNotEmpty;
 
     return Column(
@@ -814,9 +823,9 @@ class _RecentSection extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Text(
+            Text(
               'Recent transactions',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: c.textPrimary),
             ),
             const Spacer(),
             TextButton.icon(
@@ -825,7 +834,7 @@ class _RecentSection extends StatelessWidget {
               icon: const Icon(Icons.add_circle_outline, size: 15),
               label: const Text('Add'),
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.primary,
+                foregroundColor: c.primary,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 visualDensity: VisualDensity.compact,
                 textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
@@ -834,9 +843,9 @@ class _RecentSection extends StatelessWidget {
             const SizedBox(width: 4),
             InkWell(
               onTap: () => Navigator.pushNamed(context, '/transactions'),
-              child: const Text(
+              child: Text(
                 'See all',
-                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600, fontSize: 11),
+                style: TextStyle(color: c.primary, fontWeight: FontWeight.w600, fontSize: 11),
               ),
             ),
           ],
@@ -850,31 +859,31 @@ class _RecentSection extends StatelessWidget {
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
               hintText: 'Search by title, category, or note...',
-              hintStyle: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
-              prefixIcon: const Icon(Icons.search, size: 18, color: AppColors.mutedForeground),
+              hintStyle: TextStyle(fontSize: 12, color: c.mutedForeground),
+              prefixIcon: Icon(Icons.search, size: 18, color: c.mutedForeground),
               suffixIcon: isSearching
                   ? IconButton(
                       key: const Key('dashboard_search_clear'),
-                      icon: const Icon(Icons.close, size: 18, color: AppColors.mutedForeground),
+                      icon: Icon(Icons.close, size: 18, color: c.mutedForeground),
                       tooltip: 'Clear search',
                       onPressed: onClearSearch,
                     )
                   : null,
               filled: true,
-              fillColor: AppColors.card,
+              fillColor: c.card,
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppColors.radiusLg),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: c.border),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppColors.radiusLg),
-                borderSide: const BorderSide(color: AppColors.border),
+                borderSide: BorderSide(color: c.border),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(AppColors.radiusLg),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                borderSide: BorderSide(color: c.primary, width: 1.5),
               ),
             ),
           ),
@@ -894,12 +903,12 @@ class _RecentSection extends StatelessWidget {
               child: Center(
                 child: Column(
                   children: [
-                    const Icon(Icons.search_off_rounded, size: 28, color: AppColors.mutedForeground),
+                    Icon(Icons.search_off_rounded, size: 28, color: c.mutedForeground),
                     const SizedBox(height: 8),
                     Text(
                       'No transactions matching "$searchQuery"',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 12, color: AppColors.mutedForeground),
+                      style: TextStyle(fontSize: 12, color: c.mutedForeground),
                     ),
                     const SizedBox(height: 8),
                     TextButton(
